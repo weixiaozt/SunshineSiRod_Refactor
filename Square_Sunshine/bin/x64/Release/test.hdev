@@ -1,0 +1,1065 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="23.11.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<l>read_dict ('./规格.json', [], [], ResourceDictHandle)</l>
+<l>create_dict (DictHandle)</l>
+<l>read_object (Image,'D:/Image_risen/2024年9月25日/621424090203A100-3/1.hobj')</l>
+<l>fRatioT:=0.015</l>
+<l>fRatioMean := 0.015</l>
+<l>nSplitIndex := 2</l>
+<l>fMinSubValue:=0.005</l>
+<c></c>
+<l>RowBeginTop := 0</l>
+<l>RowBeginLeft := 0</l>
+<l>RowBeginRight := 0</l>
+<l>RowBeginDown := 0</l>
+<l>LeftIndexesTop := []</l>
+<l>RightIndexesTop := []</l>
+<l>LeftIndexesLeft := []</l>
+<l>RightIndexesLeft := []</l>
+<l>LeftIndexesRight := []</l>
+<l>RightIndexesRight := []</l>
+<l>LeftIndexesDown := []</l>
+<l>RightIndexesDown := []</l>
+<c></c>
+<l>try</l>
+<l>    select_obj (Image, ImageLeft, 1)</l>
+<l>    select_obj (Image, ImageRight, 2) </l>
+<l>    select_obj (Image, ImageTop, 3) </l>
+<l>    select_obj (Image, ImageDown, 4)</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<l>crop_image (ImageTop, ImageLeft, ImageRight, ImageDown, ImageStickTopImage, ImageStickLeftImage, ImageStickRightImage, ImageStickDownImage, Top, Left, Right, Down)</l>
+<l>fRatioT := 0.015</l>
+<l>fMinSubValue := 0.005</l>
+<l>sub:=[]</l>
+<l>sub0:=[]</l>
+<l>T:=[]</l>
+<l>T[Top/20]:=[0]</l>
+<l>R:=[]</l>
+<l>L:=[]</l>
+<l>D:=[]</l>
+<l>TH:=[]</l>
+<l>LH:=[]</l>
+<l>RH:=[]</l>
+<l>RH[Right/20]:=[0]</l>
+<l>DH:=[]</l>
+<l>D1:=[]</l>
+<l>DT:=[]</l>
+<l>DL:=[]</l>
+<l>DR:=[]</l>
+<l>DD:=[]</l>
+<c></c>
+<l>Tangle:=[]</l>
+<l>Langle:=[]</l>
+<l>Rangle:=[]</l>
+<l>Dangle:=[]</l>
+<l>TH:=[]</l>
+<l>DH:=[]</l>
+<l>LH:=[]</l>
+<l>*RH:=[]</l>
+<l>get_image_size (ImageStickTopImage, Width, Height)</l>
+<l>for Index := 0 to Height by 20</l>
+<l>    try</l>
+<c>        </c>
+<l>        checkChamferDiagOnlyByHeigh (ImageStickTopImage, fRatioT, fMinSubValue, Index, Top, BTcolumnbegin, BTcolumnend, BTBeginHeight, BTEndHeight, TopDiag, TopMeanHeight)</l>
+<l>        checkChamferDiagOnlyByHeigh (ImageStickLeftImage, fRatioT, fMinSubValue, Index, Left, BLcolumnbegin, BLcolumnend, BLBeginHeight, BLEndHeight, LeftDiag, LeftMeanHeight)</l>
+<l>        checkChamferDiagOnlyByHeigh (ImageStickRightImage, fRatioT, fMinSubValue, Index, Right, BRcolumnbegin, BRcolumnend, BRBeginHeight, BREndHeight, RightDiag, RightMeanHeight)</l>
+<l>        checkChamferDiagOnlyByHeigh (ImageStickDownImage, fRatioT, fMinSubValue, Index, Down, BDcolumnbegin, BDcolumnend, BDBeginHeight, BDEndHeight, DownDiag, DownMeanHeight)</l>
+<l>        A:=[BTcolumnbegin*0.015,BTBeginHeight]</l>
+<l>        D:=[BDcolumnend*0.015,BDEndHeight]</l>
+<c>        </c>
+<l>        C:=[BDcolumnbegin*0.015,BDBeginHeight]</l>
+<l>        F:=[BLcolumnend*0.015,BLEndHeight]</l>
+<l>*         BRcolumnend:=BRcolumnend-(Index+Right)*0.00094</l>
+<c>        </c>
+<l>        T:=[T,BTcolumnend]</l>
+<l>        R:=[R,BRcolumnend]</l>
+<l>        L:=[L,BLcolumnbegin]</l>
+<l>        D1:=[D1,BDcolumnbegin]</l>
+<l>        TH:=[TH,BTBeginHeight]</l>
+<l>        LH:=[LH,BLBeginHeight]</l>
+<l>        RH:=[RH,BRBeginHeight]</l>
+<l>        DH:=[DH,BDBeginHeight]   </l>
+<l>        DT:=[DT,TopDiag]</l>
+<l>        DL:=[DL,LeftDiag]</l>
+<l>        DR:=[DR,RightDiag]</l>
+<l>        DD:=[DD,DownDiag]</l>
+<c>        </c>
+<c>        </c>
+<c>        </c>
+<l>    catch (Exception)</l>
+<l>        continue</l>
+<l>    endtry</l>
+<l>    distance_pl (A[1],A[0], 100, 100, 1000, 1000, Distance)</l>
+<l>        distance_pl (D[1],D[0], 100, -100, 1000, -1000, Distance1)</l>
+<c>        </c>
+<l>        distance_pl (C[1],C[0], 100, 100, 1000, 1000, Distance2)</l>
+<l>        distance_pl (F[1],F[0], 100, -100, 1000, -1000, Distance3)</l>
+<c>        </c>
+<c>        </c>
+<l>        sub:=[sub,Distance+Distance1]</l>
+<l>        sub0:=[sub0,Distance2+Distance3]</l>
+<l>        TH:=[TH,TopMeanHeight]</l>
+<l>        DH:=[DH,DownMeanHeight]</l>
+<l>        LH:=[LH,LeftMeanHeight]</l>
+<l>        RH:=[RH,RightMeanHeight]</l>
+<l>endfor</l>
+<c>*边长*</c>
+<l>write_tuple (RH, 'D:/3/2.tup')</l>
+<l>remove_tb (sub, k1)</l>
+<l>remove_max_min (k1, 6, Reduced)</l>
+<l>tuple_mean (Reduced, Mean)//边长A</l>
+<l>set_dict_tuple (DictHandle, '边长A_标定', Mean) </l>
+<l>remove_tb (sub0, k0)</l>
+<l>remove_max_min (k0, 6, Reduced0)</l>
+<l>*Reduced0:=Reduced0*0.015</l>
+<l>tuple_mean (Reduced0, Mean0)//边长B</l>
+<l>set_dict_tuple (DictHandle, '边长B_标定', Mean0)    </l>
+<c></c>
+<c>*对角线*</c>
+<l>DJ1:=TH-LH</l>
+<l>DJ2:=DH-RH</l>
+<l>remove_tb (DJ1,k1)</l>
+<l>remove_max_min (k1, 6, Reduced)</l>
+<l>tuple_mean (Reduced, DJ1Mean)//边长1</l>
+<l>set_dict_tuple (DictHandle, '对角1_标定', DJ1Mean) </l>
+<l>remove_tb (DJ2, k0)</l>
+<l>remove_max_min (k0, 6, Reduced0)</l>
+<l>*Reduced0:=Reduced0*0.015</l>
+<l>tuple_mean (Reduced0, DJ2Mean)//边长2</l>
+<l>set_dict_tuple (DictHandle, '对角2_标定', DJ2Mean)    </l>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<l>*ZSBY (meanHeightTopL, ResourceDictHandle, meanHeightTopR, LeftIndexesTop, RightIndexesTop, meanHeightRightL, meanHeightRightR, LeftIndexesRight, RightIndexesRight, meanHeightLeftL, meanHeightLeftR, LeftIndexesLeft, RightIndexesLeft, meanHeightDownL, meanHeightDownR, LeftIndexesDown, RightIndexesDown, meanHeightTop, meanHeightDown, meanHeightLeft, meanHeightRight)</l>
+<c></c>
+<l>set_dict_tuple (DictHandle, 'A_边长', 210.22) </l>
+<l>set_dict_tuple (DictHandle, 'B_边长', 210.22) </l>
+<l>set_dict_tuple (DictHandle, '对角1', 295.10) </l>
+<l>set_dict_tuple (DictHandle, '对角2', 295.10)</l>
+<c></c>
+<l>set_dict_tuple (DictHandle, 'A_边长_正容差', 0.5) </l>
+<l>set_dict_tuple (DictHandle, 'A_边长_负容差', 0.5) </l>
+<l>set_dict_tuple (DictHandle, 'A_边长_标准值', 210.15) </l>
+<c></c>
+<l>set_dict_tuple (DictHandle, 'B_边长_正容差', 0.5) </l>
+<l>set_dict_tuple (DictHandle, 'B_边长_负容差', 0.5) </l>
+<l>set_dict_tuple (DictHandle, 'B_边长_标准值', 210.15) </l>
+<c></c>
+<l>set_dict_tuple (DictHandle, '对角线_正容差', 0.5) </l>
+<l>set_dict_tuple (DictHandle, '对角线_负容差', 0.5) </l>
+<l>set_dict_tuple (DictHandle, '对角线_标准值', 295.05) </l>
+<c></c>
+<c></c>
+<l>*create_dict (ResourceDictHandle)</l>
+<l>set_dict_tuple (ResourceDictHandle, '规格19', DictHandle)</l>
+<l>set_dict_tuple (ResourceDictHandle, '规格'+Index1, DictHandle1)</l>
+<l>Init_Dict (DictHandle1)</l>
+<l>for Index1 := 1 to 50 by 1</l>
+<l>    if (Index1=20)</l>
+<l>        set_dict_tuple (ResourceDictHandle, '规格20', DictHandle)</l>
+<l>        continue</l>
+<l>    endif</l>
+<l>    set_dict_tuple (ResourceDictHandle, '规格'+Index1, DictHandle1)</l>
+<l>endfor</l>
+<l>*dict_to_json (ResourceDictHandle, [], [], JsonString)</l>
+<c></c>
+<l>write_dict (ResourceDictHandle, './规格', 'file_type', 'json')</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="checkChamferDiagOnlyByHeightSquare">
+<interface>
+<io>
+<par name="ImageReferenceImage" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="fRatioT" base_type="ctrl" dimension="0"/>
+<par name="fMinSubValue" base_type="ctrl" dimension="0"/>
+<par name="nSplitIndex" base_type="ctrl" dimension="0"/>
+<par name="start" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="DiagLength" base_type="ctrl" dimension="0"/>
+<par name="LeftIndexes" base_type="ctrl" dimension="0"/>
+<par name="RightIndexes" base_type="ctrl" dimension="0"/>
+<par name="meanHeightLs" base_type="ctrl" dimension="0"/>
+<par name="meanHeightMs" base_type="ctrl" dimension="0"/>
+<par name="meanHeightRs" base_type="ctrl" dimension="0"/>
+<par name="meanHeights" base_type="ctrl" dimension="0"/>
+<par name="RefRowBegin" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>try</l>
+<l>    ImageHeight := ImageReferenceImage</l>
+<c></c>
+<c></c>
+<l>    get_image_size (ImageHeight, Width, Height)</l>
+<l>    threshold (ImageHeight, RegionLeft, -5, 5)</l>
+<l>    reduce_domain (ImageHeight, RegionLeft, ImageReducedLeft)</l>
+<l>    connection (RegionLeft, ConnectedRegionsLeft)</l>
+<l>    select_shape (ConnectedRegionsLeft, SelectedRegionLeft, 'area', 'and', 100000, 1e10)</l>
+<l>    count_obj (SelectedRegionLeft, NumberLeft)</l>
+<l>    if (NumberLeft &gt; 1)</l>
+<l>        select_obj (SelectedRegionLeft, objselect, 1)</l>
+<l>        smallest_rectangle1 (objselect, Rowhbegin, Columnhbegin, Rowhend, Columnhend)</l>
+<l>    else</l>
+<l>        smallest_rectangle1 (SelectedRegionLeft, Rowhbegin, Columnhbegin, Rowhend, Columnhend)</l>
+<c></c>
+<l>    endif</l>
+<c></c>
+<c></c>
+<c></c>
+<l>    LeftIndexesTmp := []</l>
+<l>    RightIndexesTmp := []</l>
+<l>    meanHeightsTmp := []</l>
+<l>    heightsLTmp := []</l>
+<l>    heightsRTmp := []</l>
+<l>    heightsMTmp := []</l>
+<l>    heightsTmp := []</l>
+<l>    DJHTmp := []</l>
+<l>    meanBeginHeight := 0</l>
+<l>    meanEndHeight := 0</l>
+<l>    Rowhbegin := 0</l>
+<l>    Rowhend := Height-1</l>
+<l>    for Index := Rowhbegin + 30 to Rowhend - 30 by nSplitIndex</l>
+<l>        try</l>
+<l>            gen_rectangle1 (Rectangle, Index, 0, Index, 3199)</l>
+<l>            intersection (Rectangle, RegionLeft, RegionIntersection)</l>
+<l>            reduce_domain (ImageReducedLeft, RegionIntersection, ImageReducedLeftN)</l>
+<l>*             get_region_points (ImageReducedLeftN, Rows, Columns)</l>
+<l>            min_max_gray (RegionIntersection, ImageReducedLeft, 0, Min, Max, Range)</l>
+<l>            threshold (ImageReducedLeftN, RegionSelect, Max - 0.25, Max)</l>
+<c></c>
+<l>            get_region_points (RegionSelect, Rows1, Columns1)</l>
+<c></c>
+<l>            if (|Rows1| &lt; 50)</l>
+<l>                continue</l>
+<l>            endif</l>
+<l>            get_grayval (ImageReducedLeftN, Rows1, Columns1, grayvalues)</l>
+<l>            columntmp := Columns1[0]</l>
+<l>            numvalid := 0</l>
+<l>            while (true)</l>
+<l>                numvalid := 0</l>
+<l>                get_grayval (ImageReducedLeftN, [Rows1[0],Rows1[0],Rows1[0],Rows1[0],Rows1[0],Rows1[0],Rows1[0],Rows1[0],Rows1[0],Rows1[0]], [columntmp, columntmp + 1 , columntmp + 2, columntmp + 3, columntmp + 4, columntmp + 5, columntmp + 6, columntmp + 7, columntmp + 8, columntmp + 9], grayvals)</l>
+<l>                IndexTmp := 0</l>
+<l>                tuple_abs (grayvals[IndexTmp] - grayvals[IndexTmp + 1], Absvf)</l>
+<l>                tuple_abs (grayvals[IndexTmp + 1] - grayvals[IndexTmp + 2], Absvs)</l>
+<l>                tuple_abs (grayvals[IndexTmp + 2] - grayvals[IndexTmp + 3], Absvt)</l>
+<l>                tuple_abs (grayvals[IndexTmp + 3] - grayvals[IndexTmp + 4], Absvfou)</l>
+<l>                tuple_abs (grayvals[IndexTmp + 4] - grayvals[IndexTmp + 5], Absvfif)</l>
+<c></c>
+<c></c>
+<l>                if (Absvf &lt; fMinSubValue)</l>
+<l>                    numvalid := numvalid + 1</l>
+<l>                endif</l>
+<c></c>
+<l>                if (Absvs &lt; fMinSubValue)</l>
+<l>                    numvalid := numvalid + 1</l>
+<l>                endif</l>
+<c></c>
+<l>                if (Absvt &lt; fMinSubValue)</l>
+<l>                    numvalid := numvalid + 1</l>
+<l>                endif</l>
+<c></c>
+<l>                if (Absvfou &lt; fMinSubValue)</l>
+<l>                    numvalid := numvalid + 1</l>
+<l>                endif</l>
+<c></c>
+<l>                if (Absvfif &lt; fMinSubValue)</l>
+<l>                    numvalid := numvalid + 1</l>
+<l>                endif</l>
+<c></c>
+<c></c>
+<c></c>
+<l>                if (numvalid &gt;= 5)</l>
+<l>                    tuple_mean (grayvals, meanBeginHeight)</l>
+<l>                    break</l>
+<l>                endif</l>
+<l>                columntmp := columntmp + 3</l>
+<c></c>
+<l>                if (columntmp &gt; Columns1[|Columns1| - 1] - 10)</l>
+<l>                    break</l>
+<l>                endif</l>
+<l>            endwhile</l>
+<l>            columnbegin := columntmp</l>
+<c></c>
+<l>            columntmp := Columns1[|Columns1| - 1]</l>
+<l>            while (true)</l>
+<l>                numvalid := 0</l>
+<l>                get_grayval (ImageReducedLeftN, [Rows1[0],Rows1[0],Rows1[0],Rows1[0],Rows1[0],Rows1[0],Rows1[0],Rows1[0],Rows1[0],Rows1[0]], [columntmp, columntmp - 1 , columntmp - 2, columntmp - 3, columntmp - 4, columntmp - 5, columntmp - 6, columntmp - 7, columntmp - 8, columntmp - 9], grayvals)</l>
+<l>                IndexTmp := 0</l>
+<l>                tuple_abs (grayvals[IndexTmp] - grayvals[IndexTmp + 1], Absvf)</l>
+<l>                tuple_abs (grayvals[IndexTmp + 1] - grayvals[IndexTmp + 2], Absvs)</l>
+<l>                tuple_abs (grayvals[IndexTmp + 2] - grayvals[IndexTmp + 3], Absvt)</l>
+<l>                tuple_abs (grayvals[IndexTmp + 3] - grayvals[IndexTmp + 4], Absvfou)</l>
+<l>                tuple_abs (grayvals[IndexTmp + 4] - grayvals[IndexTmp + 5], Absvfif)</l>
+<c></c>
+<c></c>
+<l>                if (Absvf &lt; fMinSubValue)</l>
+<l>                    numvalid := numvalid + 1</l>
+<l>                endif</l>
+<c></c>
+<l>                if (Absvs &lt; fMinSubValue)</l>
+<l>                    numvalid := numvalid + 1</l>
+<l>                endif</l>
+<c></c>
+<l>                if (Absvt &lt; fMinSubValue)</l>
+<l>                    numvalid := numvalid + 1</l>
+<l>                endif</l>
+<c></c>
+<l>                if (Absvfou &lt; fMinSubValue)</l>
+<l>                    numvalid := numvalid + 1</l>
+<l>                endif</l>
+<c></c>
+<l>                if (Absvfif &lt; fMinSubValue)</l>
+<l>                    numvalid := numvalid + 1</l>
+<l>                endif</l>
+<c></c>
+<c></c>
+<c></c>
+<l>                if (numvalid &gt;= 5)</l>
+<l>                    tuple_mean (grayvals, meanEndHeight)</l>
+<l>                    break</l>
+<l>                endif</l>
+<c></c>
+<l>                columntmp := columntmp - 3</l>
+<c></c>
+<l>                if (columntmp &lt; Columns1[0] + 10)</l>
+<l>                    break</l>
+<l>                endif</l>
+<l>            endwhile</l>
+<l>            columnend := columntmp</l>
+<c></c>
+<l>            if (columnend &lt;= columnbegin)</l>
+<l>                continue</l>
+<l>            endif</l>
+<l>*             columntmp := (columnend + columnbegin) / 2</l>
+<l>*             get_grayval (ImageReducedLeftN, [Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0]], [columntmp - 5,columntmp - 4, columntmp - 3 ,columntmp - 2, columntmp - 1 , columntmp, columntmp + 1, columntmp + 2, columntmp + 3, columntmp + 4], grayvals)</l>
+<c></c>
+<l>            colslength := columnend - columnbegin</l>
+<c></c>
+<l>            tuple_select_range (grayvalues, columnbegin - Columns1[0], columnbegin - Columns1[0] + colslength / 10, selectedvals)</l>
+<l>            tuple_mean (selectedvals, meanBeginHeight)</l>
+<l>            meanBeginHeight := meanBeginHeight-(start+Index)*0.000025</l>
+<c></c>
+<c></c>
+<c></c>
+<l>            tuple_select_range (grayvalues, columnend - Columns1[0] - colslength / 10, columnend - Columns1[0], selectedvals)</l>
+<l>            tuple_mean (selectedvals, meanEndHeight)</l>
+<l>            meanEndHeight := meanEndHeight-(start+Index)*0.000025</l>
+<c></c>
+<l>            tuple_select_range (grayvalues, columnbegin - Columns1[0] + 4 * colslength / 10, columnbegin - Columns1[0] + 6 * colslength / 10, selectedvals)</l>
+<l>            tuple_mean (selectedvals, meanMiddleHeight)</l>
+<l>            meanMiddleHeight := meanMiddleHeight-(start+Index)*0.000025</l>
+<c></c>
+<c></c>
+<l>            tuple_select_range (grayvalues, columnbegin - Columns1[0], columnend - Columns1[0], selectedvals)</l>
+<l>            tuple_mean (selectedvals, meanHeight)</l>
+<l>            meanHeight := meanHeight-(start+Index)*0.000025</l>
+<l>*             meanHeightTmp := (meanBeginHeight + meanEndHeight + meanMiddleHeight ) / 3</l>
+<c></c>
+<l>            tuple_concat (heightsLTmp, meanBeginHeight, heightsLTmp)</l>
+<l>            tuple_concat (heightsMTmp, meanMiddleHeight, heightsMTmp)</l>
+<l>            tuple_concat (heightsRTmp, meanEndHeight, heightsRTmp)</l>
+<l>            tuple_concat (heightsTmp, meanHeight, heightsTmp)</l>
+<c></c>
+<l>            DJHTmp := [DJHTmp,columnend - columnbegin]</l>
+<l>            columnbegin := columnbegin-(start+Index)*0.000025</l>
+<l>            columnend := columnend-(start+Index)*0.000025</l>
+<l>            tuple_concat (LeftIndexesTmp, columnbegin, LeftIndexesTmp)</l>
+<l>            tuple_concat (RightIndexesTmp, columnend, RightIndexesTmp)</l>
+<l>        catch (Exception)</l>
+<l>        endtry</l>
+<c></c>
+<l>    endfor</l>
+<c></c>
+<c></c>
+<c></c>
+<l>    LeftIndexes := []</l>
+<l>    RightIndexes := []</l>
+<l>    meanHeights := []</l>
+<l>    meanHeightLs := []</l>
+<l>    meanHeightMs := []</l>
+<l>    meanHeightRs := []</l>
+<l>    DJH := []</l>
+<l>    SelectedTmp := []</l>
+<l>    IndexTmp := 0</l>
+<l>    for Index := 0 to |LeftIndexesTmp| - 3 by 2</l>
+<l>        tuple_select_range (LeftIndexesTmp, Index, Index + 2, SelectedTmp)</l>
+<l>        tuple_mean (SelectedTmp, value)</l>
+<l>        LeftIndexes := [LeftIndexes, value]</l>
+<l>        tuple_select_range (RightIndexesTmp, Index, Index + 2, SelectedTmp)</l>
+<l>        tuple_mean (SelectedTmp, value)</l>
+<l>        RightIndexes := [RightIndexes, value]</l>
+<l>        tuple_select_range (heightsLTmp, Index, Index + 2, SelectedTmp)</l>
+<l>        tuple_mean (SelectedTmp, value)</l>
+<l>        meanHeightLs := [meanHeightLs, value]</l>
+<l>        tuple_select_range (heightsMTmp, Index, Index + 2, SelectedTmp)</l>
+<l>        tuple_mean (SelectedTmp, value)</l>
+<l>        meanHeightMs := [meanHeightMs, value]</l>
+<l>        tuple_select_range (heightsRTmp, Index, Index + 2, SelectedTmp)</l>
+<l>        tuple_mean (SelectedTmp, value)</l>
+<l>        meanHeightRs := [meanHeightRs, value]</l>
+<c></c>
+<l>        tuple_select_range (heightsTmp, Index, Index + 2, SelectedTmp)</l>
+<l>        tuple_mean (SelectedTmp, value)</l>
+<l>        meanHeights := [meanHeights, value]</l>
+<c></c>
+<l>        tuple_select_range (DJHTmp, Index, Index + 2, SelectedTmp)</l>
+<l>        tuple_mean (SelectedTmp, value)</l>
+<l>        DJH := [DJH, value]</l>
+<c></c>
+<l>    endfor</l>
+<c></c>
+<l>    tuple_mean (DJH, meanDiagLengthH)</l>
+<l>    DiagLength := meanDiagLengthH * fRatioT</l>
+<l>    RefRowBegin := Rowhbegin</l>
+<c></c>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="checkChamferDiagOnlyByHeightSquare">
+<parameters>
+<parameter id="DiagLength"/>
+<parameter id="ImageReferenceImage"/>
+<parameter id="LeftIndexes"/>
+<parameter id="RefRowBegin"/>
+<parameter id="RightIndexes"/>
+<parameter id="fMinSubValue"/>
+<parameter id="fRatioT"/>
+<parameter id="meanHeightLs"/>
+<parameter id="meanHeightMs"/>
+<parameter id="meanHeightRs"/>
+<parameter id="meanHeights"/>
+<parameter id="nSplitIndex"/>
+<parameter id="start"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="remove_tb">
+<interface>
+<ic>
+<par name="k" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Reduced" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>create_funct_1d_array (k, Function)</l>
+<l>derivate_funct_1d (Function, 'first', Derivative)</l>
+<l>tuple_remove (Derivative, [0,1,2], Reduced)</l>
+<l>for Index1 := 0 to |Reduced|-2 by 1</l>
+<l>    tuple_abs (Reduced[Index1+1], Abs)</l>
+<l>    if (Abs&gt;0.001)</l>
+<l>        Reduced[Index1] := 0</l>
+<l>    endif</l>
+<l>endfor</l>
+<l>tuple_find (Reduced, 0, Indices1)</l>
+<l>j := [Indices1-1,Indices1+1]</l>
+<l>tuple_remove (k, Indices1, Reduced)</l>
+<c></c>
+<c></c>
+<l>* create_funct_1d_array (Reduced, Function)</l>
+<l>* derivate_funct_1d (Function, 'first', Derivative)</l>
+<l>* tuple_find (Derivative, 0, Indices)</l>
+<l>* tuple_find (Derivative, 1, Indices1)</l>
+<l>* tuple_remove (Derivative, [Indices1,Indices], Reduced0)</l>
+<l>* for Index1 := 0 to |Reduced0|-2 by 1</l>
+<l>*     tuple_abs (Reduced0[Index1+1], Abs)</l>
+<l>*     if (Abs&gt;0.005)</l>
+<l>*         Reduced0[Index1] := 0</l>
+<l>*     endif</l>
+<l>* endfor</l>
+<l>* tuple_find (Reduced0, 0, Indices1)</l>
+<l>* tuple_remove (Reduced, 62, Reduced)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="remove_tb">
+<parameters>
+<parameter id="Reduced"/>
+<parameter id="k"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="remove_max_min">
+<interface>
+<ic>
+<par name="newLengthRDLT" base_type="ctrl" dimension="0"/>
+<par name="r" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Reduced" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>t := |newLengthRDLT|</l>
+<l>while (1)</l>
+<l>    tuple_min (newLengthRDLT, Min1)</l>
+<l>    tuple_max (newLengthRDLT, Max1)</l>
+<l>    tuple_find (newLengthRDLT, Min1, Indices1)</l>
+<l>    tuple_find (newLengthRDLT, Max1, Indices2)</l>
+<l>    tuple_remove (newLengthRDLT, [Indices1,Indices2], newLengthRDLT)</l>
+<l>    if (|newLengthRDLT|&lt;t-t/r)</l>
+<l>        break</l>
+<l>    endif</l>
+<l>endwhile</l>
+<l>Reduced := newLengthRDLT</l>
+<l>return ()</l>
+</body>
+<docu id="remove_max_min">
+<parameters>
+<parameter id="Reduced"/>
+<parameter id="newLengthRDLT"/>
+<parameter id="r"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="checkChamferDiagOnlyByHeigh">
+<interface>
+<io>
+<par name="ImageReferenceImage" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="fRatioT" base_type="ctrl" dimension="0"/>
+<par name="fMinSubValue" base_type="ctrl" dimension="0"/>
+<par name="Index" base_type="ctrl" dimension="0"/>
+<par name="Start" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="columnbegin" base_type="ctrl" dimension="0"/>
+<par name="columnend" base_type="ctrl" dimension="0"/>
+<par name="BeginHeight" base_type="ctrl" dimension="0"/>
+<par name="EndHeight" base_type="ctrl" dimension="0"/>
+<par name="colslength" base_type="ctrl" dimension="0"/>
+<par name="MeanHeight" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>try</l>
+<l>    ImageHeight := ImageReferenceImage</l>
+<c></c>
+<c></c>
+<l>    get_image_size (ImageHeight, Width, Height)</l>
+<l>    threshold (ImageHeight, RegionLeft, -20, 20)</l>
+<l>    reduce_domain (ImageHeight, RegionLeft, ImageReducedLeft)</l>
+<l>    connection (RegionLeft, ConnectedRegionsLeft)</l>
+<l>    select_shape (ConnectedRegionsLeft, SelectedRegionLeft, 'area', 'and', 100000, 1e10)</l>
+<l>    count_obj (SelectedRegionLeft, NumberLeft)</l>
+<l>    if (NumberLeft &gt; 1)</l>
+<l>        select_obj (SelectedRegionLeft, objselect, 1)</l>
+<l>        smallest_rectangle1 (objselect, Rowhbegin, Columnhbegin, Rowhend, Columnhend)</l>
+<l>    else</l>
+<l>        smallest_rectangle1 (SelectedRegionLeft, Rowhbegin, Columnhbegin, Rowhend, Columnhend)</l>
+<c></c>
+<l>    endif</l>
+<c></c>
+<c></c>
+<c></c>
+<l>    LeftIndexesTmp := []</l>
+<l>    RightIndexesTmp := []</l>
+<l>    meanHeightsTmp := []</l>
+<l>    heightsLTmp := []</l>
+<l>    heightsRTmp := []</l>
+<l>    heightsMTmp := []</l>
+<l>    heightsTmp := []</l>
+<l>    DJHTmp := []</l>
+<l>    meanBeginHeight := 0</l>
+<l>    meanEndHeight := 0</l>
+<c></c>
+<c></c>
+<l>    try</l>
+<l>        gen_rectangle1 (Rectangle, Index, 0, Index, 3000)</l>
+<l>        intersection (Rectangle, RegionLeft, RegionIntersection)</l>
+<l>        reduce_domain (ImageReducedLeft, RegionIntersection, ImageReducedLeftN)</l>
+<l>        get_region_points (ImageReducedLeftN, Rows, Columns)</l>
+<l>        min_max_gray (RegionIntersection, ImageReducedLeft, 0, Min, Max, Range)</l>
+<l>        threshold (ImageReducedLeftN, RegionSelect, Max - 0.25, Max)</l>
+<c></c>
+<l>        get_region_points (RegionSelect, Rows1, Columns1)</l>
+<c></c>
+<l>        if (|Rows1| &lt; 50)</l>
+<l>            return ()</l>
+<l>        endif</l>
+<l>        get_grayval (ImageReducedLeftN, Rows1, Columns1, grayvalues)</l>
+<l>        columntmp := Columns1[0]</l>
+<l>        numvalid := 0</l>
+<l>        while (true)</l>
+<l>            numvalid := 0</l>
+<l>            get_grayval (ImageReducedLeftN, [Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0]], [columntmp, columntmp + 1 , columntmp + 2, columntmp + 3, columntmp + 4, columntmp + 5, columntmp + 6, columntmp + 7, columntmp + 8, columntmp + 9], grayvals)</l>
+<l>            IndexTmp := 0</l>
+<l>            tuple_abs (grayvals[IndexTmp] - grayvals[IndexTmp + 1], Absvf)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 1] - grayvals[IndexTmp + 2], Absvs)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 2] - grayvals[IndexTmp + 3], Absvt)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 3] - grayvals[IndexTmp + 4], Absvfou)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 4] - grayvals[IndexTmp + 5], Absvfif)</l>
+<c></c>
+<c></c>
+<l>            if (Absvf &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c></c>
+<l>            if (Absvs &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c></c>
+<l>            if (Absvt &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c></c>
+<l>            if (Absvfou &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c></c>
+<l>            if (Absvfif &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c></c>
+<c></c>
+<c></c>
+<l>            if (numvalid &gt;= 5)</l>
+<l>                tuple_mean (grayvals, meanBeginHeight)</l>
+<l>                break</l>
+<l>            endif</l>
+<l>            columntmp := columntmp + 3</l>
+<c></c>
+<l>            if (columntmp &gt; Columns1[|Columns1| - 1] - 10)</l>
+<l>                break</l>
+<l>            endif</l>
+<l>        endwhile</l>
+<l>        columnbegin := columntmp</l>
+<c></c>
+<l>        columntmp := Columns1[|Columns1| - 1]</l>
+<l>        while (true)</l>
+<l>            numvalid := 0</l>
+<l>            get_grayval (ImageReducedLeftN, [Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0]], [columntmp, columntmp - 1 , columntmp - 2, columntmp - 3, columntmp - 4, columntmp - 5, columntmp - 6, columntmp - 7, columntmp - 8, columntmp - 9], grayvals)</l>
+<l>            IndexTmp := 0</l>
+<l>            tuple_abs (grayvals[IndexTmp] - grayvals[IndexTmp + 1], Absvf)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 1] - grayvals[IndexTmp + 2], Absvs)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 2] - grayvals[IndexTmp + 3], Absvt)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 3] - grayvals[IndexTmp + 4], Absvfou)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 4] - grayvals[IndexTmp + 5], Absvfif)</l>
+<c></c>
+<c></c>
+<l>            if (Absvf &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c></c>
+<l>            if (Absvs &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c></c>
+<l>            if (Absvt &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c></c>
+<l>            if (Absvfou &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c></c>
+<l>            if (Absvfif &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c></c>
+<c></c>
+<c></c>
+<l>            if (numvalid &gt;= 5)</l>
+<l>                tuple_mean (grayvals, meanEndHeight)</l>
+<l>                break</l>
+<l>            endif</l>
+<c></c>
+<l>            columntmp := columntmp - 3</l>
+<c></c>
+<l>            if (columntmp &lt; Columns1[0] + 10)</l>
+<l>                break</l>
+<l>            endif</l>
+<l>        endwhile</l>
+<l>        columnend := columntmp</l>
+<c></c>
+<l>        if (columnend &lt;= columnbegin)</l>
+<l>            return ()</l>
+<l>        endif</l>
+<l>*         columntmp := (columnend + columnbegin) / 2</l>
+<l>*         get_grayval (ImageReducedLeftN, [Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0]], [columntmp - 5,columntmp - 4, columntmp - 3 ,columntmp - 2, columntmp - 1 , columntmp, columntmp + 1, columntmp + 2, columntmp + 3, columntmp + 4], grayvals)</l>
+<c></c>
+<l>        colslength := columnend - columnbegin</l>
+<c></c>
+<l>*         tuple_select_range (grayvalues, columnbegin- Columns1[0], columnbegin- Columns1[0], selectedvals)</l>
+<l>*         tuple_mean (selectedvals, BeginHeight)</l>
+<c></c>
+<l>        tuple_select_range (grayvalues, columnbegin- Columns1[0], columnbegin- Columns1[0], selectedvals)</l>
+<l>        tuple_mean (selectedvals, MeanHeight)</l>
+<c></c>
+<c>    </c>
+<l>         tuple_select_range (grayvalues, columnbegin - Columns1[0]+5, columnbegin - Columns1[0] + colslength / 10, selectedvals)</l>
+<l>         tuple_mean (selectedvals, BeginHeight)</l>
+<c></c>
+<l>        tuple_select_range (grayvalues, columnend - Columns1[0] - colslength / 10, columnend - Columns1[0]-5, selectedvals)</l>
+<l>         tuple_mean (selectedvals, EndHeight)</l>
+<c></c>
+<c></c>
+<l>    catch (Exception)</l>
+<l>    endtry</l>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="checkChamferDiagOnlyByHeigh">
+<parameters>
+<parameter id="BeginHeight"/>
+<parameter id="EndHeight"/>
+<parameter id="ImageReferenceImage"/>
+<parameter id="Index"/>
+<parameter id="MeanHeight"/>
+<parameter id="Start"/>
+<parameter id="colslength"/>
+<parameter id="columnbegin"/>
+<parameter id="columnend"/>
+<parameter id="fMinSubValue"/>
+<parameter id="fRatioT"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="crop_image">
+<interface>
+<io>
+<par name="ImageTop" base_type="iconic" dimension="0"/>
+<par name="ImageLeft" base_type="iconic" dimension="0"/>
+<par name="ImageRight" base_type="iconic" dimension="0"/>
+<par name="ImageDown" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="ImageStickTopImage" base_type="iconic" dimension="0"/>
+<par name="ImageStickLeftImage" base_type="iconic" dimension="0"/>
+<par name="ImageStickRightImage" base_type="iconic" dimension="0"/>
+<par name="ImageStickDownImage" base_type="iconic" dimension="0"/>
+</oo>
+<oc>
+<par name="Top" base_type="ctrl" dimension="0"/>
+<par name="Left" base_type="ctrl" dimension="0"/>
+<par name="Right" base_type="ctrl" dimension="0"/>
+<par name="Down" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c></c>
+<l>get_image_size (ImageTop, Width, Height)</l>
+<c></c>
+<l>threshold (ImageTop, Region, -20, 20)</l>
+<l>opening_rectangle1 (Region, RegionOpening, 50, 50)</l>
+<l>dilation_rectangle1 (RegionOpening, RegionDilation, 3000, 1)</l>
+<l>select_max_object (RegionDilation, RegionDilation)</l>
+<l>get_region_points (RegionDilation, Rows, Columns)</l>
+<l>tuple_min (Rows, Top)</l>
+<l>reduce_domain (ImageTop, RegionDilation, ImageReduced)</l>
+<l>crop_domain (ImageReduced, ImageStickTopImage)</l>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<l>threshold (ImageLeft, Region, -20, 20)</l>
+<l>opening_rectangle1 (Region, RegionOpening, 50, 50)</l>
+<l>dilation_rectangle1 (RegionOpening, RegionDilation, 3000, 1)</l>
+<l>select_max_object (RegionDilation, RegionDilation)</l>
+<l>get_region_points (RegionDilation, Rows, Columns)</l>
+<l>tuple_min (Rows, Left)</l>
+<l>reduce_domain (ImageLeft, RegionDilation, ImageReduced)</l>
+<l>crop_domain (ImageReduced, ImageStickLeftImage)</l>
+<c></c>
+<l>threshold (ImageRight, Region, -20, 20)</l>
+<l>opening_rectangle1 (Region, RegionOpening, 500, 500)</l>
+<l>dilation_rectangle1 (RegionOpening, RegionDilation, 3000, 1)</l>
+<l>select_max_object (RegionDilation, RegionDilation)</l>
+<l>get_region_points (RegionDilation, Rows, Columns)</l>
+<l>tuple_min (Rows, Right)</l>
+<l>reduce_domain (ImageRight, RegionDilation, ImageReduced)</l>
+<l>crop_domain (ImageReduced, ImageStickRightImage)</l>
+<c></c>
+<c></c>
+<l>threshold (ImageDown, Region, -20, 20)</l>
+<l>opening_rectangle1 (Region, RegionOpening, 50, 50)</l>
+<l>dilation_rectangle1 (RegionOpening, RegionDilation, 3000, 1)</l>
+<l>select_max_object (RegionDilation, RegionDilation)</l>
+<l>get_region_points (RegionDilation, Rows, Columns)</l>
+<l>tuple_min (Rows, Down)</l>
+<l>reduce_domain (ImageDown, RegionDilation, ImageReduced)</l>
+<l>crop_domain (ImageReduced, ImageStickDownImage)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="crop_image">
+<parameters>
+<parameter id="Down"/>
+<parameter id="ImageDown"/>
+<parameter id="ImageLeft"/>
+<parameter id="ImageRight"/>
+<parameter id="ImageStickDownImage"/>
+<parameter id="ImageStickLeftImage"/>
+<parameter id="ImageStickRightImage"/>
+<parameter id="ImageStickTopImage"/>
+<parameter id="ImageTop"/>
+<parameter id="Left"/>
+<parameter id="Right"/>
+<parameter id="Top"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="select_max_object">
+<interface>
+<io>
+<par name="RegionDilation" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="ObjectSelected" base_type="iconic" dimension="0"/>
+</oo>
+</interface>
+<body>
+<l>connection (RegionDilation, ConnectedRegions)</l>
+<l>region_features (ConnectedRegions, 'area', Value)</l>
+<l>tuple_max (Value, Max)</l>
+<l>tuple_find (Value, Max, Indices)</l>
+<l>select_obj (ConnectedRegions, ObjectSelected, Indices+1)</l>
+<l>return ()</l>
+</body>
+<docu id="select_max_object">
+<parameters>
+<parameter id="ObjectSelected"/>
+<parameter id="RegionDilation"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="ZSBY">
+<interface>
+<ic>
+<par name="meanHeightTopL" base_type="ctrl" dimension="0"/>
+<par name="ResourceDictHandle" base_type="ctrl" dimension="0"/>
+<par name="meanHeightTopR" base_type="ctrl" dimension="0"/>
+<par name="LeftIndexesTop" base_type="ctrl" dimension="0"/>
+<par name="RightIndexesTop" base_type="ctrl" dimension="0"/>
+<par name="meanHeightRightL" base_type="ctrl" dimension="0"/>
+<par name="meanHeightRightR" base_type="ctrl" dimension="0"/>
+<par name="LeftIndexesRight" base_type="ctrl" dimension="0"/>
+<par name="RightIndexesRight" base_type="ctrl" dimension="0"/>
+<par name="meanHeightLeftL" base_type="ctrl" dimension="0"/>
+<par name="meanHeightLeftR" base_type="ctrl" dimension="0"/>
+<par name="LeftIndexesLeft" base_type="ctrl" dimension="0"/>
+<par name="RightIndexesLeft" base_type="ctrl" dimension="0"/>
+<par name="meanHeightDownL" base_type="ctrl" dimension="0"/>
+<par name="meanHeightDownR" base_type="ctrl" dimension="0"/>
+<par name="LeftIndexesDown" base_type="ctrl" dimension="0"/>
+<par name="RightIndexesDown" base_type="ctrl" dimension="0"/>
+<par name="meanHeightTop" base_type="ctrl" dimension="0"/>
+<par name="meanHeightDown" base_type="ctrl" dimension="0"/>
+<par name="meanHeightLeft" base_type="ctrl" dimension="0"/>
+<par name="meanHeightRight" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<l>LeftIndexesDownOut := LeftIndexesDown</l>
+<l>LeftIndexesLeftOut := LeftIndexesLeft</l>
+<l>LeftIndexesRightOut := LeftIndexesRight</l>
+<l>LeftIndexesTopOut := LeftIndexesTop</l>
+<l>RightIndexesDownOut := RightIndexesDown</l>
+<l>RightIndexesLeftOut := RightIndexesLeft</l>
+<l>RightIndexesRightOut := RightIndexesRight</l>
+<l>RightIndexesTopOut := RightIndexesTop</l>
+<l>meanHeightDownOut := meanHeightDown</l>
+<l>meanHeightDownLOut := meanHeightDownL</l>
+<l>meanHeightDownROut := meanHeightDownR</l>
+<l>meanHeightLeftOut := meanHeightLeft</l>
+<l>meanHeightLeftLOut := meanHeightLeftL</l>
+<l>meanHeightLeftROut := meanHeightLeftR</l>
+<l>meanHeightRightOut := meanHeightRight</l>
+<l>meanHeightRightLOut := meanHeightRightL</l>
+<l>meanHeightRightROut := meanHeightRightR</l>
+<l>meanHeightTopOut := meanHeightTop</l>
+<l>meanHeightTopLOut := meanHeightTopL</l>
+<l>meanHeightTopROut := meanHeightTopR</l>
+<l>remove_tb (meanHeightTopLOut, k1)</l>
+<l>remove_max_min (k1, 6, Reduced)</l>
+<l>tuple_mean (Reduced, meanHeightTopLOut)</l>
+<l>set_dict_tuple (ResourceDictHandle, '上_左高度', meanHeightTopLOut)</l>
+<c></c>
+<l>remove_tb (meanHeightTopROut, k1)</l>
+<l>remove_max_min (k1, 6, Reduced)</l>
+<l>tuple_mean (Reduced, meanHeightTopROut)</l>
+<l>set_dict_tuple (ResourceDictHandle, '上_右高度', meanHeightTopROut)</l>
+<c></c>
+<l>remove_tb (LeftIndexesTopOut, k1)</l>
+<l>remove_max_min (k1, 6, Reduced)</l>
+<l>tuple_mean (Reduced, LeftIndexesTopOut)</l>
+<l>set_dict_tuple (ResourceDictHandle, '上_左X', LeftIndexesTopOut)</l>
+<c></c>
+<l>remove_tb (RightIndexesTopOut, k1)</l>
+<l>remove_max_min (k1, 6, Reduced)</l>
+<l>tuple_mean (Reduced, RightIndexesTopOut)</l>
+<l>set_dict_tuple (ResourceDictHandle, '上_右X', RightIndexesTopOut)</l>
+<c></c>
+<l>remove_tb (meanHeightRightLOut, k1)</l>
+<l>remove_max_min (k1, 6, Reduced)</l>
+<l>tuple_mean (Reduced, meanHeightRightLOut)</l>
+<l>set_dict_tuple (ResourceDictHandle, '右_左高度', meanHeightRightLOut)</l>
+<c></c>
+<l>remove_tb (meanHeightRightROut, k1)</l>
+<l>remove_max_min (k1, 6, Reduced)</l>
+<l>tuple_mean (Reduced, meanHeightRightROut)</l>
+<l>set_dict_tuple (ResourceDictHandle, '右_右高度', meanHeightRightROut)</l>
+<c></c>
+<l>remove_tb (LeftIndexesRightOut, k1)</l>
+<l>remove_max_min (k1, 6, Reduced)</l>
+<l>tuple_mean (Reduced, LeftIndexesRightOut)</l>
+<l>set_dict_tuple (ResourceDictHandle, '右_左X', LeftIndexesRightOut)</l>
+<c></c>
+<l>remove_tb (RightIndexesRightOut, k1)</l>
+<l>remove_max_min (k1, 6, Reduced)</l>
+<l>tuple_mean (Reduced, RightIndexesRightOut)</l>
+<l>set_dict_tuple (ResourceDictHandle, '右_右X', RightIndexesRightOut)</l>
+<c></c>
+<c></c>
+<l>remove_tb (meanHeightLeftLOut, k1)</l>
+<l>remove_max_min (k1, 6, Reduced)</l>
+<l>tuple_mean (Reduced, meanHeightLeftLOut)</l>
+<l>set_dict_tuple (ResourceDictHandle, '左_左高度', meanHeightLeftLOut)</l>
+<c></c>
+<l>remove_tb (meanHeightLeftROut, k1)</l>
+<l>remove_max_min (k1, 6, Reduced)</l>
+<l>tuple_mean (Reduced, meanHeightLeftROut)</l>
+<l>set_dict_tuple (ResourceDictHandle, '左_右高度', meanHeightLeftROut)</l>
+<c></c>
+<l>remove_tb (LeftIndexesLeftOut, k1)</l>
+<l>remove_max_min (k1, 6, Reduced)</l>
+<l>tuple_mean (Reduced, LeftIndexesLeftOut)</l>
+<l>set_dict_tuple (ResourceDictHandle, '左_左X', LeftIndexesLeftOut)</l>
+<c></c>
+<l>remove_tb (RightIndexesLeftOut, k1)</l>
+<l>remove_max_min (k1, 6, Reduced)</l>
+<l>tuple_mean (Reduced, RightIndexesLeftOut)</l>
+<l>set_dict_tuple (ResourceDictHandle, '左_右X', RightIndexesLeftOut)</l>
+<c></c>
+<l>remove_tb (meanHeightDownLOut, k1)</l>
+<l>remove_max_min (k1, 6, Reduced)</l>
+<l>tuple_mean (Reduced, meanHeightDownLOut)</l>
+<l>set_dict_tuple (ResourceDictHandle, '下_左高度', meanHeightDownLOut)</l>
+<c></c>
+<l>remove_tb (meanHeightDownROut, k1)</l>
+<l>remove_max_min (k1, 6, Reduced)</l>
+<l>tuple_mean (Reduced, meanHeightDownROut)</l>
+<l>set_dict_tuple (ResourceDictHandle, '下_右高度', meanHeightDownROut)</l>
+<c></c>
+<l>remove_tb (LeftIndexesDownOut, k1)</l>
+<l>remove_max_min (k1, 6, Reduced)</l>
+<l>tuple_mean (Reduced, LeftIndexesDownOut)</l>
+<l>set_dict_tuple (ResourceDictHandle, '下_左X', LeftIndexesDownOut)</l>
+<c></c>
+<l>remove_tb (RightIndexesDownOut, k1)</l>
+<l>remove_max_min (k1, 6, Reduced)</l>
+<l>tuple_mean (Reduced, RightIndexesDownOut)</l>
+<l>set_dict_tuple (ResourceDictHandle, '下_右X', RightIndexesDownOut)</l>
+<c></c>
+<l>remove_tb (meanHeightTopOut, k1)</l>
+<l>remove_max_min (k1, 6, Reduced)</l>
+<l>tuple_mean (Reduced, meanHeightTopOut)</l>
+<l>set_dict_tuple (ResourceDictHandle, '上_高度', meanHeightTopOut)</l>
+<c></c>
+<l>remove_tb (meanHeightDownOut, k1)</l>
+<l>remove_max_min (k1, 6, Reduced)</l>
+<l>tuple_mean (Reduced, meanHeightDownOut)</l>
+<l>set_dict_tuple (ResourceDictHandle, '下_高度', meanHeightDownOut)</l>
+<c></c>
+<l>remove_tb (meanHeightLeftOut, k1)</l>
+<l>remove_max_min (k1, 6, Reduced)</l>
+<l>tuple_mean (Reduced, meanHeightLeftOut)</l>
+<l>set_dict_tuple (ResourceDictHandle, '左_高度', meanHeightLeftOut)</l>
+<c></c>
+<l>remove_tb (meanHeightRightOut, k1)</l>
+<l>remove_max_min (k1, 6, Reduced)</l>
+<l>tuple_mean (Reduced, meanHeightRightOut)</l>
+<l>set_dict_tuple (ResourceDictHandle, '右_高度', meanHeightRightOut)</l>
+<l>return ()</l>
+</body>
+<docu id="ZSBY">
+<parameters>
+<parameter id="LeftIndexesDown"/>
+<parameter id="LeftIndexesLeft"/>
+<parameter id="LeftIndexesRight"/>
+<parameter id="LeftIndexesTop"/>
+<parameter id="ResourceDictHandle"/>
+<parameter id="RightIndexesDown"/>
+<parameter id="RightIndexesLeft"/>
+<parameter id="RightIndexesRight"/>
+<parameter id="RightIndexesTop"/>
+<parameter id="meanHeightDown"/>
+<parameter id="meanHeightDownL"/>
+<parameter id="meanHeightDownR"/>
+<parameter id="meanHeightLeft"/>
+<parameter id="meanHeightLeftL"/>
+<parameter id="meanHeightLeftR"/>
+<parameter id="meanHeightRight"/>
+<parameter id="meanHeightRightL"/>
+<parameter id="meanHeightRightR"/>
+<parameter id="meanHeightTop"/>
+<parameter id="meanHeightTopL"/>
+<parameter id="meanHeightTopR"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Init_Dict">
+<interface>
+<oc>
+<par name="DictHandle" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>create_dict (DictHandle)</l>
+<l>set_dict_tuple (DictHandle, '边长A_标定', 0) </l>
+<l>set_dict_tuple (DictHandle, '边长B_标定', 0) </l>
+<l>set_dict_tuple (DictHandle, '对角1_标定', 0) </l>
+<l>set_dict_tuple (DictHandle, '对角2_标定', 0) </l>
+<c></c>
+<l>set_dict_tuple (DictHandle, 'A_边长', 0) </l>
+<l>set_dict_tuple (DictHandle, 'B_边长', 0) </l>
+<l>set_dict_tuple (DictHandle, '对角1', 0) </l>
+<l>set_dict_tuple (DictHandle, '对角2', 0)</l>
+<c></c>
+<l>set_dict_tuple (DictHandle, 'A_边长_正容差', 0) </l>
+<l>set_dict_tuple (DictHandle, 'A_边长_负容差', 0) </l>
+<l>set_dict_tuple (DictHandle, 'A_边长_标准值', 0) </l>
+<c></c>
+<l>set_dict_tuple (DictHandle, 'B_边长_正容差', 0) </l>
+<l>set_dict_tuple (DictHandle, 'B_边长_负容差', 0) </l>
+<l>set_dict_tuple (DictHandle, 'B_边长_标准值', 0) </l>
+<c></c>
+<l>set_dict_tuple (DictHandle, '对角线_正容差', 0) </l>
+<l>set_dict_tuple (DictHandle, '对角线_负容差', 0) </l>
+<l>set_dict_tuple (DictHandle, '对角线_标准值', 0) </l>
+<l>return ()</l>
+</body>
+<docu id="Init_Dict">
+<parameters>
+<parameter id="DictHandle"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

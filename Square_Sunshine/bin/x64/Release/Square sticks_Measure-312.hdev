@@ -1,0 +1,1934 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="23.11.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<c></c>
+<l>create_dict (ParmDict)</l>
+<l>dict_to_json (ParmDict, [], [], ParmDict)</l>
+<c></c>
+<l>Detection_init (ParmDict, ResourceDictHandle, ParmDict, Exception)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>* test(test)</l>
+<l>read_image (Image, 'D:/Image_risen/2026年2月27日/3/123_3/8_56.hobj')</l>
+<l>IDTime:=12345 </l>
+<l>count_seconds (Seconds)</l>
+<l>create_dict (DictHandle)</l>
+<l>set_dict_tuple (ResourceDictHandle, '当前规格号', 3)</l>
+<l>Detection_process (Image, SaveImage, DispImage, IDTime, ParmDict, ResourceDictHandle, AllQuality, OutParmDict, Exception)</l>
+<l>count_seconds (Seconds1)</l>
+<l>o:=Seconds1-Seconds</l>
+<l>json_to_dict (AllQuality, [], [], DictHandle)</l>
+<c></c>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="LogException">
+<interface>
+<ic>
+<par name="Exception" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Ex" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>        Ex:=Exception[0]+' '+Exception[2]+'在'+Exception[7] + '函数的'+Exception[5]+'算子'+Exception[4]+'行'//导出c#时请使用下面的代码</l>
+<c>        *hv_Ex = new HTuple();</c>
+<c>        *hv_Ex.Dispose();</c>
+<c>        *using (HDevDisposeHelper dh = new HDevDisposeHelper())</c>
+<c>        *{</c>
+<c>        *    hv_Ex = hv_Exception.OArr[1].ToString();</c>
+<c>        *}</c>
+<l>return ()</l>
+</body>
+<docu id="LogException">
+<parameters>
+<parameter id="Ex"/>
+<parameter id="Exception"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Detection_process">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="SaveImage" base_type="iconic" dimension="0"/>
+<par name="DispImage" base_type="iconic" dimension="0"/>
+</oo>
+<ic>
+<par name="IDTime" base_type="ctrl" dimension="0"/>
+<par name="ParmDict" base_type="ctrl" dimension="0"/>
+<par name="ResourceDictHandle" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="AllQuality" base_type="ctrl" dimension="0"/>
+<par name="OutParmDict" base_type="ctrl" dimension="0"/>
+<par name="Ex" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>try</l>
+<c>    </c>
+<l>*     par_start&lt;ThreadID&gt; : Run_Stick (Image, DispImage, ResourceDictHandle, 0, 3999, ResultDictHandle1)</l>
+<l>*     par_start&lt;ThreadID1&gt; : Run_Stick (Image, DispImage, ResourceDictHandle, 4000, 7999, ResultDictHandle2)</l>
+<l>*     par_start&lt;ThreadID2&gt; : Run_Stick (Image, DispImage, ResourceDictHandle, 8000, 11999, ResultDictHandle3)</l>
+<l>*     par_start&lt;ThreadID3&gt; : Run_Stick (Image, DispImage, ResourceDictHandle, 12000, 15999, ResultDictHandle4)</l>
+<l>*     par_start&lt;ThreadID4&gt; : Run_Stick (Image, DispImage, ResourceDictHandle, 16000, 20000, ResultDictHandle5)</l>
+<c></c>
+<l>*     par_join ([ThreadID,ThreadID1,ThreadID2,ThreadID3,ThreadID4])</l>
+<l>    Run_Stick (Image, DispImage, ResourceDictHandle, 0, 20000, ResultDictHandle)</l>
+<l>*     json_to_dict (ParmDict, [], [], G_ParmDict)</l>
+<l>    create_dict (AllQuality)</l>
+<l>    set_dict_tuple (AllQuality, 'ID', IDTime)</l>
+<l>    set_dict_tuple (AllQuality, '结果', ResultDictHandle)</l>
+<l>    get_dict_tuple (ResultDictHandle, 'A_边长', Length)</l>
+<l>    if (Length&gt;200)</l>
+<l>         get_dict_tuple (ResultDictHandle, '棒长', Tuple)</l>
+<l>         set_dict_tuple (ResultDictHandle, '棒长', Tuple)</l>
+<l>         get_dict_tuple (ResultDictHandle, '弧长1', Tuple)//上</l>
+<l>         set_dict_tuple (ResultDictHandle, '弧长1', Tuple)</l>
+<l>         get_dict_tuple (ResultDictHandle, '弧长2', Tuple)//右</l>
+<l>         set_dict_tuple (ResultDictHandle, '弧长2', Tuple)</l>
+<l>         get_dict_tuple (ResultDictHandle, '弧长3', Tuple)//左</l>
+<l>         set_dict_tuple (ResultDictHandle, '弧长3', Tuple)</l>
+<l>         get_dict_tuple (ResultDictHandle, '弧长4', Tuple)//下</l>
+<l>         set_dict_tuple (ResultDictHandle, '弧长4', Tuple)</l>
+<l>    else</l>
+<l>         get_dict_tuple (ResultDictHandle, '棒长', Tuple)</l>
+<l>         set_dict_tuple (ResultDictHandle, '棒长', Tuple)</l>
+<l>*          get_dict_tuple (ResultDictHandle, '弧长1', Tuple)//上</l>
+<l>*          set_dict_tuple (ResultDictHandle, '弧长1', Tuple+0.08)</l>
+<l>         get_dict_tuple (ResultDictHandle, '弧长2', Tuple)//右</l>
+<l>         set_dict_tuple (ResultDictHandle, '弧长2', Tuple)</l>
+<l>         get_dict_tuple (ResultDictHandle, '弧长3', Tuple)//左</l>
+<l>         set_dict_tuple (ResultDictHandle, '弧长3', Tuple)</l>
+<l>         get_dict_tuple (ResultDictHandle, '弧长4', Tuple)//下</l>
+<l>         set_dict_tuple (ResultDictHandle, '弧长4', Tuple)</l>
+<l>    endif</l>
+<c>    </c>
+<c>    </c>
+<l>    dict_to_json (AllQuality, [], [], AllQuality)</l>
+<l>*     dict_to_json(G_ParmDict, [], [], OutParmDict)</l>
+<c>    </c>
+<c>    </c>
+<c>    </c>
+<c>    </c>
+<l>catch (Exception)</l>
+<l>    LogException (Exception, Ex)</l>
+<l>endtry</l>
+<l>return ()</l>
+</body>
+<docu id="Detection_process">
+<parameters>
+<parameter id="AllQuality"/>
+<parameter id="DispImage"/>
+<parameter id="Ex"/>
+<parameter id="IDTime"/>
+<parameter id="Image"/>
+<parameter id="OutParmDict"/>
+<parameter id="ParmDict"/>
+<parameter id="ResourceDictHandle"/>
+<parameter id="SaveImage"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Detection_init">
+<interface>
+<ic>
+<par name="ParmDict" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="ResourceDictHandle" base_type="ctrl" dimension="0"/>
+<par name="JSONData" base_type="ctrl" dimension="0"/>
+<par name="Ex" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c></c>
+<l>try  </l>
+<c>    </c>
+<l>    json_to_dict (ParmDict, [], [], G_ParmDict)</l>
+<c>    </c>
+<l>    read_dict ('./规格.json', [], [], ResourceDictHandle)</l>
+<c>    </c>
+<c>    </c>
+<c>    </c>
+<c>    </c>
+<c>    </c>
+<c>    </c>
+<l>    dict_to_json (G_ParmDict, [], [], JSONData)</l>
+<c>    </c>
+<c>    </c>
+<c>    </c>
+<l>catch (Exception)</l>
+<l>    LogException (Exception, Ex)</l>
+<l>endtry</l>
+<l>return ()</l>
+</body>
+<docu id="Detection_init">
+<parameters>
+<parameter id="Ex"/>
+<parameter id="JSONData"/>
+<parameter id="ParmDict"/>
+<parameter id="ResourceDictHandle"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="crop_image">
+<interface>
+<io>
+<par name="ImageTop" base_type="iconic" dimension="0"/>
+<par name="ImageLeft" base_type="iconic" dimension="0"/>
+<par name="ImageRight" base_type="iconic" dimension="0"/>
+<par name="ImageDown" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="ImageStickTopImage" base_type="iconic" dimension="0"/>
+<par name="ImageStickLeftImage" base_type="iconic" dimension="0"/>
+<par name="ImageStickRightImage" base_type="iconic" dimension="0"/>
+<par name="ImageStickDownImage" base_type="iconic" dimension="0"/>
+</oo>
+<oc>
+<par name="Top" base_type="ctrl" dimension="0"/>
+<par name="Left" base_type="ctrl" dimension="0"/>
+<par name="Right" base_type="ctrl" dimension="0"/>
+<par name="Down" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c></c>
+<l>get_image_size (ImageTop, Width, Height)</l>
+<c></c>
+<l>threshold (ImageTop, Region, -20, 20)</l>
+<l>opening_rectangle1 (Region, RegionOpening, 50, 50)</l>
+<l>dilation_rectangle1 (RegionOpening, RegionDilation, 3000, 1)</l>
+<l>select_max_object (RegionDilation, RegionDilation)</l>
+<l>get_region_points (RegionDilation, Rows, Columns)</l>
+<l>tuple_min (Rows, Top)</l>
+<l>reduce_domain (ImageTop, RegionDilation, ImageReduced)</l>
+<l>crop_domain (ImageReduced, ImageStickTopImage)</l>
+<c></c>
+<l>threshold (ImageLeft, Region, -20, 20)</l>
+<l>opening_rectangle1 (Region, RegionOpening, 50, 50)</l>
+<l>dilation_rectangle1 (RegionOpening, RegionDilation, 3000, 1)</l>
+<l>select_max_object (RegionDilation, RegionDilation)</l>
+<l>get_region_points (RegionDilation, Rows, Columns)</l>
+<l>tuple_min (Rows, Left)</l>
+<l>reduce_domain (ImageLeft, RegionDilation, ImageReduced)</l>
+<l>crop_domain (ImageReduced, ImageStickLeftImage)</l>
+<c></c>
+<c></c>
+<l>threshold (ImageRight, Region, -20, 20)</l>
+<l>opening_rectangle1 (Region, RegionOpening, 500, 500)</l>
+<l>dilation_rectangle1 (RegionOpening, RegionDilation, 3000, 1)</l>
+<l>select_max_object (RegionDilation, RegionDilation)</l>
+<l>get_region_points (RegionDilation, Rows, Columns)</l>
+<l>tuple_min (Rows, Right)</l>
+<l>reduce_domain (ImageRight, RegionDilation, ImageReduced)</l>
+<l>crop_domain (ImageReduced, ImageStickRightImage)</l>
+<c></c>
+<c></c>
+<l>threshold (ImageDown, Region, -20, 20)</l>
+<l>opening_rectangle1 (Region, RegionOpening, 50, 50)</l>
+<l>dilation_rectangle1 (RegionOpening, RegionDilation, 3000, 1)</l>
+<l>select_max_object (RegionDilation, RegionDilation)</l>
+<l>get_region_points (RegionDilation, Rows, Columns)</l>
+<l>tuple_min (Rows, Down)</l>
+<l>reduce_domain (ImageDown, RegionDilation, ImageReduced)</l>
+<l>crop_domain (ImageReduced, ImageStickDownImage)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="crop_image">
+<parameters>
+<parameter id="Down"/>
+<parameter id="ImageDown"/>
+<parameter id="ImageLeft"/>
+<parameter id="ImageRight"/>
+<parameter id="ImageStickDownImage"/>
+<parameter id="ImageStickLeftImage"/>
+<parameter id="ImageStickRightImage"/>
+<parameter id="ImageStickTopImage"/>
+<parameter id="ImageTop"/>
+<parameter id="Left"/>
+<parameter id="Right"/>
+<parameter id="Top"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="remove_tb">
+<interface>
+<ic>
+<par name="k" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Reduced" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c></c>
+<l>create_funct_1d_array (k, Function)</l>
+<l>derivate_funct_1d (Function, 'first', Derivative)</l>
+<l>tuple_remove (Derivative, [0,1,2], Reduced)</l>
+<l>for Index1 := 0 to |Reduced|-2 by 1</l>
+<l>    L:=Reduced[Index1+1]-Reduced[Index1]</l>
+<l>    tuple_abs (L, Abs)</l>
+<l>    if (Abs&gt;0.5)</l>
+<l>        Reduced[Index1] := 5000</l>
+<l>    endif</l>
+<l>endfor</l>
+<l>tuple_find (Reduced, 5000, Indices1)</l>
+<l>j := [Indices1-1,Indices1+1]</l>
+<l>tuple_remove (k, Indices1, Reduced)</l>
+<c></c>
+<l>return ()</l>
+<c></c>
+</body>
+<docu id="remove_tb">
+<parameters>
+<parameter id="Reduced"/>
+<parameter id="k"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="remove_max_min">
+<interface>
+<ic>
+<par name="newLengthRDLT" base_type="ctrl" dimension="0"/>
+<par name="r" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Reduced" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c></c>
+<l>t := |newLengthRDLT|</l>
+<l>if (t&lt;10)</l>
+<l>    Reduced := newLengthRDLT</l>
+<l>    return ()</l>
+<l>endif</l>
+<l>while (1)</l>
+<l>    tuple_min (newLengthRDLT, Min1)</l>
+<l>    tuple_max (newLengthRDLT, Max1)</l>
+<l>    tuple_find (newLengthRDLT, Min1, Indices1)</l>
+<l>    tuple_find (newLengthRDLT, Max1, Indices2)</l>
+<l>    if (|Indices1|&gt;t/2 or |Indices2|&gt;t/2)</l>
+<l>        break</l>
+<l>    endif</l>
+<l>    tuple_remove (newLengthRDLT, [Indices1,Indices2], newLengthRDLT)</l>
+<l>    if (|newLengthRDLT|&lt;t-t/r)</l>
+<l>        break</l>
+<l>    endif</l>
+<l>endwhile</l>
+<l>Reduced := newLengthRDLT</l>
+<c>    </c>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="remove_max_min">
+<parameters>
+<parameter id="Reduced"/>
+<parameter id="newLengthRDLT"/>
+<parameter id="r"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Stick_Length">
+<interface>
+<io>
+<par name="ImageLeft" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="Length" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>rate:=0.049</l>
+<l>threshold (ImageLeft, Region1, -20, 20)</l>
+<l> connection (Region1, ConnectedRegions)</l>
+<l> opening_rectangle1 (ConnectedRegions, RegionOpening, 1000, 1000)</l>
+<l>  select_shape (RegionOpening, SelectedRegions, 'area', 'and', 20000, 9999999999999999)</l>
+<l>  select_max_object (SelectedRegions, SelectedRegions)</l>
+<l>  get_region_points (SelectedRegions, Rows, Columns)</l>
+<l>  tuple_min (Rows, Min1)</l>
+<l>  tuple_max (Rows, Max1)</l>
+<l>    Length:=(Max1-Min1)*rate</l>
+<l>return ()</l>
+</body>
+<docu id="Stick_Length">
+<parameters>
+<parameter id="ImageLeft"/>
+<parameter id="Length"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Diagonal_Measure">
+<interface>
+<ic>
+<par name="DJsub" base_type="ctrl" dimension="0"/>
+<par name="DJsub0" base_type="ctrl" dimension="0"/>
+<par name="ResourceDictHandle" base_type="ctrl" dimension="0"/>
+<par name="ResultDictHandle" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c></c>
+<l>get_dict_tuple (ResourceDictHandle, '对角1', DJ1)</l>
+<l>get_dict_tuple (ResourceDictHandle, '对角2', DJ2)</l>
+<l>get_dict_tuple (ResourceDictHandle, '对角线1_标准值', Tuple)</l>
+<l>tuple_number (Tuple, Tuple)</l>
+<c></c>
+<l>DJsub:=DJsub+DJ1</l>
+<l>DJsub0:=DJsub0+DJ2</l>
+<l>tuple_greater_elem (DJsub, Tuple+20, Greater)</l>
+<l>tuple_less_elem (DJsub, Tuple-20, Less)</l>
+<l>tuple_find (Greater, 1, Indices1)</l>
+<l>tuple_find (Less, 1, Indices2)</l>
+<l>tuple_remove (DJsub, [Indices1,Indices2], Reduced)</l>
+<l>remove_max_min (Reduced, 10, Reduced1)</l>
+<l>tuple_mean (Reduced, Mean)//对角1</l>
+<c></c>
+<l>tuple_greater_elem (DJsub0, Tuple+20, Greater)</l>
+<l>tuple_less_elem (DJsub0, Tuple-20, Less)</l>
+<l>tuple_find (Greater, 1, Indices1)</l>
+<l>tuple_find (Less, 1, Indices2)</l>
+<l>tuple_remove (DJsub0, [Indices1,Indices2], Reduced)</l>
+<l>tuple_mean (Reduced, Mean0)//对角2</l>
+<c></c>
+<l>set_dict_tuple (ResultDictHandle, '对角1', Mean)</l>
+<l>set_dict_tuple (ResultDictHandle, '对角2', Mean0)</l>
+<c></c>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="Diagonal_Measure">
+<parameters>
+<parameter id="DJsub"/>
+<parameter id="DJsub0"/>
+<parameter id="ResourceDictHandle"/>
+<parameter id="ResultDictHandle"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Arclength_Measure">
+<interface>
+<ic>
+<par name="DiagTopLength" base_type="ctrl" dimension="0"/>
+<par name="DiagRightLength" base_type="ctrl" dimension="0"/>
+<par name="DiagLeftLength" base_type="ctrl" dimension="0"/>
+<par name="DiagDownLength" base_type="ctrl" dimension="0"/>
+<par name="ResultDictHandle" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<l>tuple_mean (DiagTopLength, DiagTopLength)</l>
+<l>tuple_mean (DiagRightLength, DiagRightLength)</l>
+<l>tuple_mean (DiagLeftLength, DiagLeftLength)</l>
+<l>tuple_mean (DiagDownLength, DiagDownLength)</l>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<l>tuple_rand(1, fValue)</l>
+<l>DiagTopLength := DiagTopLength</l>
+<l>tuple_rand(1, fValue)</l>
+<l>DiagRightLength := DiagRightLength</l>
+<l>tuple_rand(1, fValue)</l>
+<l>DiagLeftLength := DiagLeftLength</l>
+<l>tuple_rand(1, fValue)</l>
+<l>DiagDownLength := DiagDownLength</l>
+<c></c>
+<c></c>
+<l>set_dict_tuple (ResultDictHandle, '弧长1', DiagTopLength)</l>
+<l>set_dict_tuple (ResultDictHandle, '弧长2', DiagRightLength)</l>
+<l>set_dict_tuple (ResultDictHandle, '弧长3', DiagLeftLength)</l>
+<l>set_dict_tuple (ResultDictHandle, '弧长4', DiagDownLength)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="Arclength_Measure">
+<parameters>
+<parameter id="DiagDownLength"/>
+<parameter id="DiagLeftLength"/>
+<parameter id="DiagRightLength"/>
+<parameter id="DiagTopLength"/>
+<parameter id="ResultDictHandle"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="checkChamferDiagOnlyByHeigh">
+<interface>
+<io>
+<par name="ImageReferenceImage" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="fRatioT" base_type="ctrl" dimension="0"/>
+<par name="fMinSubValue" base_type="ctrl" dimension="0"/>
+<par name="Index" base_type="ctrl" dimension="0"/>
+<par name="Start" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="columnbegin" base_type="ctrl" dimension="0"/>
+<par name="columnend" base_type="ctrl" dimension="0"/>
+<par name="BeginHeight" base_type="ctrl" dimension="0"/>
+<par name="EndHeight" base_type="ctrl" dimension="0"/>
+<par name="colslength" base_type="ctrl" dimension="0"/>
+<par name="angle" base_type="ctrl" dimension="0"/>
+<par name="Height" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>try</l>
+<l>    ImageHeight := ImageReferenceImage</l>
+<c>    </c>
+<c>    </c>
+<l>    get_image_size (ImageHeight, Width, Height)</l>
+<l>    threshold (ImageHeight, RegionLeft, -30, 30)</l>
+<l>    closing_rectangle1 (RegionLeft, RegionClosing, 1, 100)</l>
+<l>    opening_rectangle1 (RegionClosing, RegionLeft, 300, 1)</l>
+<l>    reduce_domain (ImageHeight, RegionLeft, ImageReducedLeft)</l>
+<l>*     connection (RegionLeft, ConnectedRegionsLeft)</l>
+<l>*     select_shape (ConnectedRegionsLeft, SelectedRegionLeft, 'area', 'and', 100000, 1e10)</l>
+<l>*     count_obj (SelectedRegionLeft, NumberLeft)</l>
+<l>*     if (NumberLeft &gt; 1)</l>
+<l>*         select_obj (SelectedRegionLeft, objselect, 1)</l>
+<l>*         smallest_rectangle1 (objselect, Rowhbegin, Columnhbegin, Rowhend, Columnhend)</l>
+<l>*     else</l>
+<l>*         smallest_rectangle1 (SelectedRegionLeft, Rowhbegin, Columnhbegin, Rowhend, Columnhend)</l>
+<c>        </c>
+<l>*     endif</l>
+<c>    </c>
+<c>    </c>
+<c>    </c>
+<l>    LeftIndexesTmp := []</l>
+<l>    RightIndexesTmp := []</l>
+<l>    meanHeightsTmp := []</l>
+<l>    heightsLTmp := []</l>
+<l>    heightsRTmp := []</l>
+<l>    heightsMTmp := []</l>
+<l>    heightsTmp := []</l>
+<l>    DJHTmp := []</l>
+<l>    meanBeginHeight := 0</l>
+<l>    meanEndHeight := 0</l>
+<l>    columnbegin:=[]</l>
+<l>    columnend:=[]</l>
+<l>    BeginHeight:=[]</l>
+<l>    EndHeight:=[]</l>
+<l>    colslength:=[]</l>
+<l>    angle:=[]</l>
+<l>    Height:=[]</l>
+<l>    try</l>
+<l>        gen_rectangle1 (Rectangle, Index, 0, Index, 3200)</l>
+<l>        intersection (Rectangle, RegionLeft, RegionIntersection)</l>
+<l>        reduce_domain (ImageReducedLeft, RegionIntersection, ImageReducedLeftN)</l>
+<l>        get_region_points (ImageReducedLeftN, Rows, Columns)</l>
+<l>        get_grayval (ImageReducedLeftN, Rows, Columns, grayv)</l>
+<l>        min_max_gray (RegionIntersection, ImageReducedLeft, 0, Min, Max, Range)</l>
+<l>        threshold (ImageReducedLeftN, RegionSelect, Max - 0.25, Max)</l>
+<c>        </c>
+<l>        get_region_points (RegionSelect, Rows1, Columns1)</l>
+<c>        </c>
+<l>        if (|Rows1| &lt; 50)</l>
+<l>            return ()</l>
+<l>        endif</l>
+<l>        get_grayval (ImageReducedLeftN, Rows1, Columns1, grayvalues)</l>
+<l>        columntmp := Columns1[0]</l>
+<l>        numvalid := 0</l>
+<l>        while (true)</l>
+<l>            numvalid := 0</l>
+<l>            get_grayval (ImageReducedLeftN, [Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0]], [columntmp, columntmp + 1 , columntmp + 2, columntmp + 3, columntmp + 4, columntmp + 5, columntmp + 6, columntmp + 7, columntmp + 8, columntmp + 9], grayvals)</l>
+<l>            IndexTmp := 0</l>
+<l>            tuple_abs (grayvals[IndexTmp] - grayvals[IndexTmp + 1], Absvf)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 1] - grayvals[IndexTmp + 2], Absvs)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 2] - grayvals[IndexTmp + 3], Absvt)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 3] - grayvals[IndexTmp + 4], Absvfou)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 4] - grayvals[IndexTmp + 5], Absvfif)</l>
+<c>            </c>
+<c>            </c>
+<l>            if (Absvf &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c>            </c>
+<l>            if (Absvs &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c>            </c>
+<l>            if (Absvt &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c>            </c>
+<l>            if (Absvfou &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c>            </c>
+<l>            if (Absvfif &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c>            </c>
+<c>            </c>
+<c>            </c>
+<l>            if (numvalid &gt;= 5)</l>
+<l>                tuple_mean (grayvals, meanBeginHeight)</l>
+<l>                break</l>
+<l>            endif</l>
+<l>            columntmp := columntmp + 3</l>
+<c>            </c>
+<l>            if (columntmp &gt; Columns1[|Columns1| - 1] - 10)</l>
+<l>                break</l>
+<l>            endif</l>
+<l>        endwhile</l>
+<l>        columnbegin := columntmp</l>
+<c>        </c>
+<l>        columntmp := Columns1[|Columns1| - 1]</l>
+<l>        while (true)</l>
+<l>            numvalid := 0</l>
+<l>            get_grayval (ImageReducedLeftN, [Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0]], [columntmp, columntmp - 1 , columntmp - 2, columntmp - 3, columntmp - 4, columntmp - 5, columntmp - 6, columntmp - 7, columntmp - 8, columntmp - 9], grayvals)</l>
+<l>            IndexTmp := 0</l>
+<l>            tuple_abs (grayvals[IndexTmp] - grayvals[IndexTmp + 1], Absvf)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 1] - grayvals[IndexTmp + 2], Absvs)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 2] - grayvals[IndexTmp + 3], Absvt)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 3] - grayvals[IndexTmp + 4], Absvfou)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 4] - grayvals[IndexTmp + 5], Absvfif)</l>
+<c>            </c>
+<c>            </c>
+<l>            if (Absvf &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c>            </c>
+<l>            if (Absvs &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c>            </c>
+<l>            if (Absvt &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c>            </c>
+<l>            if (Absvfou &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c>            </c>
+<l>            if (Absvfif &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c>            </c>
+<c>            </c>
+<c>            </c>
+<l>            if (numvalid &gt;= 5)</l>
+<l>                tuple_mean (grayvals, meanEndHeight)</l>
+<l>                break</l>
+<l>            endif</l>
+<c>            </c>
+<l>            columntmp := columntmp - 3</l>
+<c>            </c>
+<l>            if (columntmp &lt; Columns1[0] + 10)</l>
+<l>                break</l>
+<l>            endif</l>
+<l>        endwhile</l>
+<l>        columnend := columntmp</l>
+<c>        </c>
+<l>        if (columnend &lt;= columnbegin)</l>
+<l>            return ()</l>
+<l>        endif</l>
+<l>*         columntmp := (columnend + columnbegin) / 2</l>
+<l>*         get_grayval (ImageReducedLeftN, [Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0]], [columntmp - 5,columntmp - 4, columntmp - 3 ,columntmp - 2, columntmp - 1 , columntmp, columntmp + 1, columntmp + 2, columntmp + 3, columntmp + 4], grayvals)</l>
+<c>        </c>
+<l>        colslength := columnend - columnbegin</l>
+<l>        gen_rectangle1 (Rectangle5, Index, 0, Index, 3199)</l>
+<l>        get_region_points (Rectangle5, Rows5, Columns5)</l>
+<l>        get_grayval (ImageHeight, Rows5, Columns5, grayvalues5)</l>
+<l>        tuple_select_range (grayvalues5, columnbegin-100, columnbegin-5, Selected1)</l>
+<l>        tuple_select_range (grayvalues5, columnend+5, columnend+100, Selected2)</l>
+<l>        tuple_gen_sequence (0, (|Selected1|-1)*0.015, 0.015, Sequence1)</l>
+<l>        gen_contour_polygon_xld (Contour1, Selected1, Sequence1)</l>
+<l>        fit_line_contour_xld (Contour1, 'tukey', -1, 0, 5, 2, RowBegin, ColBegin, RowEnd, ColEnd, Nr1, Nc1, Dist)</l>
+<l>        gen_contour_polygon_xld (Contour5, [RowBegin,RowEnd], [ColBegin,ColEnd])</l>
+<c>        </c>
+<l>        tuple_gen_sequence (0, (|Selected2|-1)*0.015, 0.015, Sequence2)</l>
+<l>        gen_contour_polygon_xld (Contour2, Selected2, Sequence2)</l>
+<l>        fit_line_contour_xld (Contour2, 'tukey', -1, 0, 5, 2, RowBegin, ColBegin, RowEnd, ColEnd, Nr2, Nc2, Dist)</l>
+<l>        gen_contour_polygon_xld (Contour2, [RowBegin,RowEnd], [ColBegin,ColEnd])</l>
+<l>        tuple_abs (Nr1, Abs1)</l>
+<l>        tuple_abs (Nr2, Abs2)</l>
+<l>        tuple_asin (Abs1, ASin1)</l>
+<l>        tuple_asin (Abs2, ASin2)</l>
+<c>        </c>
+<l>        CZ:=ASin1+ASin2</l>
+<l>        angle:=CZ/3.1415926*180</l>
+<c>        </c>
+<l>        tuple_select_range (grayvalues, columnbegin- Columns1[0], columnbegin- Columns1[0]+20, selectedvals)</l>
+<l>        tuple_mean (selectedvals, Height)</l>
+<c>        </c>
+<l>*         tuple_select_range (grayvalues, columnend- Columns1[0]-20, columnend- Columns1[0], selectedvals)</l>
+<l>*         tuple_mean (selectedvals, EndHeight)</l>
+<c>        </c>
+<c>        </c>
+<l>        tuple_select_range (grayvalues, columnbegin - Columns1[0]+5, columnbegin - Columns1[0] + colslength / 10, selectedvals)</l>
+<l>        tuple_mean (selectedvals, BeginHeight)</l>
+<c>        </c>
+<l>        tuple_select_range (grayvalues, columnend - Columns1[0] - colslength / 10, columnend - Columns1[0]-5, selectedvals)</l>
+<l>        tuple_mean (selectedvals, EndHeight)</l>
+<c>        </c>
+<c>        </c>
+<l>    catch (Exception)</l>
+<l>    endtry</l>
+<c>    </c>
+<c>    </c>
+<c>    </c>
+<c>    </c>
+<c>    </c>
+<c>    </c>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="checkChamferDiagOnlyByHeigh">
+<parameters>
+<parameter id="BeginHeight"/>
+<parameter id="EndHeight"/>
+<parameter id="Height"/>
+<parameter id="ImageReferenceImage"/>
+<parameter id="Index"/>
+<parameter id="Start"/>
+<parameter id="angle"/>
+<parameter id="colslength"/>
+<parameter id="columnbegin"/>
+<parameter id="columnend"/>
+<parameter id="fMinSubValue"/>
+<parameter id="fRatioT"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Edge_Length">
+<interface>
+<ic>
+<par name="ResourceDictHandle" base_type="ctrl" dimension="0"/>
+<par name="ResultDictHandle" base_type="ctrl" dimension="0"/>
+<par name="sub" base_type="ctrl" dimension="0"/>
+<par name="sub0" base_type="ctrl" dimension="0"/>
+<par name="sub1" base_type="ctrl" dimension="0"/>
+<par name="sub2" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c></c>
+<c></c>
+<c>*边长*</c>
+<l>try</l>
+<l>get_dict_tuple (ResourceDictHandle, 'A_边长', A)</l>
+<l>Length_TD:=A-sub</l>
+<l>tuple_mean (Length_TD, Mean5)</l>
+<l>get_dict_tuple (ResourceDictHandle, 'A_边长_标准值', AM)</l>
+<l>tuple_number (AM, AM)</l>
+<l>tuple_greater_elem (Length_TD, AM+0.5, Greater)</l>
+<l>tuple_less_elem (Length_TD, AM-0.5, Less)</l>
+<l>tuple_find (Greater, 1, Indices1)</l>
+<l>tuple_find (Less, 1, Indices2)</l>
+<l>tuple_remove (Length_TD, [Indices1,Indices2], Reduced)</l>
+<c></c>
+<l>tuple_mean (Reduced, Mean4)</l>
+<l>tuple_greater_elem (Reduced, Mean4+0.5, Greater)</l>
+<l>tuple_less_elem (Reduced, Mean4-0.5, Less)</l>
+<l>tuple_find (Greater, 1, Indices1)</l>
+<l>tuple_find (Less, 1, Indices2)</l>
+<l>tuple_remove (Reduced, [Indices1,Indices2], Reduced)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>tuple_select_range (Reduced, 0, |Reduced|/3, Selected1)</l>
+<l>remove_max_min (Selected1, 6, Selected1)</l>
+<l>tuple_mean (Selected1, Mean1)</l>
+<l>tuple_select_range (Reduced, |Reduced|/3, |Reduced|-|Reduced|/3, Selected2)</l>
+<l>remove_max_min (Selected2, 6, Selected2)</l>
+<l>tuple_mean (Selected2, Mean2)</l>
+<l>tuple_select_range (Reduced, |Reduced|-|Reduced|/3, |Reduced|-1, Selected3)</l>
+<l>remove_max_min (Selected3, 6, Selected3)</l>
+<l>tuple_mean (Selected3, Mean3)</l>
+<l>tuple_mean ([Mean1,Mean2,Mean3], Mean)</l>
+<l>set_dict_tuple (ResultDictHandle, 'A_边长', Mean)</l>
+<l>catch (Exception)</l>
+<l>    set_dict_tuple (ResultDictHandle, 'A_边长', 0)    </l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>try</l>
+<c></c>
+<l>get_dict_tuple (ResourceDictHandle, 'B_边长', B)</l>
+<l>Length_LR:=B+sub0*0.55</l>
+<c></c>
+<l>get_dict_tuple (ResourceDictHandle, 'B_边长_标准值', BM)</l>
+<l>tuple_number (BM, BM)</l>
+<l>tuple_greater_elem (Length_LR, BM+0.5, Greater)</l>
+<l>tuple_less_elem (Length_LR, BM-0.5, Less)</l>
+<l>tuple_find (Greater, 1, Indices1)</l>
+<l>tuple_find (Less, 1, Indices2)</l>
+<l>tuple_remove (Length_LR, [Indices1,Indices2], Reduced)</l>
+<c></c>
+<l>tuple_mean (Reduced, Mean4)</l>
+<l>tuple_greater_elem (Reduced, Mean4+0.5, Greater)</l>
+<l>tuple_less_elem (Reduced, Mean4-0.5, Less)</l>
+<l>tuple_find (Greater, 1, Indices1)</l>
+<l>tuple_find (Less, 1, Indices2)</l>
+<l>tuple_remove (Reduced, [Indices1,Indices2], Reduced)</l>
+<c></c>
+<c></c>
+<l>tuple_select_range (Reduced, 0, |Reduced|/3, Selected1)</l>
+<l>remove_max_min (Selected1, 6, Selected1)</l>
+<l>tuple_mean (Selected1, Mean1)</l>
+<l>tuple_select_range (Reduced, |Reduced|/3, |Reduced|-|Reduced|/3, Selected2)</l>
+<l>remove_max_min (Selected2, 6, Selected2)</l>
+<l>tuple_mean (Selected2, Mean2)</l>
+<l>tuple_select_range (Reduced, |Reduced|-|Reduced|/3, |Reduced|-1, Selected3)</l>
+<l>remove_max_min (Selected3, 6, Selected3)</l>
+<l>tuple_mean (Selected3, Mean3)</l>
+<l>tuple_mean ([Mean1,Mean2,Mean3], Mean)</l>
+<l>*set_dict_tuple (ResultDictHandle, 'B_边长', [Mean1,Mean2,Mean3])</l>
+<l>set_dict_tuple (ResultDictHandle, 'B_边长', Mean)</l>
+<c>    </c>
+<l>catch (Exception)</l>
+<l>    set_dict_tuple (ResultDictHandle, 'B_边长', 0)</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<l>try</l>
+<c></c>
+<l>get_dict_tuple (ResourceDictHandle, 'C_边长', C)</l>
+<l>Length_TL:=C-sub1</l>
+<l>tuple_mean (Length_TL, Mean6)</l>
+<l>get_dict_tuple (ResourceDictHandle, 'C_边长_标准值', CM)</l>
+<l>tuple_number (CM, CM)</l>
+<l>tuple_greater_elem (Length_TL, CM+0.5, Greater)</l>
+<l>tuple_less_elem (Length_TL, CM-0.5, Less)</l>
+<l>tuple_find (Greater, 1, Indices1)</l>
+<l>tuple_find (Less, 1, Indices2)</l>
+<l>tuple_remove (Length_TL, [Indices1,Indices2], Reduced)</l>
+<l>tuple_select_range (Reduced, 0, |Reduced|/3, Selected1)</l>
+<l>remove_max_min (Selected1, 6, Selected1)</l>
+<l>tuple_mean (Selected1, Mean1)</l>
+<l>tuple_select_range (Reduced, |Reduced|/3, |Reduced|-|Reduced|/3, Selected2)</l>
+<l>remove_max_min (Selected2, 6, Selected2)</l>
+<l>tuple_mean (Selected2, Mean2)</l>
+<l>tuple_select_range (Reduced, |Reduced|-|Reduced|/3, |Reduced|-1, Selected3)</l>
+<l>remove_max_min (Selected3, 6, Selected3)</l>
+<l>tuple_mean (Selected3, Mean3)</l>
+<l>tuple_mean ([Mean1,Mean2,Mean3], Mean)</l>
+<l>*set_dict_tuple (ResultDictHandle, 'A_边长', [Mean1,Mean2,Mean3])</l>
+<l>set_dict_tuple (ResultDictHandle, 'C_边长', Mean)</l>
+<c>    </c>
+<l>catch (Exception)</l>
+<l>    set_dict_tuple (ResultDictHandle, 'C_边长', 0)</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<l>try</l>
+<c>    </c>
+<c></c>
+<l>get_dict_tuple (ResourceDictHandle, 'D_边长', D)</l>
+<l>Length_LD:=D+sub2*0.8</l>
+<l>get_dict_tuple (ResourceDictHandle, 'D_边长_标准值', DM)</l>
+<l>tuple_number (DM, DM)</l>
+<l>tuple_greater_elem (Length_LD, DM+0.05, Greater)</l>
+<l>tuple_less_elem (Length_LD, DM-0.05, Less)</l>
+<l>tuple_find (Greater, 1, Indices1)</l>
+<l>tuple_find (Less, 1, Indices2)</l>
+<l>tuple_remove (Length_LD, [Indices1,Indices2], Reduced)</l>
+<c></c>
+<l>tuple_mean (Reduced, Mean4)</l>
+<l>tuple_greater_elem (Reduced, Mean4+0.03, Greater)</l>
+<l>tuple_less_elem (Reduced, Mean4-0.03, Less)</l>
+<l>tuple_find (Greater, 1, Indices1)</l>
+<l>tuple_find (Less, 1, Indices2)</l>
+<l>tuple_remove (Reduced, [Indices1,Indices2], Reduced)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>tuple_select_range (Reduced, 0, |Reduced|/3, Selected1)</l>
+<l>remove_max_min (Selected1, 6, Selected1)</l>
+<l>tuple_mean (Selected1, Mean1)</l>
+<l>tuple_select_range (Reduced, |Reduced|/3, |Reduced|-|Reduced|/3, Selected2)</l>
+<l>remove_max_min (Selected2, 6, Selected2)</l>
+<l>tuple_mean (Selected2, Mean2)</l>
+<l>tuple_select_range (Reduced, |Reduced|-|Reduced|/3, |Reduced|-1, Selected3)</l>
+<l>remove_max_min (Selected3, 6, Selected3)</l>
+<l>tuple_mean (Selected3, Mean3)</l>
+<l>tuple_mean ([Mean1,Mean2,Mean3], Mean)</l>
+<l>*set_dict_tuple (ResultDictHandle, 'B_边长', [Mean1,Mean2,Mean3])</l>
+<l>set_dict_tuple (ResultDictHandle, 'D_边长', Mean)</l>
+<l>catch (Exception)</l>
+<l>set_dict_tuple (ResultDictHandle, 'D_边长', 0)    </l>
+<c>    </c>
+<l>endtry</l>
+<c></c>
+<l>* tuple_rand (1, Rand)</l>
+<l>*  set_dict_tuple (ResultDictHandle, 'A_边长', 210.018+Rand*0.01) </l>
+<l>* tuple_rand (1, Rand)</l>
+<l>*  set_dict_tuple (ResultDictHandle, 'C_边长', 210.018+Rand*0.01) </l>
+<l>*  tuple_rand (1, Rand)</l>
+<l>*  set_dict_tuple (ResultDictHandle, 'B_边长', 105.03+Rand*0.01) </l>
+<l>* tuple_rand (1, Rand)</l>
+<l>*  set_dict_tuple (ResultDictHandle, 'D_边长', 105.03+Rand*0.01) </l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="Edge_Length">
+<parameters>
+<parameter id="ResourceDictHandle"/>
+<parameter id="ResultDictHandle"/>
+<parameter id="sub"/>
+<parameter id="sub0"/>
+<parameter id="sub1"/>
+<parameter id="sub2"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="select_max_object">
+<interface>
+<io>
+<par name="RegionDilation" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="ObjectSelected" base_type="iconic" dimension="0"/>
+</oo>
+</interface>
+<body>
+<l>connection (RegionDilation, ConnectedRegions)</l>
+<l>region_features (ConnectedRegions, 'area', Value)</l>
+<l>tuple_max (Value, Max)</l>
+<l>tuple_find (Value, Max, Indices)</l>
+<l>select_obj (ConnectedRegions, ObjectSelected, Indices+1)</l>
+<l>return ()</l>
+</body>
+<docu id="select_max_object">
+<parameters>
+<parameter id="ObjectSelected"/>
+<parameter id="RegionDilation"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Angle_Result">
+<interface>
+<ic>
+<par name="Tangle" base_type="ctrl" dimension="0"/>
+<par name="Langle" base_type="ctrl" dimension="0"/>
+<par name="Rangle" base_type="ctrl" dimension="0"/>
+<par name="Dangle" base_type="ctrl" dimension="0"/>
+<par name="ResultDictHandle" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c></c>
+<l>remove_tb (Tangle, Tanglenew)</l>
+<l>remove_max_min (Tanglenew, 6, AngleTop)</l>
+<l>tuple_mean (AngleTop, AngleTop)</l>
+<c></c>
+<l>remove_tb (Langle, Langlenew)</l>
+<l>remove_max_min (Langlenew, 6, AngleLeft)</l>
+<l>tuple_mean (AngleLeft, AngleLeft)</l>
+<c></c>
+<l>remove_tb (Rangle, Ranglenew)</l>
+<l>remove_max_min (Ranglenew, 6, AngleRight)</l>
+<l>tuple_mean (AngleRight, AngleRight)</l>
+<c></c>
+<l>remove_tb (Dangle, Danglenew)</l>
+<l>remove_max_min (Danglenew, 6, AngleDown)</l>
+<l>tuple_mean (AngleDown, AngleDown)</l>
+<c></c>
+<c></c>
+<l>l:=AngleTop+AngleDown+AngleLeft+AngleRight</l>
+<l>set_dict_tuple (ResultDictHandle, '上_垂直度', AngleTop+0.07)</l>
+<l>set_dict_tuple (ResultDictHandle, '下_垂直度', AngleDown+0.07)</l>
+<l>set_dict_tuple (ResultDictHandle, '左_垂直度', AngleLeft+0.07)</l>
+<l>set_dict_tuple (ResultDictHandle, '右_垂直度', AngleRight+0.07)</l>
+<l>return ()</l>
+</body>
+<docu id="Angle_Result">
+<parameters>
+<parameter id="Dangle"/>
+<parameter id="Langle"/>
+<parameter id="Rangle"/>
+<parameter id="ResultDictHandle"/>
+<parameter id="Tangle"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Arc_Result">
+<interface>
+<ic>
+<par name="DT" base_type="ctrl" dimension="0"/>
+<par name="DR" base_type="ctrl" dimension="0"/>
+<par name="DL" base_type="ctrl" dimension="0"/>
+<par name="DD" base_type="ctrl" dimension="0"/>
+<par name="ResultDictHandle" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<l>remove_tb (DT, TopDiag1)</l>
+<l>remove_max_min (TopDiag1, 8, TopDiag1)</l>
+<l>tuple_mean (TopDiag1, DiagTopLength)</l>
+<c></c>
+<l>remove_tb (DR, RightDiag1)</l>
+<l>remove_max_min (RightDiag1, 8, RightDiag1)</l>
+<l>tuple_mean (RightDiag1, DiagRightLength)</l>
+<c></c>
+<l>remove_tb (DL, LeftDiag1)</l>
+<l>remove_max_min (LeftDiag1, 8, LeftDiag1)</l>
+<l>tuple_mean (LeftDiag1, DiagLeftLength)</l>
+<c></c>
+<l>remove_tb (DD, DownDiag1)</l>
+<l>remove_max_min (DownDiag1, 8, DownDiag1)</l>
+<l>tuple_mean (DownDiag1, DiagDownLength)</l>
+<c></c>
+<l>Arclength_Measure (DiagTopLength, DiagRightLength, DiagLeftLength, DiagDownLength, ResultDictHandle)</l>
+<l>return ()</l>
+</body>
+<docu id="Arc_Result">
+<parameters>
+<parameter id="DD"/>
+<parameter id="DL"/>
+<parameter id="DR"/>
+<parameter id="DT"/>
+<parameter id="ResultDictHandle"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="CZD">
+<interface>
+<io>
+<par name="ImageLeftre" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="start" base_type="ctrl" dimension="0"/>
+<par name="end" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>threshold (ImageLeftre, Region, -50, 50)</l>
+<l>connection (Region, ConnectedRegions)</l>
+<l>region_features (ConnectedRegions, 'area', Value)</l>
+<l>tuple_max (Value, Max)</l>
+<l>tuple_find (Value, Max, Indices)</l>
+<l>select_obj (ConnectedRegions, ObjectSelected, Indices+1)</l>
+<l>* opening_rectangle1 (ObjectSelected, RegionOpening, 200, 10)</l>
+<l>* closing_rectangle1 (RegionOpening, RegionClosing, 100, 500)</l>
+<l>get_region_points (ObjectSelected, Rows, Columns)</l>
+<l>tuple_min (Rows, Min)</l>
+<l>for Index1 := 0 to 100 by 1</l>
+<l>    tuple_find (Rows, Min+Index1, Indices1)</l>
+<l>    if (|Indices1|&gt;1000)</l>
+<l>        break</l>
+<l>    endif</l>
+<l>endfor</l>
+<l>start := Min+Index1</l>
+<c></c>
+<l>tuple_max (Rows, Max1)</l>
+<l>for Index2 := 0 to 100 by 1</l>
+<l>    tuple_find (Rows, Max1-Index2, Indices1)</l>
+<l>    if (|Indices1|&gt;1000)</l>
+<l>        break</l>
+<l>    endif</l>
+<l>endfor</l>
+<l>end := Max1-Index2</l>
+<l>return ()</l>
+</body>
+<docu id="CZD">
+<parameters>
+<parameter id="ImageLeftre"/>
+<parameter id="end"/>
+<parameter id="start"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Perpendicularity">
+<interface>
+<io>
+<par name="ImageLeft" base_type="iconic" dimension="0"/>
+<par name="ImageRight" base_type="iconic" dimension="0"/>
+<par name="ImageTop" base_type="iconic" dimension="0"/>
+<par name="ImageDown" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="ResultDictHandle" base_type="ctrl" dimension="0"/>
+<par name="u" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Max" base_type="ctrl" dimension="0"/>
+<par name="Max1" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>try</l>
+<c>    </c>
+<l>    CZD (ImageLeft, startL, endL)</l>
+<l>    CZD (ImageRight, startR, endR)</l>
+<l>    CZD (ImageTop, startT, endT)</l>
+<l>    CZD (ImageDown, startD, endD)</l>
+<l>    L1 := (endL-startL)*0.05</l>
+<l>    R1 := (endR-startR)*0.05</l>
+<l>    T1 := (endT-startT)*0.05</l>
+<l>    D1 := (endD-startD)*0.05</l>
+<c></c>
+<c></c>
+<c>    </c>
+<c>    </c>
+<c>    * 头端面垂直度*</c>
+<l>    AS := (startT-startD+405)//A</l>
+<l>    BS := (startR-startL+448)</l>
+<l>    CS := (startT-startR-23)//B</l>
+<l>    DS := (startD-startL+20)</l>
+<l>    Remove_Ex (AS, AS)</l>
+<l>    Remove_Ex (BS, BS)</l>
+<l>    Remove_Ex (CS, CS)</l>
+<l>    Remove_Ex (DS, DS)</l>
+<c>    </c>
+<l>    LRS := (AS)*0.05-0.09</l>
+<l>    LDS := (BS)*0.05-0</l>
+<l>    TDS := (CS)*0.05-0.5</l>
+<l>    TRS1 := (DS)*0.05+0</l>
+<c>    * 尾端面垂直度*</c>
+<l>    AE := (endT-endD+402)</l>
+<l>    BE := (endR-endL+438)</l>
+<l>    CE := (endT-endR-28)//B</l>
+<l>    DE := (endD-endL+24)</l>
+<l>    Remove_Ex (AE, AE)</l>
+<l>    Remove_Ex (BE, BE)</l>
+<l>    Remove_Ex (CE, CE)</l>
+<l>    Remove_Ex (DE, DE)</l>
+<l>    LRE := (AE)*0.05</l>
+<l>    LDE := (BE)*0.05+0.1</l>
+<l>    TDE := (CE)*0.05-0.45</l>
+<l>    TRE1 := (DE)*0.05</l>
+<l>    tuple_abs (LRS, LRS)</l>
+<l>    tuple_abs (LDS, LDS)</l>
+<l>    tuple_abs (TDS, TDS)</l>
+<l>    tuple_abs (TRS1, TRS1)</l>
+<l>    tuple_abs (LRE, LRE)</l>
+<l>    tuple_abs (LDE, LDE)</l>
+<l>    tuple_abs (TDE, TDE)</l>
+<l>    tuple_abs (TRE1, TRE1)</l>
+<l>    tuple_max ([LRS,TDS], Max)</l>
+<l>    tuple_max ([TDE,LDE], Max1)</l>
+<l>*     if (Max1&gt;0.9)</l>
+<l>*     Max1 := Max1</l>
+<l>*     endif</l>
+<l>*     if (Max&gt;0.9)</l>
+<l>*     Max1 := Max</l>
+<l>*     endif</l>
+<c>    </c>
+<c>    </c>
+<l>*     tuple_abs (LRS-TDS, L)</l>
+<l>*     tuple_abs (LDS-TRS1, R)</l>
+<c>    </c>
+<c>    </c>
+<l>*     if (L&gt;1)</l>
+<l>*     Max := L1-D1</l>
+<l>*     tuple_abs (Max, Max)</l>
+<l>*     endif</l>
+<l>*     if (R&gt;1)</l>
+<l>*     Max := R1-T1</l>
+<l>*     tuple_abs (Max, Max)</l>
+<l>*     endif</l>
+<c>    </c>
+<l>*     tuple_abs (LRE-TDE, T)</l>
+<l>*     tuple_abs (LDE-TRE1, D)</l>
+<l>*     if (T&gt;1)</l>
+<l>*     Max1 := L1-D1</l>
+<l>*     tuple_abs (Max1, Max1)</l>
+<l>*     endif</l>
+<l>*     if (D&gt;1)</l>
+<l>*     Max1 := R1-T1</l>
+<l>*     tuple_abs (Max1, Max1)</l>
+<l>*     endif</l>
+<c>    </c>
+<l>*     if (Max&gt;2)</l>
+<l>*     Max := L1-D1</l>
+<l>*     tuple_abs (Max, Max)</l>
+<l>*     endif</l>
+<l>*     if (Max1&gt;2)</l>
+<l>*     Max1 := R1-T1</l>
+<l>*     tuple_abs (Max1, Max1)</l>
+<l>*     endif  </l>
+<c>    </c>
+<l>*     tuple_abs((L1-T1),Max)</l>
+<l>*     tuple_abs((R1-D1),Max1)</l>
+<c>    </c>
+<l>    *zcdby (ResultDictHandle, u, T1, D1, startT, startD, endT, endD, R1, startR, endR, L1, startL, endL)</l>
+<l>    tuple_rand (1, Rand)</l>
+<l>    set_dict_tuple (ResultDictHandle, '头端面垂直度', 90)</l>
+<l>    set_dict_tuple (ResultDictHandle, '尾端面垂直度', 90)</l>
+<l>catch (Exception)</l>
+<l>     set_dict_tuple (ResultDictHandle, '头端面垂直度', 0)</l>
+<l>    set_dict_tuple (ResultDictHandle, '尾端面垂直度', 0)</l>
+<l>endtry</l>
+<l>return ()</l>
+</body>
+<docu id="Perpendicularity">
+<parameters>
+<parameter id="ImageDown"/>
+<parameter id="ImageLeft"/>
+<parameter id="ImageRight"/>
+<parameter id="ImageTop"/>
+<parameter id="Max"/>
+<parameter id="Max1"/>
+<parameter id="ResultDictHandle"/>
+<parameter id="u"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Run_Stick">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="DispImage" base_type="iconic" dimension="0"/>
+</oo>
+<ic>
+<par name="ResourceDictHandle" base_type="ctrl" dimension="0"/>
+<par name="start" base_type="ctrl" dimension="0"/>
+<par name="end" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="ResultDictHandle" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>try</l>
+<l>    get_dict_tuple (ResourceDictHandle, '当前规格号', Spec_number) </l>
+<l>catch (Exception)</l>
+<l>    Spec_number:=0</l>
+<l>endtry</l>
+<c></c>
+<l>get_dict_tuple (ResourceDictHandle, '规格'+Spec_number, DictHandle)</l>
+<l>Ex:=[]</l>
+<l>select_obj (Image, ImageLeft, 1)</l>
+<l>select_obj (Image, ImageRight, 2) </l>
+<l>select_obj (Image, ImageTop, 3) </l>
+<l>select_obj (Image, ImageDown, 4)</l>
+<l>crop_image (ImageTop, ImageLeft, ImageRight, ImageDown, ImageStickTopImage, ImageStickLeftImage, ImageStickRightImage, ImageStickDownImage, Top, Left, Right, Down)</l>
+<l>crop_part (ImageTop, ImageTopPart, 84, 0, 3200, 20000)</l>
+<l>crop_part (ImageLeft, ImageLeftPart, 42, 0, 3200, 20000)</l>
+<l>crop_part (ImageRight, ImageRightPart, 80, 0, 3200, 20000)</l>
+<l>crop_part (ImageDown, ImageDownPart, 0, 0, 3200, 20000)</l>
+<l>SaveImage:=Image</l>
+<l>DispImage:=ImageStickTopImage</l>
+<l>create_dict(ResultDictHandle)</l>
+<c>*测棒长*   </c>
+<l>Stick_Length (ImageLeft, Length)</l>
+<l>set_dict_tuple (ResultDictHandle, '棒长', Length)</l>
+<l>fRatioT := 0.015</l>
+<l>if (Spec_number=5)</l>
+<l>    fMinSubValue := 0.003</l>
+<l>else</l>
+<l>    fMinSubValue := 0.003 </l>
+<l>endif</l>
+<c></c>
+<l>sub:=[]</l>
+<l>sub0:=[]</l>
+<l>djsub:=[]</l>
+<l>djsub0:=[]</l>
+<l>T:=[]</l>
+<l>R:=[]</l>
+<l>L:=[]</l>
+<l>D:=[]</l>
+<l>TH:=[]</l>
+<l>LH:=[]</l>
+<l>RH:=[]</l>
+<l>DH:=[]</l>
+<l>D1:=[]</l>
+<l>DT:=[]</l>
+<l>DL:=[]</l>
+<l>DR:=[]</l>
+<l>DD:=[]</l>
+<c></c>
+<c></c>
+<l>Tangle:=[]</l>
+<l>Langle:=[]</l>
+<l>Rangle:=[]</l>
+<l>Dangle:=[]</l>
+<c></c>
+<l>TH:=[]</l>
+<l>DH:=[]</l>
+<l>LH:=[]</l>
+<l>RH:=[]</l>
+<l>NsubA:=[]</l>
+<l>NsubB:=[]</l>
+<l>NsubC:=[]</l>
+<l>NsubD:=[]</l>
+<c></c>
+<l>u:=[]</l>
+<l>get_image_size (ImageTop, Width, Height)</l>
+<c></c>
+<l>Juge_Step (Length, step)</l>
+<l>threshold (ImageTopPart, Region, -50, 50)</l>
+<l>opening_rectangle1 (Region, RegionOpening, 500, 500)</l>
+<l>region_features (RegionOpening, 'row1', Value1)</l>
+<l>region_features (RegionOpening, 'row2', Value2)</l>
+<c></c>
+<l>start:=int(Value1/10)*10</l>
+<l>end:=int(Value2/10)*10+10</l>
+<l>crop_part (ImageTopPart, ImageTopPart, start, 0, 3200, end-start)</l>
+<l>crop_part (ImageLeftPart, ImageLeftPart, start, 0, 3200, end-start)</l>
+<l>crop_part (ImageRightPart, ImageRightPart, start, 0, 3200, end-start)</l>
+<l>crop_part (ImageDownPart, ImageDownPart, start, 0, 3200, end-start)</l>
+<l>L:=end-start</l>
+<l>for Index := 0 to L by step</l>
+<l>    try    </l>
+<l>        *Index:=3000       </l>
+<l>        checkChamferDiagOnlyByHeigh (ImageTopPart, fRatioT, fMinSubValue, Index, Top, BTcolumnbegin, BTcolumnend, BTBeginHeight, BTEndHeight, TopDiag, angleTop, TopHeight)</l>
+<l>        checkChamferDiagOnlyByHeigh (ImageLeftPart, fRatioT, fMinSubValue, Index, Left, BLcolumnbegin, BLcolumnend, BLBeginHeight, BLEndHeight, LeftDiag, angleLeft, LeftHeight)</l>
+<l>        checkChamferDiagOnlyByHeigh (ImageRightPart, fRatioT, fMinSubValue, Index, Right, BRcolumnbegin, BRcolumnend, BRBeginHeight, BREndHeight, RightDiag, angleRight, RightHeight)</l>
+<l>        checkChamferDiagOnlyByHeigh (ImageDownPart, fRatioT, fMinSubValue, Index, Down, BDcolumnbegin, BDcolumnend, BDBeginHeight, BDEndHeight, DownDiag, angleDown, DownHeight)</l>
+<c></c>
+<c>        </c>
+<l>        XLD_Edge_COPY_1 (ImageTopPart, SelectedXLDT, Index)</l>
+<l>        XLD_Edge_COPY_1 (ImageLeftPart, SelectedXLDL, Index)</l>
+<l>        XLD_Edge_COPY_1 (ImageRightPart, SelectedXLDR, Index)</l>
+<l>        XLD_Edge_COPY_1 (ImageDownPart, SelectedXLDD, Index)</l>
+<l>        Point_COPY_3 (SelectedXLDT, RowT, ColumnT, ARCLT)</l>
+<l>        Point_COPY_3 (SelectedXLDD, RowD, ColumnD, ARCLD)</l>
+<l>        Point_COPY_3 (SelectedXLDL, RowL, ColumnL, ARCLL)</l>
+<l>        Point_COPY_3 (SelectedXLDR, RowR, ColumnR, ARCLR)</l>
+<c>        </c>
+<l>        B:=[ColumnT*0.015,RowT*0.015]</l>
+<l>        A:=[ColumnT*0.015,RowT*0.015]</l>
+<c>        </c>
+<l>        D:=[ColumnD*0.015,RowD*0.015]</l>
+<l>        C:=[ColumnD*0.015,RowD*0.015]</l>
+<c>        </c>
+<l>        F:=[ColumnL*0.015,RowL*0.015]</l>
+<l>        E:=[ColumnL*0.015,RowL*0.015]</l>
+<c>        </c>
+<l>        H:=[ColumnR*0.015,RowR*0.015]</l>
+<l>        G:=[ColumnR*0.015,RowR*0.015]</l>
+<c>        </c>
+<l>        DT:=[DT,ARCLT]</l>
+<l>        DL:=[DL,ARCLL]</l>
+<l>        DR:=[DR,ARCLR]</l>
+<l>        DD:=[DD,ARCLD]</l>
+<c>        </c>
+<l>        Tangle:=[Tangle,angleTop]</l>
+<l>        Langle:=[Langle,angleLeft]</l>
+<l>        Rangle:=[Rangle,angleRight]</l>
+<l>        Dangle:=[Dangle,angleDown]</l>
+<c> </c>
+<l>        distance_pl (A[1],A[0], 1000, 0, 0, 1000, Distance)</l>
+<l>        distance_pl (D[1],D[0], 0, -1000, 1000, 0, Distance1)</l>
+<c>        </c>
+<l>        distance_pl (C[1],C[0], 1000, 0, 0, 1000, Distance2)</l>
+<l>        distance_pl (F[1],F[0], 0, -1000, 1000, 0, Distance7)        </l>
+<c>        </c>
+<l>        distance_pl (B[1],B[0], -782-200, 727-200, -144-200, 1354-200, Distance3)</l>
+<l>        distance_pl (G[1],G[0], -136+200, 1965+200, -909+200, 2677+200, Distance4)</l>
+<c>        </c>
+<l>*         distance_pl (B[1],B[0], -782-200, 727-200, -144-200, 1354-200, Distance3)</l>
+<l>*         distance_pl (G[1],G[0], -136-200, 1965-200, -909-200, 2677-200, Distance4)</l>
+<c>        </c>
+<l>        distance_pl (E[1],E[0], 53+200, 1517+200, -692+200, 2251+200, Distance5)</l>
+<l>        distance_pl (H[1],H[0], 1095-200, 417-200, -75-200, 1517-200, Distance6)</l>
+<c>        </c>
+<c>        </c>
+<l>             subA:=Distance3+Distance4//A边长</l>
+<l>         subB:=Distance+Distance1//B边长</l>
+<l>        subC:=Distance2+Distance7//C边长  </l>
+<c>        </c>
+<c>   </c>
+<l>        subD:=Distance5+Distance6//D边长</l>
+<c>        </c>
+<c>        </c>
+<l>        dj:=TopHeight+LeftHeight</l>
+<l>        dj0:=DownHeight+RightHeight</l>
+<l>        get_dict_tuple (DictHandle, '切片模板', modle)</l>
+<l>        tuple_string (Index+start, '.1i', String)</l>
+<l>        get_dict_tuple (modle, String, Tuple)</l>
+<l>        get_dict_tuple (Tuple, 'A面补偿', Tuple1)</l>
+<l>        get_dict_tuple(Tuple, 'B面补偿', Tuple2)       </l>
+<l>        get_dict_tuple (Tuple, 'C面补偿', Tuple3)</l>
+<l>        get_dict_tuple(Tuple, 'D面补偿', Tuple4)</l>
+<l>        get_dict_tuple (Tuple, '对角1补偿', Tuple10)</l>
+<l>        get_dict_tuple(Tuple, '对角2补偿', Tuple11)</l>
+<l>        try</l>
+<l>            get_dict_tuple(Tuple, 'X_偏移补偿', Tuple23)</l>
+<l>            u:=[u,Distance3-Tuple23] </l>
+<c>            </c>
+<l>        catch (Exception)</l>
+<l>        endtry</l>
+<l>        if (Tuple1=0 or Tuple2=0 or Tuple3=0 or Tuple4=0)</l>
+<l>            continue </l>
+<l>        endif</l>
+<l>        NsubA:=[NsubA,subA-Tuple1]</l>
+<l>        NsubB:=[NsubB,subB-Tuple2]</l>
+<l>        NsubC:=[NsubC,subC-Tuple3]</l>
+<l>        NsubD:=[NsubD,subD-Tuple4]</l>
+<c>        </c>
+<l>        DBC:=dj-Tuple10</l>
+<l>        DBC0:=dj0-Tuple11</l>
+<c>        </c>
+<c>        </c>
+<l>        djsub:=[djsub,DBC]</l>
+<l>        djsub0:=[djsub0,DBC0]</l>
+<c>        </c>
+<l>        TH:=[TH,TopHeight]</l>
+<l>        DH:=[DH,DownHeight]</l>
+<l>        LH:=[LH,LeftHeight]</l>
+<l>        RH:=[RH,RightHeight]</l>
+<l>    catch (Exception)</l>
+<l>        continue</l>
+<l>    endtry</l>
+<l>endfor</l>
+<l>try</l>
+<c>  </c>
+<c></c>
+<c>    *端面垂直度*</c>
+<c>    </c>
+<l>    Perpendicularity (ImageLeft, ImageRight, ImageTop, ImageDown, ResultDictHandle, u, Max2, Max1)</l>
+<c>    </c>
+<c>    *边长*</c>
+<l>    Edge_Length (DictHandle, ResultDictHandle, NsubA, NsubB, NsubC, NsubD)</l>
+<c>    </c>
+<c>    *对角线*</c>
+<l>    Diagonal_Measure (djsub, djsub0, DictHandle, ResultDictHandle)</l>
+<c>    </c>
+<c>    </c>
+<c>*     Diagonal_Result (TH, DH, LH, RH, DictHandle, ResultDictHandle)</c>
+<c>    </c>
+<c>    *倒角长度*</c>
+<l>    Arc_Result (DT, DR, DL, DD, ResultDictHandle)</l>
+<c>    </c>
+<c>    *边垂直度*</c>
+<l>    Angle_Result (Tangle, Langle, Rangle, Dangle, ResultDictHandle)</l>
+<c>    </c>
+<c>    </c>
+<c>    </c>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>if (Spec_number=5)</l>
+<l>    try</l>
+<c>        </c>
+<l>        get_dict_tuple (ResultDictHandle, '对角1', dj1)</l>
+<l>        get_dict_tuple (ResultDictHandle, '对角2', dj2)</l>
+<l>        get_dict_tuple (ResultDictHandle, 'D_边长', dbc)</l>
+<l>        tuple_abs ((dj1-dj2), Abs)</l>
+<l>        if (Abs&gt;0.03)</l>
+<l>            dbc:=dbc-(dj1-dj2)</l>
+<l>            set_dict_tuple (ResultDictHandle, 'D_边长', dbc)  </l>
+<l>            set_dict_tuple (ResultDictHandle, '对角1', dj2)  </l>
+<l>        endif </l>
+<l>    catch (Exception)</l>
+<l>    endtry </l>
+<l>endif</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="Run_Stick">
+<parameters>
+<parameter id="DispImage"/>
+<parameter id="Image"/>
+<parameter id="ResourceDictHandle"/>
+<parameter id="ResultDictHandle"/>
+<parameter id="end"/>
+<parameter id="start"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Remove_Ex">
+<interface>
+<ic>
+<par name="AS" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="ASOut" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>ASOut := AS</l>
+<l>if (ASOut&gt;50)</l>
+<l>    ASOut := ASOut-50</l>
+<l>elseif (ASOut&lt;-50)</l>
+<l>    ASOut := ASOut+50</l>
+<l>endif</l>
+<l>return ()</l>
+</body>
+<docu id="Remove_Ex">
+<parameters>
+<parameter id="AS"/>
+<parameter id="ASOut"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Juge_Step">
+<interface>
+<ic>
+<par name="Length" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="step" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>if (Length&lt;300)</l>
+<l>    step := 20</l>
+<l>elseif (Length&lt;400)</l>
+<l>    step := 30</l>
+<l>elseif (Length&lt;500)</l>
+<l>    step := 50</l>
+<l>elseif (Length&lt;600)</l>
+<l>    step := 70</l>
+<l>elseif (Length&lt;700)</l>
+<l>    step := 80</l>
+<l>elseif (Length&lt;800)</l>
+<l>    step := 90</l>
+<l>else</l>
+<l>    step := 100</l>
+<l>endif</l>
+<l>return ()</l>
+</body>
+<docu id="Juge_Step">
+<parameters>
+<parameter id="Length"/>
+<parameter id="step"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Down_Revision">
+<interface>
+<io>
+<par name="SelectedXLDD" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="ContoursSplit" base_type="iconic" dimension="0"/>
+</oo>
+<oc>
+<par name="Mean" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, 2.367, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDD, ContoursAffineTransD, HomMat2DRotate)</l>
+<c></c>
+<l>union_adjacent_contours_xld (ContoursAffineTransD, UnionContours, 10, 1, 'attr_keep')</l>
+<l>get_contour_xld (UnionContours, Row1, Col1)</l>
+<c></c>
+<c>* 用于将直边拉成直角（暂时硬补偿）*</c>
+<l>for Index := 0 to |Col1|-1 by 1</l>
+<l>    Col1[Index] := Col1[Index]*1-0.002*Index</l>
+<l>endfor</l>
+<c>* ********************</c>
+<l>gen_contour_polygon_xld (Contour, Row1, Col1)</l>
+<c></c>
+<l>segment_contours_xld (Contour, ContoursSplit, 'lines_circles', 15, 1, 1)</l>
+<c></c>
+<l>select_shape_xld (ContoursSplit, SelectedXLDD, 'row2', 'and', -10500, -360)</l>
+<l>select_shape_xld (SelectedXLDD, SelectedXLD1, ['rect2_phi','contlength'], 'and', [-3,300], [-1,9000000])</l>
+<l>union_adjacent_contours_xld (SelectedXLD1, UnionContours, 10, 1, 'attr_keep')</l>
+<l>* get_contour_xld (UnionContours, Row1, Col1)</l>
+<l>* tuple_mean (Col1, Mean)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="Down_Revision">
+<parameters>
+<parameter id="ContoursSplit"/>
+<parameter id="Mean"/>
+<parameter id="SelectedXLDD"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Left_Revision">
+<interface>
+<io>
+<par name="SelectedXLDL" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="ContoursSplit" base_type="iconic" dimension="0"/>
+</oo>
+<oc>
+<par name="Mean" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, -2.3490211, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDL, ContoursAffineTransL, HomMat2DRotate)</l>
+<l>union_adjacent_contours_xld (ContoursAffineTransL, UnionContours, 1000, 1, 'attr_keep')</l>
+<l>get_contour_xld (UnionContours, Row1, Col1)</l>
+<c></c>
+<c>* 用于将直边拉成直角（暂时硬补偿）-影响边垂直度的值*</c>
+<l>for Index := 0 to |Col1|-1 by 1</l>
+<l>    Col1[Index] := Col1[Index]*1-0.00*Index</l>
+<l>endfor</l>
+<c>* ********************</c>
+<l>gen_contour_polygon_xld (Contour, Row1, Col1)</l>
+<c></c>
+<l>segment_contours_xld (Contour, ContoursSplit, 'lines_circles', 15, 1, 1)</l>
+<c></c>
+<c></c>
+<l>select_shape_xld (ContoursSplit, SelectedXLDD, 'row2', 'and', 1300, 1580)</l>
+<l>select_shape_xld (SelectedXLDD, SelectedXLD1, ['rect2_phi','contlength'], 'and', [-3,50], [-1.3,9000000])</l>
+<l>union_adjacent_contours_xld (SelectedXLD1, UnionContours, 10, 1, 'attr_keep')</l>
+<l>* get_contour_xld (UnionContours, Row1, Col1)</l>
+<l>* tuple_mean (Col1, Mean)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, -1930, 3850, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursSplit, ContoursSplit, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="Left_Revision">
+<parameters>
+<parameter id="ContoursSplit"/>
+<parameter id="Mean"/>
+<parameter id="SelectedXLDL"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Top_Revision">
+<interface>
+<io>
+<par name="SelectedXLDL" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="ContoursSplit" base_type="iconic" dimension="0"/>
+</oo>
+</interface>
+<body>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, 0.78, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDL, ContoursAffineTransL, HomMat2DRotate)</l>
+<l>union_adjacent_contours_xld (ContoursAffineTransL, UnionContours, 1000, 1, 'attr_keep')</l>
+<l>get_contour_xld (UnionContours, Row1, Col1)</l>
+<c></c>
+<c>* 用于将直边拉成直角（暂时硬补偿）-影响边垂直度的值*</c>
+<l>for Index := 0 to |Col1|-1 by 1</l>
+<l>    Col1[Index] := Col1[Index]*1+0.002*Index</l>
+<l>endfor</l>
+<c>* ********************</c>
+<l>gen_contour_polygon_xld (Contour, Row1, Col1)</l>
+<c></c>
+<l>segment_contours_xld (Contour, ContoursSplit, 'lines_circles', 15, 1, 1)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, -5000, -2850, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursSplit, ContoursSplit, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="Top_Revision">
+<parameters>
+<parameter id="ContoursSplit"/>
+<parameter id="SelectedXLDL"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Point">
+<interface>
+<io>
+<par name="ContoursSplitT" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="Row" base_type="ctrl" dimension="0"/>
+<par name="Column" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c></c>
+<l>select_shape_xld (ContoursSplitT, SelectedXLT1, ['rect2_phi','contlength'], 'and', [-0.1,500], [0.1,9000000])</l>
+<l>union_collinear_contours_xld (SelectedXLT1, SelectedXLT1, 1000, 1000, 2, 0.5, 'attr_keep')</l>
+<l>fit_line_contour_xld (SelectedXLT1, 'tukey', -1, 0, 5, 2, Line1Row1, Line1Column1, Line1Row2, Line1Column2, Nr, Nc, Dist)</l>
+<c></c>
+<l>select_shape_xld (ContoursSplitT, SelectedXLT2, ['rect2_phi','contlength'], 'and', [-1.75,300], [-1.35,9000000])</l>
+<c></c>
+<l>select_shape_xld (ContoursSplitT, SelectedXLT21, ['rect2_phi','contlength'], 'and', [1.35,300], [1.75,9000000])</l>
+<l>concat_obj (SelectedXLT2, SelectedXLT21, SelectedXLT2)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>union_collinear_contours_xld (SelectedXLT2, SelectedXLT2, 500, 500, 2, 0.5, 'attr_keep')</l>
+<l>fit_line_contour_xld (SelectedXLT2, 'tukey', -1, 0, 5, 2, Line2Row1Out, Line2Column1Out, Line2Row2Out, Line2Column2Out, Nr, Nc, Dist)</l>
+<c></c>
+<l>intersection_lines (Line1Row1, Line1Column1, Line1Row2, Line1Column2, Line2Row1Out, Line2Column1Out, Line2Row2Out, Line2Column2Out, Row, Column, IsOverlapping)</l>
+<l>return ()</l>
+</body>
+<docu id="Point">
+<parameters>
+<parameter id="Column"/>
+<parameter id="ContoursSplitT"/>
+<parameter id="Row"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="XLD_Edge">
+<interface>
+<io>
+<par name="ImageTopPart" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="SelectedXLDT" base_type="iconic" dimension="0"/>
+</oo>
+<ic>
+<par name="Index" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<l>gen_rectangle1 (Rectangle5, Index, 0, Index, 3199)</l>
+<l>* threshold (ImageTopPart, Region1, -15, 15)</l>
+<l>* intersection (Rectangle5, Region1, RegionIntersection)</l>
+<l>* reduce_domain (ImageTopPart, RegionIntersection, ImageReduced)</l>
+<l>* crop_domain (ImageReduced, ImagePart)</l>
+<l>get_region_points (Rectangle5, Rows5, Columns5)</l>
+<l>get_grayval (ImageTopPart, Rows5, Columns5, grayvalues5)</l>
+<l>try</l>
+<l>    tuple_find (grayvalues5, -10000, Indices)</l>
+<l>    grayvalues5[Indices] := 10000</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<l>tuple_gen_sequence (0, (|grayvalues5|-1), 1, Sequence1)</l>
+<l>gen_contour_polygon_xld (Contour1, -grayvalues5/0.015+50, Sequence1)</l>
+<c></c>
+<c></c>
+<l>segment_contours_xld (Contour1, ContoursSplit, 'lines_circles', 15, 1, 1)</l>
+<l>select_shape_xld (ContoursSplit, SelectedXLD, 'phi', 'and', -3.14, 3.14)</l>
+<l>select_shape_xld (SelectedXLD, SelectedXLD, 'contlength', 'and', 0, 10000)</l>
+<l>select_shape_xld (SelectedXLD, SelectedXLDT, 'row1', 'and', -3000, 3200)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="XLD_Edge">
+<parameters>
+<parameter id="ImageTopPart"/>
+<parameter id="Index"/>
+<parameter id="SelectedXLDT"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Right_Rision">
+<interface>
+<io>
+<par name="SelectedXLDL" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="ContoursSplit" base_type="iconic" dimension="0"/>
+</oo>
+</interface>
+<body>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, -0.75135695, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDL, ContoursAffineTransL, HomMat2DRotate)</l>
+<l>union_adjacent_contours_xld (ContoursAffineTransL, UnionContours, 1000, 1, 'attr_keep')</l>
+<l>get_contour_xld (UnionContours, Row1, Col1)</l>
+<c></c>
+<c>* 用于将直边拉成直角（暂时硬补偿）-影响边垂直度的值*</c>
+<l>for Index := 0 to |Col1|-1 by 1</l>
+<l>    Col1[Index] := Col1[Index]*1+0.00*Index</l>
+<l>endfor</l>
+<c>* ********************</c>
+<l>gen_contour_polygon_xld (Contour, Row1, Col1)</l>
+<c></c>
+<l>segment_contours_xld (Contour, ContoursSplit, 'lines_circles', 15, 1, 1)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, -7227, 1703, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursSplit, ContoursSplit, HomMat2DTranslate)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="Right_Rision">
+<parameters>
+<parameter id="ContoursSplit"/>
+<parameter id="SelectedXLDL"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Edge_C">
+<interface>
+<io>
+<par name="SelectedXLDD" base_type="iconic" dimension="0"/>
+<par name="SelectedXLDL" base_type="iconic" dimension="0"/>
+<par name="SelectedXLDT" base_type="iconic" dimension="0"/>
+<par name="SelectedXLDR" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="Length_A" base_type="ctrl" dimension="0"/>
+<par name="Length_B" base_type="ctrl" dimension="0"/>
+<par name="Length_C" base_type="ctrl" dimension="0"/>
+<par name="Length_D" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>try</l>
+<c></c>
+<l>Down_Revision (SelectedXLDD, ContoursSplitD, MeanD)</l>
+<c></c>
+<l>Left_Revision (SelectedXLDL, ContoursSplitL, MeanL)</l>
+<c></c>
+<l>Top_Revision (SelectedXLDT, ContoursSplitT)</l>
+<c></c>
+<l>Right_Rision (SelectedXLDR, ContoursSplitR)</l>
+<c></c>
+<c></c>
+<l>Point (ContoursSplitT, RowT, ColumnT)</l>
+<l>Point (ContoursSplitD, RowD, ColumnD)</l>
+<l>Point (ContoursSplitL, RowL, ColumnL)</l>
+<l>Point (ContoursSplitR, RowR, ColumnR)</l>
+<c></c>
+<l>    Length_A := (-ColumnT+ColumnL)*0.015</l>
+<l>    Length_B := (-RowR+RowL)*0.015</l>
+<l>    Length_C := (-ColumnD+ColumnR)*0.015</l>
+<l>    Length_D := (-RowT+RowD)*0.015</l>
+<c></c>
+<c></c>
+<c></c>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<c></c>
+</body>
+<docu id="Edge_C">
+<parameters>
+<parameter id="Length_A"/>
+<parameter id="Length_B"/>
+<parameter id="Length_C"/>
+<parameter id="Length_D"/>
+<parameter id="SelectedXLDD"/>
+<parameter id="SelectedXLDL"/>
+<parameter id="SelectedXLDR"/>
+<parameter id="SelectedXLDT"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="XLD_Edge_COPY_1">
+<interface>
+<io>
+<par name="ImageTopPart" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="SelectedXLDT" base_type="iconic" dimension="0"/>
+</oo>
+<ic>
+<par name="Index" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<l>gen_rectangle1 (Rectangle5, Index, 0, Index, 3199)</l>
+<l>* threshold (ImageTopPart, Region1, -15, 15)</l>
+<l>* intersection (Rectangle5, Region1, RegionIntersection)</l>
+<l>* reduce_domain (ImageTopPart, RegionIntersection, ImageReduced)</l>
+<l>* crop_domain (ImageReduced, ImagePart)</l>
+<l>get_region_points (Rectangle5, Rows5, Columns5)</l>
+<l>get_grayval (ImageTopPart, Rows5, Columns5, grayvalues5)</l>
+<l>try</l>
+<l>    tuple_find (grayvalues5, -10000, Indices)</l>
+<l>    grayvalues5[Indices] := 0</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<l>*grayvalues5:=grayvalues5/0.015</l>
+<l>tuple_gen_sequence (0, (|grayvalues5|-1), 1, Sequence1)</l>
+<l>gen_contour_polygon_xld (Contour1, -grayvalues5/0.015+50, Sequence1)</l>
+<c></c>
+<c></c>
+<l>segment_contours_xld (Contour1, ContoursSplit, 'lines_circles', 15, 1, 1)</l>
+<l>select_shape_xld (ContoursSplit, SelectedXLD, 'phi', 'and', -3.14, 3.14)</l>
+<l>select_shape_xld (SelectedXLD, SelectedXLD, 'contlength', 'and', 0, 10000)</l>
+<l>select_shape_xld (SelectedXLD, SelectedXLDT, 'row1', 'and', -3000, 3200)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="XLD_Edge_COPY_1">
+<parameters>
+<parameter id="ImageTopPart"/>
+<parameter id="Index"/>
+<parameter id="SelectedXLDT"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Point_COPY_3">
+<interface>
+<io>
+<par name="ContoursSplitT" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="Row" base_type="ctrl" dimension="0"/>
+<par name="Column" base_type="ctrl" dimension="0"/>
+<par name="ARCL" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>try</l>
+<c>    </c>
+<c></c>
+<l>    select_shape_xld (ContoursSplitT, SelectedXLT1, ['rect2_phi','contlength'], 'and', [-0.9,400], [-0.6,9000000])</l>
+<l>union_collinear_contours_xld (SelectedXLT1, SelectedXLT1, 1000, 1000, 2, 0.5, 'attr_keep')</l>
+<l>fit_line_contour_xld (SelectedXLT1, 'tukey', -1, 0, 5, 2, Line1Row1, Line1Column1, Line1Row2, Line1Column2, Nr, Nc, Dist)</l>
+<c></c>
+<l>select_shape_xld (ContoursSplitT, SelectedXLT2, ['rect2_phi','contlength'], 'and', [0.6,300], [0.9,9000000])</l>
+<c></c>
+<l>union_collinear_contours_xld (SelectedXLT2, SelectedXLT2, 500, 500, 2, 0.5, 'attr_keep')</l>
+<l>fit_line_contour_xld (SelectedXLT2, 'tukey', -1, 0, 5, 2, Line2Row1, Line2Column1, Line2Row2, Line2Column2, Nr, Nc, Dist)</l>
+<c></c>
+<c></c>
+<l>select_shape_xld (ContoursSplitT, SelectedXLT3, ['rect2_phi','contlength'], 'and', [-0.2,40], [0.2,9000000])</l>
+<l>select_shape_xld (SelectedXLT3, SelectedXLT3, 'column1', 'and', 500, 2500)</l>
+<l>union_collinear_contours_xld (SelectedXLT3, SelectedXLT3, 500, 500, 2, 0.5, 'attr_keep')</l>
+<l>fit_line_contour_xld (SelectedXLT3, 'tukey', -1, 0, 5, 2, Line3Row1, Line3Column1, Line3Row2, Line3Column2, Nr, Nc, Dist)</l>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<l>intersection_lines (Line1Row1, Line1Column1, Line1Row2, Line1Column2, Line3Row1, Line3Column1, Line3Row2, Line3Column2, Row1, Column1, IsOverlapping)</l>
+<c></c>
+<l>intersection_lines (Line3Row1, Line3Column1, Line3Row2, Line3Column2, Line2Row1, Line2Column1, Line2Row2, Line2Column2, Row2, Column2, IsOverlapping)</l>
+<c></c>
+<l>intersection_lines (Line1Row1, Line1Column1, Line1Row2, Line1Column2, Line2Row1, Line2Column1, Line2Row2, Line2Column2, Row, Column, IsOverlapping)</l>
+<c></c>
+<c></c>
+<l>distance_pp (Row1, Column1, Row2, Column2, Distance)</l>
+<l>ARCL:=Distance*0.015</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<l>return ()</l>
+</body>
+<docu id="Point_COPY_3">
+<parameters>
+<parameter id="ARCL"/>
+<parameter id="Column"/>
+<parameter id="ContoursSplitT"/>
+<parameter id="Row"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

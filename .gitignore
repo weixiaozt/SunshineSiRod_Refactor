@@ -1,0 +1,42 @@
+# Visual Studio / .NET build output
+.vs/
+**/[Bb]in/**
+**/[Oo]bj/**
+**/packages/**
+
+# Keep HALCON scripts and runtime configuration that currently live under bin.
+!Square_Sunshine/bin/
+!Square_Sunshine/bin/x64/
+!Square_Sunshine/bin/x64/Release/
+!Square_Sunshine/bin/x64/Release/*.hdev
+!Square_Sunshine/bin/x64/Release/*.json
+!Square_Sunshine/bin/x64/Release/*.ini
+!Square_Sunshine/bin/x64/Release/*.config
+
+# Large acquisition / generated image data
+*.hobj
+*.tif
+*.tiff
+*.bmp
+*.raw
+
+# Native/runtime binaries
+*.dll
+*.exe
+*.pdb
+*.lib
+*.exp
+
+# Python caches and generated measurement outputs
+__pycache__/
+*.py[cod]
+tools/*_measure.csv
+tools/*_check.csv
+image/script/*_results*.csv
+
+# Local logs and temporary files
+*.log
+*.tmp
+*.bak
+*.user
+*.suo

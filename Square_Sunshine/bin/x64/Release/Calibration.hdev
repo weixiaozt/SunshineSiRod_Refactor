@@ -1,0 +1,2219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="23.11.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<l>read_dict ('./规格.json', [], [], ResourceDictHandle)</l>
+<c></c>
+<l>read_object (Image,'D:/Image_risen/2026年3月12日/3/0002_3/14_57.hobj')</l>
+<l>create_dict (DictHandle)</l>
+<l>BD (Image, DictHandle2)</l>
+<c>*边长*</c>
+<l>set_dict_tuple (DictHandle, '切片模板', DictHandle2)</l>
+<c></c>
+<c></c>
+<l>*create_dict (ResourceDictHandle)</l>
+<l>get_dict_tuple (ResourceDictHandle,'规格27' , Tuple)</l>
+<l>get_dict_tuple (Tuple,'切片模板' , Tuple1)</l>
+<l>set_dict_tuple (Tuple, '切片模板', DictHandle2)</l>
+<c></c>
+<l>set_dict_tuple (ResourceDictHandle,'规格27' , Tuple)</l>
+<c></c>
+<l>set_dict_tuple (ResourceDictHandle, '规格7', DictHandle)</l>
+<l>set_dict_tuple (ResourceDictHandle, '规格'+Index1, DictHandle1)</l>
+<l>Init_Dict (DictHandle1)</l>
+<l>for Index1 := 1 to 50 by 1</l>
+<l>    if (Index1=20)</l>
+<l>        set_dict_tuple (ResourceDictHandle, '规格20', DictHandle)</l>
+<l>        continue</l>
+<l>    endif</l>
+<l>    set_dict_tuple (ResourceDictHandle, '规格'+Index1, DictHandle1)</l>
+<l>endfor</l>
+<l>*dict_to_json (ResourceDictHandle, [], [], JsonString)</l>
+<c></c>
+<l>write_dict (ResourceDictHandle, './规格', 'file_type', 'json')</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="checkChamferDiagOnlyByHeigh">
+<interface>
+<io>
+<par name="ImageReferenceImage" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="fRatioT" base_type="ctrl" dimension="0"/>
+<par name="fMinSubValue" base_type="ctrl" dimension="0"/>
+<par name="Index" base_type="ctrl" dimension="0"/>
+<par name="Start" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="columnbegin" base_type="ctrl" dimension="0"/>
+<par name="columnend" base_type="ctrl" dimension="0"/>
+<par name="BeginHeight" base_type="ctrl" dimension="0"/>
+<par name="EndHeight" base_type="ctrl" dimension="0"/>
+<par name="colslength" base_type="ctrl" dimension="0"/>
+<par name="MeanHeight" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>try</l>
+<l>    ImageHeight := ImageReferenceImage</l>
+<c></c>
+<c></c>
+<l>    get_image_size (ImageHeight, Width, Height)</l>
+<l>    threshold (ImageHeight, RegionLeft, -20, 20)</l>
+<l>    reduce_domain (ImageHeight, RegionLeft, ImageReducedLeft)</l>
+<l>    connection (RegionLeft, ConnectedRegionsLeft)</l>
+<l>    select_shape (ConnectedRegionsLeft, SelectedRegionLeft, 'area', 'and', 100000, 1e10)</l>
+<l>    count_obj (SelectedRegionLeft, NumberLeft)</l>
+<l>    if (NumberLeft &gt; 1)</l>
+<l>        select_obj (SelectedRegionLeft, objselect, 1)</l>
+<l>        smallest_rectangle1 (objselect, Rowhbegin, Columnhbegin, Rowhend, Columnhend)</l>
+<l>    else</l>
+<l>        smallest_rectangle1 (SelectedRegionLeft, Rowhbegin, Columnhbegin, Rowhend, Columnhend)</l>
+<c></c>
+<l>    endif</l>
+<c></c>
+<c></c>
+<c></c>
+<l>    LeftIndexesTmp := []</l>
+<l>    RightIndexesTmp := []</l>
+<l>    meanHeightsTmp := []</l>
+<l>    heightsLTmp := []</l>
+<l>    heightsRTmp := []</l>
+<l>    heightsMTmp := []</l>
+<l>    heightsTmp := []</l>
+<l>    DJHTmp := []</l>
+<l>    meanBeginHeight := 0</l>
+<l>    meanEndHeight := 0</l>
+<l>columnbegin:=[]</l>
+<l>columnend:=[]</l>
+<l>BeginHeight:=[]</l>
+<l>EndHeight:=[]</l>
+<l>colslength:=[]</l>
+<l>MeanHeight:=[]</l>
+<l>    try</l>
+<l>        gen_rectangle1 (Rectangle, Index, 0, Index, 3000)</l>
+<l>        intersection (Rectangle, RegionLeft, RegionIntersection)</l>
+<l>        reduce_domain (ImageReducedLeft, RegionIntersection, ImageReducedLeftN)</l>
+<l>        get_region_points (ImageReducedLeftN, Rows, Columns)</l>
+<l>        min_max_gray (RegionIntersection, ImageReducedLeft, 0, Min, Max, Range)</l>
+<l>        threshold (ImageReducedLeftN, RegionSelect, Max - 0.25, Max)</l>
+<c></c>
+<l>        get_region_points (RegionSelect, Rows1, Columns1)</l>
+<c></c>
+<l>        if (|Rows1| &lt; 50)</l>
+<l>            return ()</l>
+<l>        endif</l>
+<l>        get_grayval (ImageReducedLeftN, Rows1, Columns1, grayvalues)</l>
+<l>        columntmp := Columns1[0]</l>
+<l>        numvalid := 0</l>
+<l>        while (true)</l>
+<l>            numvalid := 0</l>
+<l>            get_grayval (ImageReducedLeftN, [Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0]], [columntmp, columntmp + 1 , columntmp + 2, columntmp + 3, columntmp + 4, columntmp + 5, columntmp + 6, columntmp + 7, columntmp + 8, columntmp + 9], grayvals)</l>
+<l>            IndexTmp := 0</l>
+<l>            tuple_abs (grayvals[IndexTmp] - grayvals[IndexTmp + 1], Absvf)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 1] - grayvals[IndexTmp + 2], Absvs)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 2] - grayvals[IndexTmp + 3], Absvt)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 3] - grayvals[IndexTmp + 4], Absvfou)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 4] - grayvals[IndexTmp + 5], Absvfif)</l>
+<c></c>
+<c></c>
+<l>            if (Absvf &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c></c>
+<l>            if (Absvs &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c></c>
+<l>            if (Absvt &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c></c>
+<l>            if (Absvfou &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c></c>
+<l>            if (Absvfif &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c></c>
+<c></c>
+<c></c>
+<l>            if (numvalid &gt;= 5)</l>
+<l>                tuple_mean (grayvals, meanBeginHeight)</l>
+<l>                break</l>
+<l>            endif</l>
+<l>            columntmp := columntmp + 3</l>
+<c></c>
+<l>            if (columntmp &gt; Columns1[|Columns1| - 1] - 10)</l>
+<l>                break</l>
+<l>            endif</l>
+<l>        endwhile</l>
+<l>        columnbegin := columntmp</l>
+<c></c>
+<l>        columntmp := Columns1[|Columns1| - 1]</l>
+<l>        while (true)</l>
+<l>            numvalid := 0</l>
+<l>            get_grayval (ImageReducedLeftN, [Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0]], [columntmp, columntmp - 1 , columntmp - 2, columntmp - 3, columntmp - 4, columntmp - 5, columntmp - 6, columntmp - 7, columntmp - 8, columntmp - 9], grayvals)</l>
+<l>            IndexTmp := 0</l>
+<l>            tuple_abs (grayvals[IndexTmp] - grayvals[IndexTmp + 1], Absvf)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 1] - grayvals[IndexTmp + 2], Absvs)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 2] - grayvals[IndexTmp + 3], Absvt)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 3] - grayvals[IndexTmp + 4], Absvfou)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 4] - grayvals[IndexTmp + 5], Absvfif)</l>
+<c></c>
+<c></c>
+<l>            if (Absvf &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c></c>
+<l>            if (Absvs &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c></c>
+<l>            if (Absvt &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c></c>
+<l>            if (Absvfou &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c></c>
+<l>            if (Absvfif &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c></c>
+<c></c>
+<c></c>
+<l>            if (numvalid &gt;= 5)</l>
+<l>                tuple_mean (grayvals, meanEndHeight)</l>
+<l>                break</l>
+<l>            endif</l>
+<c></c>
+<l>            columntmp := columntmp - 3</l>
+<c></c>
+<l>            if (columntmp &lt; Columns1[0] + 10)</l>
+<l>                break</l>
+<l>            endif</l>
+<l>        endwhile</l>
+<l>        columnend := columntmp</l>
+<c></c>
+<l>        if (columnend &lt;= columnbegin)</l>
+<l>            return ()</l>
+<l>        endif</l>
+<l>*         columntmp := (columnend + columnbegin) / 2</l>
+<l>*         get_grayval (ImageReducedLeftN, [Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0]], [columntmp - 5,columntmp - 4, columntmp - 3 ,columntmp - 2, columntmp - 1 , columntmp, columntmp + 1, columntmp + 2, columntmp + 3, columntmp + 4], grayvals)</l>
+<c></c>
+<l>        colslength := columnend - columnbegin</l>
+<c></c>
+<l>*         tuple_select_range (grayvalues, columnbegin- Columns1[0], columnbegin- Columns1[0], selectedvals)</l>
+<l>*         tuple_mean (selectedvals, BeginHeight)</l>
+<c></c>
+<l>        tuple_select_range (grayvalues, columnbegin- Columns1[0], columnbegin- Columns1[0], selectedvals)</l>
+<l>        tuple_mean (selectedvals, MeanHeight)</l>
+<c></c>
+<c>    </c>
+<l>         tuple_select_range (grayvalues, columnbegin - Columns1[0]+5, columnbegin - Columns1[0] + colslength / 10, selectedvals)</l>
+<l>         tuple_mean (selectedvals, BeginHeight)</l>
+<c></c>
+<l>        tuple_select_range (grayvalues, columnend - Columns1[0] - colslength / 10, columnend - Columns1[0]-5, selectedvals)</l>
+<l>         tuple_mean (selectedvals, EndHeight)</l>
+<c></c>
+<c></c>
+<l>    catch (Exception)</l>
+<l>    endtry</l>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="checkChamferDiagOnlyByHeigh">
+<parameters>
+<parameter id="BeginHeight"/>
+<parameter id="EndHeight"/>
+<parameter id="ImageReferenceImage"/>
+<parameter id="Index"/>
+<parameter id="MeanHeight"/>
+<parameter id="Start"/>
+<parameter id="colslength"/>
+<parameter id="columnbegin"/>
+<parameter id="columnend"/>
+<parameter id="fMinSubValue"/>
+<parameter id="fRatioT"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="crop_image">
+<interface>
+<io>
+<par name="ImageTop" base_type="iconic" dimension="0"/>
+<par name="ImageLeft" base_type="iconic" dimension="0"/>
+<par name="ImageRight" base_type="iconic" dimension="0"/>
+<par name="ImageDown" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="ImageStickTopImage" base_type="iconic" dimension="0"/>
+<par name="ImageStickLeftImage" base_type="iconic" dimension="0"/>
+<par name="ImageStickRightImage" base_type="iconic" dimension="0"/>
+<par name="ImageStickDownImage" base_type="iconic" dimension="0"/>
+</oo>
+<oc>
+<par name="Top" base_type="ctrl" dimension="0"/>
+<par name="Left" base_type="ctrl" dimension="0"/>
+<par name="Right" base_type="ctrl" dimension="0"/>
+<par name="Down" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c></c>
+<l>get_image_size (ImageTop, Width, Height)</l>
+<c></c>
+<l>threshold (ImageTop, Region, -20, 20)</l>
+<l>opening_rectangle1 (Region, RegionOpening, 50, 50)</l>
+<l>dilation_rectangle1 (RegionOpening, RegionDilation, 3000, 1)</l>
+<l>select_max_object (RegionDilation, RegionDilation)</l>
+<l>get_region_points (RegionDilation, Rows, Columns)</l>
+<l>tuple_min (Rows, Top)</l>
+<l>reduce_domain (ImageTop, RegionDilation, ImageReduced)</l>
+<l>crop_domain (ImageReduced, ImageStickTopImage)</l>
+<l>*gen_rectangle1 (Rectangle, 200, 0, 500, 3199)</l>
+<l>* reduce_domain (ImageStickTopImage, Rectangle, ImageReduced)</l>
+<l>* crop_domain (ImageReduced, ImageStickTopImage)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>threshold (ImageLeft, Region, -20, 20)</l>
+<l>opening_rectangle1 (Region, RegionOpening, 50, 50)</l>
+<l>dilation_rectangle1 (RegionOpening, RegionDilation, 3000, 1)</l>
+<l>select_max_object (RegionDilation, RegionDilation)</l>
+<l>get_region_points (RegionDilation, Rows, Columns)</l>
+<l>tuple_min (Rows, Left)</l>
+<l>reduce_domain (ImageLeft, RegionDilation, ImageReduced)</l>
+<l>crop_domain (ImageReduced, ImageStickLeftImage)</l>
+<l>* gen_rectangle1 (Rectangle, 200, 0, 500, 3199)</l>
+<l>* reduce_domain (ImageStickLeftImage, Rectangle, ImageReduced)</l>
+<l>* crop_domain (ImageReduced, ImageStickLeftImage)</l>
+<c></c>
+<l>threshold (ImageRight, Region, -20, 20)</l>
+<l>opening_rectangle1 (Region, RegionOpening, 500, 500)</l>
+<l>dilation_rectangle1 (RegionOpening, RegionDilation, 3000, 1)</l>
+<l>select_max_object (RegionDilation, RegionDilation)</l>
+<l>get_region_points (RegionDilation, Rows, Columns)</l>
+<l>tuple_min (Rows, Right)</l>
+<l>reduce_domain (ImageRight, RegionDilation, ImageReduced)</l>
+<l>crop_domain (ImageReduced, ImageStickRightImage)</l>
+<l>* gen_rectangle1 (Rectangle, 200, 0, 500, 3199)</l>
+<l>* reduce_domain (ImageStickRightImage, Rectangle, ImageReduced)</l>
+<l>* crop_domain (ImageReduced, ImageStickRightImage)</l>
+<c></c>
+<c></c>
+<l>threshold (ImageDown, Region, -20, 20)</l>
+<l>opening_rectangle1 (Region, RegionOpening, 50, 50)</l>
+<l>dilation_rectangle1 (RegionOpening, RegionDilation, 3000, 1)</l>
+<l>select_max_object (RegionDilation, RegionDilation)</l>
+<l>get_region_points (RegionDilation, Rows, Columns)</l>
+<l>tuple_min (Rows, Down)</l>
+<l>reduce_domain (ImageDown, RegionDilation, ImageReduced)</l>
+<l>crop_domain (ImageReduced, ImageStickDownImage)</l>
+<l>* gen_rectangle1 (Rectangle, 200, 0, 500, 3199)</l>
+<l>* reduce_domain (ImageStickDownImage, Rectangle, ImageReduced)</l>
+<l>* crop_domain (ImageReduced, ImageStickDownImage)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="crop_image">
+<parameters>
+<parameter id="Down"/>
+<parameter id="ImageDown"/>
+<parameter id="ImageLeft"/>
+<parameter id="ImageRight"/>
+<parameter id="ImageStickDownImage"/>
+<parameter id="ImageStickLeftImage"/>
+<parameter id="ImageStickRightImage"/>
+<parameter id="ImageStickTopImage"/>
+<parameter id="ImageTop"/>
+<parameter id="Left"/>
+<parameter id="Right"/>
+<parameter id="Top"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="select_max_object">
+<interface>
+<io>
+<par name="RegionDilation" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="ObjectSelected" base_type="iconic" dimension="0"/>
+</oo>
+</interface>
+<body>
+<l>connection (RegionDilation, ConnectedRegions)</l>
+<l>region_features (ConnectedRegions, 'area', Value)</l>
+<l>tuple_max (Value, Max)</l>
+<l>tuple_find (Value, Max, Indices)</l>
+<l>select_obj (ConnectedRegions, ObjectSelected, Indices+1)</l>
+<l>return ()</l>
+</body>
+<docu id="select_max_object">
+<parameters>
+<parameter id="ObjectSelected"/>
+<parameter id="RegionDilation"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Init_Dict">
+<interface>
+<oc>
+<par name="DictHandle" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>create_dict (DictHandle)</l>
+<l>set_dict_tuple (DictHandle, '边长A_标定', 0) </l>
+<l>set_dict_tuple (DictHandle, '边长B_标定', 0) </l>
+<l>set_dict_tuple (DictHandle, '对角1_标定', 0) </l>
+<l>set_dict_tuple (DictHandle, '对角2_标定', 0) </l>
+<c></c>
+<l>set_dict_tuple (DictHandle, 'A_边长', 0) </l>
+<l>set_dict_tuple (DictHandle, 'B_边长', 0) </l>
+<l>set_dict_tuple (DictHandle, '对角1', 0) </l>
+<l>set_dict_tuple (DictHandle, '对角2', 0)</l>
+<c></c>
+<l>set_dict_tuple (DictHandle, 'A_边长_正容差', 0) </l>
+<l>set_dict_tuple (DictHandle, 'A_边长_负容差', 0) </l>
+<l>set_dict_tuple (DictHandle, 'A_边长_标准值', 0) </l>
+<c></c>
+<l>set_dict_tuple (DictHandle, 'B_边长_正容差', 0) </l>
+<l>set_dict_tuple (DictHandle, 'B_边长_负容差', 0) </l>
+<l>set_dict_tuple (DictHandle, 'B_边长_标准值', 0) </l>
+<c></c>
+<l>set_dict_tuple (DictHandle, '对角线_正容差', 0) </l>
+<l>set_dict_tuple (DictHandle, '对角线_负容差', 0) </l>
+<l>set_dict_tuple (DictHandle, '对角线_标准值', 0) </l>
+<l>return ()</l>
+</body>
+<docu id="Init_Dict">
+<parameters>
+<parameter id="DictHandle"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="BD">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="DictHandle2" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c></c>
+<l>fRatioT:=0.015</l>
+<l>fRatioMean := 0.015</l>
+<l>nSplitIndex := 2</l>
+<l>fMinSubValue:=0.005</l>
+<c></c>
+<l>RowBeginTop := 0</l>
+<l>RowBeginLeft := 0</l>
+<l>RowBeginRight := 0</l>
+<l>RowBeginDown := 0</l>
+<l>LeftIndexesTop := []</l>
+<l>RightIndexesTop := []</l>
+<l>LeftIndexesLeft := []</l>
+<l>RightIndexesLeft := []</l>
+<l>LeftIndexesRight := []</l>
+<l>RightIndexesRight := []</l>
+<l>LeftIndexesDown := []</l>
+<l>RightIndexesDown := []</l>
+<c></c>
+<l>try</l>
+<l>select_obj (Image, ImageLeft, 1)</l>
+<l>mirror_image (ImageLeft, ImageLeft, 'column')</l>
+<l>select_obj (Image, ImageRight, 2) </l>
+<l>mirror_image (ImageRight, ImageRight, 'column')</l>
+<l>select_obj (Image, ImageTop, 3) </l>
+<l>mirror_image (ImageTop, ImageTop, 'column')</l>
+<l>select_obj (Image, ImageDown, 4)</l>
+<l>mirror_image (ImageDown, ImageDown, 'column')</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<l>crop_image_COPY_1 (ImageTop, ImageLeft, ImageRight, ImageDown, ImageStickTopImage, ImageStickLeftImage, ImageStickRightImage, ImageStickDownImage, Top, Left, Right, Down)</l>
+<l>crop_part (ImageTop, ImageTopPart, 32, 0, 3200, 20000)</l>
+<l>crop_part (ImageLeft, ImageLeftPart, 444, 0, 3200, 20000)</l>
+<l>crop_part (ImageRight, ImageRightPart, 0, 0, 3200, 20000)</l>
+<l>crop_part (ImageDown, ImageDownPart, 424, 0, 3200, 20000)</l>
+<l>fRatioT := 0.015</l>
+<c>*210使用0.003，其余使用0.005</c>
+<l>* fMinSubValue := 0.005</l>
+<l>fMinSubValue := 0.003</l>
+<l>sub:=[]</l>
+<l>sub0:=[]</l>
+<l>T:=[]</l>
+<l>R:=[]</l>
+<l>L:=[]</l>
+<l>D:=[]</l>
+<l>TH:=[]</l>
+<l>LH:=[]</l>
+<l>RH:=[]</l>
+<l>DH:=[]</l>
+<l>D1:=[]</l>
+<l>DT:=[]</l>
+<l>DL:=[]</l>
+<l>DR:=[]</l>
+<l>DD:=[]</l>
+<c></c>
+<l>Tangle:=[]</l>
+<l>Langle:=[]</l>
+<l>Rangle:=[]</l>
+<l>Dangle:=[]</l>
+<l>TH:=[]</l>
+<l>DH:=[]</l>
+<l>LH:=[]</l>
+<l>RH:=[]</l>
+<c></c>
+<l>BTB:=[]</l>
+<l>BTE:=[]</l>
+<c></c>
+<l>BDE:=[]</l>
+<l>BDB:=[]</l>
+<c></c>
+<l>BLE:=[]</l>
+<l>BLB:=[]</l>
+<c></c>
+<l>BRB:=[]</l>
+<l>BRE:=[]</l>
+<c></c>
+<l>HTB:=[]</l>
+<l>HDE:=[]</l>
+<l>HDB:=[]</l>
+<l>HLE:=[]</l>
+<l>L111:=[]</l>
+<l>get_image_size (ImageTop, Width, Height)</l>
+<l>create_dict (DictHandle2)</l>
+<l>for Index := 0 to Height-1 by 10</l>
+<l>    *Index:=10000</l>
+<l>    try      </l>
+<l>        XLD_Edge (ImageTopPart, SelectedXLDT, Index)</l>
+<l>        XLD_Edge (ImageLeftPart, SelectedXLDL, Index)</l>
+<l>        XLD_Edge (ImageRightPart, SelectedXLDR, Index)</l>
+<l>        XLD_Edge (ImageDownPart, SelectedXLDD, Index)</l>
+<l>      Edge_A_COPY_3 (SelectedXLDT, SelectedXLDR, A1)</l>
+<c>        </c>
+<l>        Edge_B_COPY_1 (SelectedXLDT, SelectedXLDD, B1)</l>
+<c>        </c>
+<l>        Edge_C_COPY_3 (SelectedXLDL, SelectedXLDD, C1)</l>
+<c>        </c>
+<l>        Edge_D_COPY_3 (SelectedXLDR, SelectedXLDL, D1)</l>
+<c>        </c>
+<c>        </c>
+<l>        DJ_JUGE_COPY_1 (SelectedXLDT, 0.0676, Meant)</l>
+<l>        DJ_JUGE_COPY_1 (SelectedXLDL, 0.05674, Meanl)</l>
+<l>        DJ_JUGE_COPY_1 (SelectedXLDR, -0.07244, Meanr)</l>
+<l>        DJ_JUGE_COPY_1 (SelectedXLDD, -0.09535, Meand)</l>
+<c>        </c>
+<c>        </c>
+<c>        </c>
+<l>        subA:=A1//A边长</l>
+<l>        subB:=B1//B边长</l>
+<l>        subC:=C1//C边长  </l>
+<l>        subD:=D1//D边长</l>
+<c>        </c>
+<l>        djsub:=Meant+Meanl</l>
+<l>        djsub0:=Meand+Meanr</l>
+<l>        create_dict (DictHandle3)</l>
+<l>        set_dict_tuple (DictHandle3, 'A面补偿', subA)</l>
+<l>        set_dict_tuple (DictHandle3, 'B面补偿', subB)</l>
+<l>        set_dict_tuple (DictHandle3, 'C面补偿', subC)</l>
+<l>        set_dict_tuple (DictHandle3, 'D面补偿', subD)</l>
+<l>*         set_dict_tuple (DictHandle3, 'X_偏移补偿', Distance3)</l>
+<l>*         set_dict_tuple (DictHandle3, 'Z_偏移补偿', Distance)</l>
+<l>        set_dict_tuple (DictHandle3, '对角1补偿', djsub)</l>
+<l>        set_dict_tuple (DictHandle3, '对角2补偿', djsub0)</l>
+<l>        set_dict_tuple (DictHandle2, Index, DictHandle3)</l>
+<l>    catch (Exception)</l>
+<l>        create_dict (DictHandle3)</l>
+<l>        set_dict_tuple (DictHandle3, 'A面补偿', 0)</l>
+<l>        set_dict_tuple (DictHandle3, 'B面补偿', 0)</l>
+<l>        set_dict_tuple (DictHandle3, 'C面补偿', 0)</l>
+<l>        set_dict_tuple (DictHandle3, 'D面补偿', 0)</l>
+<l>        set_dict_tuple (DictHandle3, '对角1补偿', 0)</l>
+<l>        set_dict_tuple (DictHandle3, '对角2补偿', 0)</l>
+<l>        set_dict_tuple (DictHandle2, Index, DictHandle3)</l>
+<l>        continue</l>
+<l>    endtry</l>
+<c>    </c>
+<l>endfor</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="BD">
+<parameters>
+<parameter id="DictHandle2"/>
+<parameter id="Image"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="checkChamferDiagOnlyByHeigh_COPY_1">
+<interface>
+<io>
+<par name="ImageReferenceImage" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="fRatioT" base_type="ctrl" dimension="0"/>
+<par name="fMinSubValue" base_type="ctrl" dimension="0"/>
+<par name="Index" base_type="ctrl" dimension="0"/>
+<par name="Start" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="columnbegin" base_type="ctrl" dimension="0"/>
+<par name="columnend" base_type="ctrl" dimension="0"/>
+<par name="BeginHeight" base_type="ctrl" dimension="0"/>
+<par name="EndHeight" base_type="ctrl" dimension="0"/>
+<par name="colslength" base_type="ctrl" dimension="0"/>
+<par name="angle" base_type="ctrl" dimension="0"/>
+<par name="Height" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>try</l>
+<l>    ImageHeight := ImageReferenceImage</l>
+<c>    </c>
+<c>    </c>
+<l>    get_image_size (ImageHeight, Width, Height)</l>
+<l>    threshold (ImageHeight, RegionLeft, -10, 10)</l>
+<l>    opening_rectangle1 (RegionLeft, RegionLeft, 10, 1)</l>
+<l>    reduce_domain (ImageHeight, RegionLeft, ImageReducedLeft)</l>
+<l>*     connection (RegionLeft, ConnectedRegionsLeft)</l>
+<l>*     select_shape (ConnectedRegionsLeft, SelectedRegionLeft, 'area', 'and', 100000, 1e10)</l>
+<l>*     count_obj (SelectedRegionLeft, NumberLeft)</l>
+<l>*     if (NumberLeft &gt; 1)</l>
+<l>*         select_obj (SelectedRegionLeft, objselect, 1)</l>
+<l>*         smallest_rectangle1 (objselect, Rowhbegin, Columnhbegin, Rowhend, Columnhend)</l>
+<l>*     else</l>
+<l>*         smallest_rectangle1 (SelectedRegionLeft, Rowhbegin, Columnhbegin, Rowhend, Columnhend)</l>
+<c>        </c>
+<l>*     endif</l>
+<c>    </c>
+<c>    </c>
+<c>    </c>
+<l>    LeftIndexesTmp := []</l>
+<l>    RightIndexesTmp := []</l>
+<l>    meanHeightsTmp := []</l>
+<l>    heightsLTmp := []</l>
+<l>    heightsRTmp := []</l>
+<l>    heightsMTmp := []</l>
+<l>    heightsTmp := []</l>
+<l>    DJHTmp := []</l>
+<l>    meanBeginHeight := 0</l>
+<l>    meanEndHeight := 0</l>
+<l>    columnbegin:=[]</l>
+<l>    columnend:=[]</l>
+<l>    BeginHeight:=[]</l>
+<l>    EndHeight:=[]</l>
+<l>    colslength:=[]</l>
+<l>    angle:=[]</l>
+<l>    Height:=[]</l>
+<l>    try</l>
+<l>        gen_rectangle1 (Rectangle, Index, 0, Index, 3200)</l>
+<l>        intersection (Rectangle, RegionLeft, RegionIntersection)</l>
+<l>        reduce_domain (ImageReducedLeft, RegionIntersection, ImageReducedLeftN)</l>
+<l>        get_region_points (ImageReducedLeftN, Rows, Columns)</l>
+<l>        get_grayval (ImageReducedLeftN, Rows, Columns, grayv)</l>
+<l>        min_max_gray (RegionIntersection, ImageReducedLeft, 0, Min, Max, Range)</l>
+<l>        threshold (ImageReducedLeftN, RegionSelect, Max - 0.25, Max)</l>
+<c>        </c>
+<l>        get_region_points (RegionSelect, Rows1, Columns1)</l>
+<c>        </c>
+<l>        if (|Rows1| &lt; 50)</l>
+<l>            return ()</l>
+<l>        endif</l>
+<l>        get_grayval (ImageReducedLeftN, Rows1, Columns1, grayvalues)</l>
+<l>        columntmp := Columns1[0]</l>
+<l>        numvalid := 0</l>
+<l>        while (true)</l>
+<l>            numvalid := 0</l>
+<l>            get_grayval (ImageReducedLeftN, [Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0]], [columntmp, columntmp + 1 , columntmp + 2, columntmp + 3, columntmp + 4, columntmp + 5, columntmp + 6, columntmp + 7, columntmp + 8, columntmp + 9], grayvals)</l>
+<l>            IndexTmp := 0</l>
+<l>            tuple_abs (grayvals[IndexTmp] - grayvals[IndexTmp + 1], Absvf)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 1] - grayvals[IndexTmp + 2], Absvs)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 2] - grayvals[IndexTmp + 3], Absvt)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 3] - grayvals[IndexTmp + 4], Absvfou)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 4] - grayvals[IndexTmp + 5], Absvfif)</l>
+<c>            </c>
+<c>            </c>
+<l>            if (Absvf &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c>            </c>
+<l>            if (Absvs &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c>            </c>
+<l>            if (Absvt &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c>            </c>
+<l>            if (Absvfou &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c>            </c>
+<l>            if (Absvfif &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c>            </c>
+<c>            </c>
+<c>            </c>
+<l>            if (numvalid &gt;= 5)</l>
+<l>                tuple_mean (grayvals, meanBeginHeight)</l>
+<l>                break</l>
+<l>            endif</l>
+<l>            columntmp := columntmp + 3</l>
+<c>            </c>
+<l>            if (columntmp &gt; Columns1[|Columns1| - 1] - 10)</l>
+<l>                break</l>
+<l>            endif</l>
+<l>        endwhile</l>
+<l>        columnbegin := columntmp</l>
+<c>        </c>
+<l>        columntmp := Columns1[|Columns1| - 1]</l>
+<l>        while (true)</l>
+<l>            numvalid := 0</l>
+<l>            get_grayval (ImageReducedLeftN, [Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0]], [columntmp, columntmp - 1 , columntmp - 2, columntmp - 3, columntmp - 4, columntmp - 5, columntmp - 6, columntmp - 7, columntmp - 8, columntmp - 9], grayvals)</l>
+<l>            IndexTmp := 0</l>
+<l>            tuple_abs (grayvals[IndexTmp] - grayvals[IndexTmp + 1], Absvf)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 1] - grayvals[IndexTmp + 2], Absvs)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 2] - grayvals[IndexTmp + 3], Absvt)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 3] - grayvals[IndexTmp + 4], Absvfou)</l>
+<l>            tuple_abs (grayvals[IndexTmp + 4] - grayvals[IndexTmp + 5], Absvfif)</l>
+<c>            </c>
+<c>            </c>
+<l>            if (Absvf &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c>            </c>
+<l>            if (Absvs &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c>            </c>
+<l>            if (Absvt &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c>            </c>
+<l>            if (Absvfou &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c>            </c>
+<l>            if (Absvfif &lt; fMinSubValue)</l>
+<l>                numvalid := numvalid + 1</l>
+<l>            endif</l>
+<c>            </c>
+<c>            </c>
+<c>            </c>
+<l>            if (numvalid &gt;= 5)</l>
+<l>                tuple_mean (grayvals, meanEndHeight)</l>
+<l>                break</l>
+<l>            endif</l>
+<c>            </c>
+<l>            columntmp := columntmp - 3</l>
+<c>            </c>
+<l>            if (columntmp &lt; Columns1[0] + 10)</l>
+<l>                break</l>
+<l>            endif</l>
+<l>        endwhile</l>
+<l>        columnend := columntmp</l>
+<c>        </c>
+<l>        if (columnend &lt;= columnbegin)</l>
+<l>            return ()</l>
+<l>        endif</l>
+<l>*         columntmp := (columnend + columnbegin) / 2</l>
+<l>*         get_grayval (ImageReducedLeftN, [Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0],Rows[0]], [columntmp - 5,columntmp - 4, columntmp - 3 ,columntmp - 2, columntmp - 1 , columntmp, columntmp + 1, columntmp + 2, columntmp + 3, columntmp + 4], grayvals)</l>
+<c>        </c>
+<l>        colslength := columnend - columnbegin</l>
+<l>        gen_rectangle1 (Rectangle5, Index, 0, Index, 3199)</l>
+<l>        get_region_points (Rectangle5, Rows5, Columns5)</l>
+<l>        get_grayval (ImageHeight, Rows5, Columns5, grayvalues5)</l>
+<l>        tuple_select_range (grayvalues5, columnbegin-100, columnbegin-5, Selected1)</l>
+<l>        tuple_select_range (grayvalues5, columnend+5, columnend+100, Selected2)</l>
+<l>        tuple_gen_sequence (0, (|Selected1|-1)*0.015, 0.015, Sequence1)</l>
+<l>        gen_contour_polygon_xld (Contour1, Selected1, Sequence1)</l>
+<l>        fit_line_contour_xld (Contour1, 'tukey', -1, 0, 5, 2, RowBegin, ColBegin, RowEnd, ColEnd, Nr1, Nc1, Dist)</l>
+<l>        gen_contour_polygon_xld (Contour5, [RowBegin,RowEnd], [ColBegin,ColEnd])</l>
+<c>        </c>
+<l>        tuple_gen_sequence (0, (|Selected2|-1)*0.015, 0.015, Sequence2)</l>
+<l>        gen_contour_polygon_xld (Contour2, Selected2, Sequence2)</l>
+<l>        fit_line_contour_xld (Contour2, 'tukey', -1, 0, 5, 2, RowBegin, ColBegin, RowEnd, ColEnd, Nr2, Nc2, Dist)</l>
+<l>        gen_contour_polygon_xld (Contour2, [RowBegin,RowEnd], [ColBegin,ColEnd])</l>
+<l>        tuple_abs (Nr1, Abs1)</l>
+<l>        tuple_abs (Nr2, Abs2)</l>
+<l>        tuple_asin (Abs1, ASin1)</l>
+<l>        tuple_asin (Abs2, ASin2)</l>
+<c>        </c>
+<l>        CZ:=ASin1+ASin2</l>
+<l>        angle:=CZ/3.1415926*180</l>
+<c>        </c>
+<l>        tuple_select_range (grayvalues, columnbegin- Columns1[0], columnbegin- Columns1[0]+20, selectedvals)</l>
+<l>        tuple_mean (selectedvals, Height)</l>
+<c>        </c>
+<l>*         tuple_select_range (grayvalues, columnend- Columns1[0]-20, columnend- Columns1[0], selectedvals)</l>
+<l>*         tuple_mean (selectedvals, EndHeight)</l>
+<c>        </c>
+<c>        </c>
+<l>        tuple_select_range (grayvalues, columnbegin - Columns1[0]+5, columnbegin - Columns1[0] + colslength / 10, selectedvals)</l>
+<l>        tuple_mean (selectedvals, BeginHeight)</l>
+<c>        </c>
+<l>        tuple_select_range (grayvalues, columnend - Columns1[0] - colslength / 10, columnend - Columns1[0]-5, selectedvals)</l>
+<l>        tuple_mean (selectedvals, EndHeight)</l>
+<c>        </c>
+<c>        </c>
+<l>    catch (Exception)</l>
+<l>    endtry</l>
+<c>    </c>
+<c>    </c>
+<c>    </c>
+<c>    </c>
+<c>    </c>
+<c>    </c>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="checkChamferDiagOnlyByHeigh_COPY_1">
+<parameters>
+<parameter id="BeginHeight"/>
+<parameter id="EndHeight"/>
+<parameter id="Height"/>
+<parameter id="ImageReferenceImage"/>
+<parameter id="Index"/>
+<parameter id="Start"/>
+<parameter id="angle"/>
+<parameter id="colslength"/>
+<parameter id="columnbegin"/>
+<parameter id="columnend"/>
+<parameter id="fMinSubValue"/>
+<parameter id="fRatioT"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="crop_image_COPY_1">
+<interface>
+<io>
+<par name="ImageTop" base_type="iconic" dimension="0"/>
+<par name="ImageLeft" base_type="iconic" dimension="0"/>
+<par name="ImageRight" base_type="iconic" dimension="0"/>
+<par name="ImageDown" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="ImageStickTopImage" base_type="iconic" dimension="0"/>
+<par name="ImageStickLeftImage" base_type="iconic" dimension="0"/>
+<par name="ImageStickRightImage" base_type="iconic" dimension="0"/>
+<par name="ImageStickDownImage" base_type="iconic" dimension="0"/>
+</oo>
+<oc>
+<par name="Top" base_type="ctrl" dimension="0"/>
+<par name="Left" base_type="ctrl" dimension="0"/>
+<par name="Right" base_type="ctrl" dimension="0"/>
+<par name="Down" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c></c>
+<l>get_image_size (ImageTop, Width, Height)</l>
+<c></c>
+<l>threshold (ImageTop, Region, -20, 20)</l>
+<l>opening_rectangle1 (Region, RegionOpening, 50, 50)</l>
+<l>dilation_rectangle1 (RegionOpening, RegionDilation, 3000, 1)</l>
+<l>select_max_object (RegionDilation, RegionDilation)</l>
+<l>get_region_points (RegionDilation, Rows, Columns)</l>
+<l>tuple_min (Rows, Top)</l>
+<l>reduce_domain (ImageTop, RegionDilation, ImageReduced)</l>
+<l>crop_domain (ImageReduced, ImageStickTopImage)</l>
+<c></c>
+<l>threshold (ImageLeft, Region, -20, 20)</l>
+<l>opening_rectangle1 (Region, RegionOpening, 50, 50)</l>
+<l>dilation_rectangle1 (RegionOpening, RegionDilation, 3000, 1)</l>
+<l>select_max_object (RegionDilation, RegionDilation)</l>
+<l>get_region_points (RegionDilation, Rows, Columns)</l>
+<l>tuple_min (Rows, Left)</l>
+<l>reduce_domain (ImageLeft, RegionDilation, ImageReduced)</l>
+<l>crop_domain (ImageReduced, ImageStickLeftImage)</l>
+<c></c>
+<c></c>
+<l>threshold (ImageRight, Region, -20, 20)</l>
+<l>opening_rectangle1 (Region, RegionOpening, 500, 500)</l>
+<l>dilation_rectangle1 (RegionOpening, RegionDilation, 3000, 1)</l>
+<l>select_max_object (RegionDilation, RegionDilation)</l>
+<l>get_region_points (RegionDilation, Rows, Columns)</l>
+<l>tuple_min (Rows, Right)</l>
+<l>reduce_domain (ImageRight, RegionDilation, ImageReduced)</l>
+<l>crop_domain (ImageReduced, ImageStickRightImage)</l>
+<c></c>
+<c></c>
+<l>threshold (ImageDown, Region, -20, 20)</l>
+<l>opening_rectangle1 (Region, RegionOpening, 50, 50)</l>
+<l>dilation_rectangle1 (RegionOpening, RegionDilation, 3000, 1)</l>
+<l>select_max_object (RegionDilation, RegionDilation)</l>
+<l>get_region_points (RegionDilation, Rows, Columns)</l>
+<l>tuple_min (Rows, Down)</l>
+<l>reduce_domain (ImageDown, RegionDilation, ImageReduced)</l>
+<l>crop_domain (ImageReduced, ImageStickDownImage)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="crop_image_COPY_1">
+<parameters>
+<parameter id="Down"/>
+<parameter id="ImageDown"/>
+<parameter id="ImageLeft"/>
+<parameter id="ImageRight"/>
+<parameter id="ImageStickDownImage"/>
+<parameter id="ImageStickLeftImage"/>
+<parameter id="ImageStickRightImage"/>
+<parameter id="ImageStickTopImage"/>
+<parameter id="ImageTop"/>
+<parameter id="Left"/>
+<parameter id="Right"/>
+<parameter id="Top"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Edge_B">
+<interface>
+<io>
+<par name="SelectedXLDT" base_type="iconic" dimension="0"/>
+<par name="SelectedXLDD" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="A" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>select_shape_xld (SelectedXLDT, SelectedXLD1, ['column1','contlength'], 'and', [-1,200], [600,99999999])</l>
+<l>union_collinear_contours_xld (SelectedXLD1, SelectedXLD1, 500, 500, 2, 0.1, 'attr_keep')</l>
+<l>select_shape_xld (SelectedXLDD, SelectedXLD2, ['column2','contlength'], 'and', [1300,500], [3000,9000000])</l>
+<l>union_collinear_contours_xld (SelectedXLD2, SelectedXLD2, 100, 100, 2, 0.1, 'attr_keep')</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, -0.782, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLD1, ContoursAffineTrans, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 900, 0, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTrans, ContoursAffineTrans1, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, 0.7963, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLD2, ContoursAffineTrans, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 2200, 0, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTrans, ContoursAffineTrans2, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<l>get_contour_xld (ContoursAffineTrans1, Row, Col)</l>
+<l>remove_max_min (Col, 2, Col)</l>
+<l>tuple_mean (Col, Mean1)</l>
+<c></c>
+<l>get_contour_xld (ContoursAffineTrans2, Row, Col)</l>
+<l>remove_max_min (Col, 2, Col)</l>
+<l>tuple_mean (Col, Mean2)</l>
+<l>A := (Mean2-Mean1)*0.015+172.245</l>
+<l>return ()</l>
+</body>
+<docu id="Edge_B">
+<parameters>
+<parameter id="A"/>
+<parameter id="SelectedXLDD"/>
+<parameter id="SelectedXLDT"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="rota_xld">
+<interface>
+<io>
+<par name="SelectedXLDD" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="ContoursAffineTransD" base_type="iconic" dimension="0"/>
+</oo>
+<ic>
+<par name="rotavalue" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, rotavalue, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDD, ContoursAffineTransD, HomMat2DRotate)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="rota_xld">
+<parameters>
+<parameter id="ContoursAffineTransD"/>
+<parameter id="SelectedXLDD"/>
+<parameter id="rotavalue"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="DJ_JUGE">
+<interface>
+<io>
+<par name="SelectedXLDT" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="VALUE" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Mean1" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c></c>
+<l>select_shape_xld (SelectedXLDT, SelectedXLDt1, ['rect2_phi','contlength'], 'and', [-0.2,50], [0.2,10000])</l>
+<l>union_collinear_contours_xld (SelectedXLDt1, SelectedXLDt1, 200, 200, 2, 0.5, 'attr_keep')</l>
+<c></c>
+<l>fit_line_contour_xld (SelectedXLDt1, 'tukey', -1, 0, 5, 2, RowBegin, ColBegin, RowEnd, ColEnd, Nr, Nc, Dist)</l>
+<c></c>
+<l>tuple_abs (Nc, Abs1)</l>
+<l>tuple_asin (Abs1, ASin1)</l>
+<c></c>
+<l>rota_xld (SelectedXLDt1, SelectedXLDt1, -VALUE)</l>
+<c></c>
+<l>try</l>
+<l>    get_contour_xld (SelectedXLDt1, Row, Col)</l>
+<l>    tuple_mean (Row, Mean1)</l>
+<c></c>
+<l>catch (Exception)</l>
+<l>    Mean1 := 0</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>Mean1 := Mean1*0.015</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="DJ_JUGE">
+<parameters>
+<parameter id="Mean1"/>
+<parameter id="SelectedXLDT"/>
+<parameter id="VALUE"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Edge_D">
+<interface>
+<io>
+<par name="SelectedXLDT" base_type="iconic" dimension="0"/>
+<par name="SelectedXLDD" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="A" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, 0.7734+1.57, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDT, ContoursAffineTransT, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 900, 0, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransT, ContoursAffineTransT, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, 0.7976, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDD, ContoursAffineTransD, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 3000, -2300, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransD, ContoursAffineTransD, HomMat2DTranslate)</l>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransT, SelectedXLD1, ['rect2_phi','contlength'], 'and', [-0.2,500], [0.2,9000000])</l>
+<l>union_collinear_contours_xld (SelectedXLD1, SelectedXLD1, 200, 200, 2, 0.5, 'attr_keep')</l>
+<l>fit_line_contour_xld (SelectedXLD1, 'tukey', -1, 0, 5, 2, RowBegin, ColBegin, RowEnd, ColEnd, Nr, Nc, Dist)</l>
+<c></c>
+<l>tuple_abs (Nc, Abs1)</l>
+<l>tuple_asin (Abs1, ASin1)</l>
+<c></c>
+<l>* rota_xld (SelectedXLD1, SelectedXLD1, -ASin1)</l>
+<c></c>
+<l>try</l>
+<l>    get_contour_xld (SelectedXLD1, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean1)</l>
+<c></c>
+<l>catch (Exception)</l>
+<l>    Mean1 := 0</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransD, SelectedXLD2, ['rect2_phi','contlength'], 'and', [-0.2,200], [0.2,9000000])</l>
+<l>union_collinear_contours_xld (SelectedXLD2, SelectedXLD2, 200, 200, 2, 0.5, 'attr_keep')</l>
+<c></c>
+<c></c>
+<l>* rota_xld (SelectedXLD2, SelectedXLD2, -ASin1)</l>
+<l>try</l>
+<c></c>
+<c></c>
+<l>    get_contour_xld (SelectedXLD2, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean2)</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<l>A := (Mean2-Mean1)*0.015+148.995</l>
+<l>return ()</l>
+</body>
+<docu id="Edge_D">
+<parameters>
+<parameter id="A"/>
+<parameter id="SelectedXLDD"/>
+<parameter id="SelectedXLDT"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Edge_C">
+<interface>
+<io>
+<par name="SelectedXLDT" base_type="iconic" dimension="0"/>
+<par name="SelectedXLDD" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="A" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, 0.7982+1.57, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDT, ContoursAffineTransT, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 900, 0, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransT, ContoursAffineTransT, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, 0.799, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDD, ContoursAffineTransD, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 3000, -2400, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransD, ContoursAffineTransD, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransT, SelectedXLD1, ['rect2_phi','contlength'], 'and', [-0.2,200], [0.2,9000000])</l>
+<l>union_collinear_contours_xld (SelectedXLD1, SelectedXLD1, 1000, 1000, 2, 0.5, 'attr_keep')</l>
+<l>fit_line_contour_xld (SelectedXLD1, 'tukey', -1, 0, 5, 2, RowBegin, ColBegin, RowEnd, ColEnd, Nr, Nc, Dist)</l>
+<c></c>
+<l>tuple_abs (Nc, Abs1)</l>
+<l>tuple_asin (Abs1, ASin1)</l>
+<c></c>
+<l>* rota_xld (SelectedXLD1, SelectedXLD1, -ASin1)</l>
+<c></c>
+<l>try</l>
+<l>    get_contour_xld (SelectedXLD1, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean1)</l>
+<c></c>
+<l>catch (Exception)</l>
+<l>    Mean1 := 0</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransD, SelectedXLD2, ['rect2_phi','contlength'], 'and', [-0.2,200], [0.2,9000000])</l>
+<l>union_collinear_contours_xld (SelectedXLD2, SelectedXLD2, 200, 200, 2, 0.5, 'attr_keep')</l>
+<c></c>
+<c></c>
+<l>* rota_xld (SelectedXLD2, SelectedXLD2, -ASin1)</l>
+<l>try</l>
+<c></c>
+<c></c>
+<l>    get_contour_xld (SelectedXLD2, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean2)</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<l>A := (Mean2-Mean1)*0.015+168.09</l>
+<l>return ()</l>
+</body>
+<docu id="Edge_C">
+<parameters>
+<parameter id="A"/>
+<parameter id="SelectedXLDD"/>
+<parameter id="SelectedXLDT"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="XLD_Edge">
+<interface>
+<io>
+<par name="ImageTopPart" base_type="iconic" dimension="0"/>
+</io>
+<oo>
+<par name="SelectedXLDT" base_type="iconic" dimension="0"/>
+</oo>
+<ic>
+<par name="Index" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<l>gen_rectangle1 (Rectangle5, Index, 500, Index, 3199)</l>
+<l>* threshold (ImageTopPart, Region1, -15, 15)</l>
+<l>* intersection (Rectangle5, Region1, RegionIntersection)</l>
+<l>* reduce_domain (ImageTopPart, RegionIntersection, ImageReduced)</l>
+<l>* crop_domain (ImageReduced, ImagePart)</l>
+<l>get_region_points (Rectangle5, Rows5, Columns5)</l>
+<l>get_grayval (ImageTopPart, Rows5, Columns5, grayvalues5)</l>
+<c></c>
+<l>tuple_find (grayvalues5, -10000, Indices)</l>
+<l>grayvalues5[Indices] := 100000</l>
+<l>tuple_gen_sequence (0, (|grayvalues5|-1), 1, Sequence1)</l>
+<l>gen_contour_polygon_xld (Contour1, grayvalues5/0.015, Sequence1)</l>
+<c></c>
+<c></c>
+<l>segment_contours_xld (Contour1, ContoursSplit, 'lines_circles', 40, 1, 1)</l>
+<l>select_shape_xld (ContoursSplit, SelectedXLD, 'phi', 'and', -3.14, 3.14)</l>
+<l>select_shape_xld (SelectedXLD, SelectedXLD, 'contlength', 'and', 0, 10000)</l>
+<l>select_shape_xld (SelectedXLD, SelectedXLDT, 'row1', 'and', -3000, 3000)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="XLD_Edge">
+<parameters>
+<parameter id="ImageTopPart"/>
+<parameter id="Index"/>
+<parameter id="SelectedXLDT"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Edge_A">
+<interface>
+<io>
+<par name="SelectedXLDT" base_type="iconic" dimension="0"/>
+<par name="SelectedXLDD" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="A" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, -0.7842, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDT, ContoursAffineTransT, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 900, 0, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransT, ContoursAffineTransT, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, -0.799-1.57, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDD, ContoursAffineTransD, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, -2000, 2400, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransD, ContoursAffineTransD, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransT, SelectedXLD1, ['rect2_phi','contlength'], 'and', [-0.2,500], [0.2,9000000])</l>
+<l>union_collinear_contours_xld (SelectedXLD1, SelectedXLD1, 200, 200, 2, 0.5, 'attr_keep')</l>
+<l>fit_line_contour_xld (SelectedXLD1, 'tukey', -1, 0, 5, 2, RowBegin, ColBegin, RowEnd, ColEnd, Nr, Nc, Dist)</l>
+<c></c>
+<l>tuple_abs (Nc, Abs1)</l>
+<l>tuple_asin (Abs1, ASin1)</l>
+<c></c>
+<l>* rota_xld (SelectedXLD1, SelectedXLD1, -ASin1)</l>
+<c></c>
+<l>try</l>
+<l>    get_contour_xld (SelectedXLD1, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean1)</l>
+<c></c>
+<l>catch (Exception)</l>
+<l>    Mean1 := 0</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransD, SelectedXLD2, ['rect2_phi','contlength'], 'and', [-0.2,200], [0.2,9000000])</l>
+<l>union_collinear_contours_xld (SelectedXLD2, SelectedXLD2, 400, 400, 2, 0.5, 'attr_keep')</l>
+<c></c>
+<c></c>
+<l>fit_line_contour_xld (SelectedXLD2, 'tukey', -1, 0, 5, 2, RowBegin, ColBegin, RowEnd, ColEnd, Nr, Nc, Dist)</l>
+<c></c>
+<l>tuple_abs (Nc, Abs1)</l>
+<l>tuple_asin (Abs1, ASin1)</l>
+<c></c>
+<l>* rota_xld (SelectedXLD2, SelectedXLD2, -ASin1)</l>
+<c></c>
+<c></c>
+<l>try</l>
+<c></c>
+<c></c>
+<l>    get_contour_xld (SelectedXLD2, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean2)</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>A := -(Mean2-Mean1)*0.015+160.52</l>
+<l>return ()</l>
+</body>
+<docu id="Edge_A">
+<parameters>
+<parameter id="A"/>
+<parameter id="SelectedXLDD"/>
+<parameter id="SelectedXLDT"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="remove_max_min">
+<interface>
+<ic>
+<par name="newLengthRDLT" base_type="ctrl" dimension="0"/>
+<par name="r" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Reduced" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c></c>
+<l>t := |newLengthRDLT|</l>
+<l>if (t&lt;10)</l>
+<l>    Reduced := newLengthRDLT</l>
+<l>    return ()</l>
+<l>endif</l>
+<l>while (1)</l>
+<l>    tuple_min (newLengthRDLT, Min1)</l>
+<l>    tuple_max (newLengthRDLT, Max1)</l>
+<l>    tuple_find (newLengthRDLT, Min1, Indices1)</l>
+<l>    tuple_find (newLengthRDLT, Max1, Indices2)</l>
+<l>    if (|Indices1|&gt;t/2 or |Indices2|&gt;t/2)</l>
+<l>        break</l>
+<l>    endif</l>
+<l>    tuple_remove (newLengthRDLT, [Indices1,Indices2], newLengthRDLT)</l>
+<l>    if (|newLengthRDLT|&lt;t-t/r)</l>
+<l>        break</l>
+<l>    endif</l>
+<l>endwhile</l>
+<l>Reduced := newLengthRDLT</l>
+<c></c>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="remove_max_min">
+<parameters>
+<parameter id="Reduced"/>
+<parameter id="newLengthRDLT"/>
+<parameter id="r"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Edge_A_COPY_1">
+<interface>
+<io>
+<par name="SelectedXLDT" base_type="iconic" dimension="0"/>
+<par name="SelectedXLDD" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="A" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, -0.786, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDT, ContoursAffineTransT, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 900, 0, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransT, ContoursAffineTransT, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, -2.356, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDD, ContoursAffineTransD, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, -2000, 2400, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransD, ContoursAffineTransD, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransT, SelectedXLD1, ['rect2_phi','contlength'], 'and', [-0.2,500], [0.2,9000000])</l>
+<l>union_collinear_contours_xld (SelectedXLD1, SelectedXLD1, 200, 200, 2, 0.5, 'attr_keep')</l>
+<l>fit_line_contour_xld (SelectedXLD1, 'tukey', -1, 0, 5, 2, RowBegin, ColBegin, RowEnd, ColEnd, Nr, Nc, Dist)</l>
+<c></c>
+<l>tuple_abs (Nc, Abs1)</l>
+<l>tuple_asin (Abs1, ASin1)</l>
+<c></c>
+<l>* rota_xld (SelectedXLD1, SelectedXLD1, -ASin1)</l>
+<c></c>
+<l>try</l>
+<l>    get_contour_xld (SelectedXLD1, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean1)</l>
+<c></c>
+<l>catch (Exception)</l>
+<l>    Mean1 := 0</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransD, SelectedXLD2, ['rect2_phi','contlength'], 'and', [-0.2,200], [0.2,9000000])</l>
+<l>union_collinear_contours_xld (SelectedXLD2, SelectedXLD2, 400, 400, 2, 0.5, 'attr_keep')</l>
+<c></c>
+<c></c>
+<l>fit_line_contour_xld (SelectedXLD2, 'tukey', -1, 0, 5, 2, RowBegin, ColBegin, RowEnd, ColEnd, Nr, Nc, Dist)</l>
+<c></c>
+<l>tuple_abs (Nc, Abs1)</l>
+<l>tuple_asin (Abs1, ASin1)</l>
+<c></c>
+<l>* rota_xld (SelectedXLD2, SelectedXLD2, -ASin1)</l>
+<c></c>
+<c></c>
+<l>try</l>
+<c></c>
+<c></c>
+<l>    get_contour_xld (SelectedXLD2, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean2)</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>A := -(Mean2-Mean1)*0.015</l>
+<l>return ()</l>
+</body>
+<docu id="Edge_A_COPY_1">
+<parameters>
+<parameter id="A"/>
+<parameter id="SelectedXLDD"/>
+<parameter id="SelectedXLDT"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Edge_B_COPY_1">
+<interface>
+<io>
+<par name="SelectedXLDT" base_type="iconic" dimension="0"/>
+<par name="SelectedXLDD" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="A" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>select_shape_xld (SelectedXLDT, SelectedXLD1, ['column1','contlength'], 'and', [-1,200], [600,99999999])</l>
+<l>union_collinear_contours_xld (SelectedXLD1, SelectedXLD1, 500, 500, 2, 0.1, 'attr_keep')</l>
+<l>select_shape_xld (SelectedXLDD, SelectedXLD2, ['column2','contlength'], 'and', [1500,500], [3000,9000000])</l>
+<l>union_collinear_contours_xld (SelectedXLD2, SelectedXLD2, 100, 100, 2, 0.1, 'attr_keep')</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, -0.785, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLD1, ContoursAffineTrans, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 900, 0, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTrans, ContoursAffineTrans1, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, 0.777, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLD2, ContoursAffineTrans, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 2200, 0, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTrans, ContoursAffineTrans2, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<l>get_contour_xld (ContoursAffineTrans1, Row, Col)</l>
+<l>remove_max_min (Col, 2, Col)</l>
+<l>tuple_mean (Col, Mean1)</l>
+<c></c>
+<l>get_contour_xld (ContoursAffineTrans2, Row, Col)</l>
+<l>remove_max_min (Col, 2, Col)</l>
+<l>tuple_mean (Col, Mean2)</l>
+<l>A := (Mean2-Mean1)*0.015</l>
+<l>return ()</l>
+</body>
+<docu id="Edge_B_COPY_1">
+<parameters>
+<parameter id="A"/>
+<parameter id="SelectedXLDD"/>
+<parameter id="SelectedXLDT"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Edge_D_COPY_1">
+<interface>
+<io>
+<par name="SelectedXLDT" base_type="iconic" dimension="0"/>
+<par name="SelectedXLDD" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="A" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, 0.7734+1.583, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDT, ContoursAffineTransT, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 900, 0, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransT, ContoursAffineTransT, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, 0.7856, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDD, ContoursAffineTransD, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 3000, -2300, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransD, ContoursAffineTransD, HomMat2DTranslate)</l>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransT, SelectedXLD1, ['rect2_phi','contlength'], 'and', [-0.2,500], [0.2,9000000])</l>
+<l>union_collinear_contours_xld (SelectedXLD1, SelectedXLD1, 200, 200, 2, 0.5, 'attr_keep')</l>
+<l>fit_line_contour_xld (SelectedXLD1, 'tukey', -1, 0, 5, 2, RowBegin, ColBegin, RowEnd, ColEnd, Nr, Nc, Dist)</l>
+<c></c>
+<l>tuple_abs (Nc, Abs1)</l>
+<l>tuple_asin (Abs1, ASin1)</l>
+<c></c>
+<l>* rota_xld (SelectedXLD1, SelectedXLD1, -ASin1)</l>
+<c></c>
+<l>try</l>
+<l>    get_contour_xld (SelectedXLD1, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean1)</l>
+<c></c>
+<l>catch (Exception)</l>
+<l>    Mean1 := 0</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransD, SelectedXLD2, ['rect2_phi','contlength'], 'and', [-0.2,200], [0.2,9000000])</l>
+<l>union_collinear_contours_xld (SelectedXLD2, SelectedXLD2, 200, 200, 2, 0.5, 'attr_keep')</l>
+<c></c>
+<c></c>
+<l>* rota_xld (SelectedXLD2, SelectedXLD2, -ASin1)</l>
+<l>try</l>
+<c></c>
+<c></c>
+<l>    get_contour_xld (SelectedXLD2, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean2)</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<l>A := (Mean2-Mean1)*0.015</l>
+<l>return ()</l>
+</body>
+<docu id="Edge_D_COPY_1">
+<parameters>
+<parameter id="A"/>
+<parameter id="SelectedXLDD"/>
+<parameter id="SelectedXLDT"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Edge_C_COPY_1">
+<interface>
+<io>
+<par name="SelectedXLDT" base_type="iconic" dimension="0"/>
+<par name="SelectedXLDD" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="A" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, 0.7982+1.556, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDT, ContoursAffineTransT, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 900, 0, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransT, ContoursAffineTransT, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, 0.779, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDD, ContoursAffineTransD, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 3000, -2400, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransD, ContoursAffineTransD, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransT, SelectedXLD1, ['rect2_phi','contlength'], 'and', [-0.2,200], [0.2,9000000])</l>
+<l>union_collinear_contours_xld (SelectedXLD1, SelectedXLD1, 1000, 1000, 2, 0.5, 'attr_keep')</l>
+<l>fit_line_contour_xld (SelectedXLD1, 'tukey', -1, 0, 5, 2, RowBegin, ColBegin, RowEnd, ColEnd, Nr, Nc, Dist)</l>
+<c></c>
+<l>tuple_abs (Nc, Abs1)</l>
+<l>tuple_asin (Abs1, ASin1)</l>
+<c></c>
+<l>* rota_xld (SelectedXLD1, SelectedXLD1, -ASin1)</l>
+<c></c>
+<l>try</l>
+<l>    get_contour_xld (SelectedXLD1, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean1)</l>
+<c></c>
+<l>catch (Exception)</l>
+<l>    Mean1 := 0</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransD, SelectedXLD2, ['rect2_phi','contlength'], 'and', [-0.2,200], [0.2,9000000])</l>
+<l>union_collinear_contours_xld (SelectedXLD2, SelectedXLD2, 200, 200, 2, 0.5, 'attr_keep')</l>
+<c></c>
+<c></c>
+<l>* rota_xld (SelectedXLD2, SelectedXLD2, -ASin1)</l>
+<l>try</l>
+<c></c>
+<c></c>
+<l>    get_contour_xld (SelectedXLD2, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean2)</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<l>A := (Mean2-Mean1)*0.015</l>
+<l>return ()</l>
+</body>
+<docu id="Edge_C_COPY_1">
+<parameters>
+<parameter id="A"/>
+<parameter id="SelectedXLDD"/>
+<parameter id="SelectedXLDT"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="DJ_JUGE_COPY_1">
+<interface>
+<io>
+<par name="SelectedXLDT" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="VALUE" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Mean1" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c></c>
+<l>select_shape_xld (SelectedXLDT, SelectedXLDt1, ['rect2_phi','contlength'], 'and', [-0.2,50], [0.2,10000])</l>
+<l>union_collinear_contours_xld (SelectedXLDt1, SelectedXLDt1, 200, 200, 2, 0.5, 'attr_keep')</l>
+<c></c>
+<l>fit_line_contour_xld (SelectedXLDt1, 'tukey', -1, 0, 5, 2, RowBegin, ColBegin, RowEnd, ColEnd, Nr, Nc, Dist)</l>
+<c></c>
+<l>tuple_abs (Nc, Abs1)</l>
+<l>tuple_asin (Abs1, ASin1)</l>
+<l>try</l>
+<l>    tuple_length (Abs1, Length)</l>
+<c></c>
+<l>    if (Length&gt;1)</l>
+<l>        select_obj (SelectedXLDt1, SelectedXLDt1, 1)</l>
+<l>    endif</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<l>* rota_xld (SelectedXLDt1, SelectedXLDt1, -VALUE)</l>
+<c></c>
+<l>try</l>
+<l>    get_contour_xld (SelectedXLDt1, Row, Col)</l>
+<l>    tuple_mean (Row, Mean1)</l>
+<c></c>
+<l>catch (Exception)</l>
+<l>    Mean1 := 0</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>Mean1 := Mean1*0.015</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="DJ_JUGE_COPY_1">
+<parameters>
+<parameter id="Mean1"/>
+<parameter id="SelectedXLDT"/>
+<parameter id="VALUE"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Edge_C_COPY_2">
+<interface>
+<io>
+<par name="SelectedXLDT" base_type="iconic" dimension="0"/>
+<par name="SelectedXLDD" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="A" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, 0.7982+1.556, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDT, ContoursAffineTransT, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 900, 0, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransT, ContoursAffineTransT, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, 0.779, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDD, ContoursAffineTransD, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 3000, -2400, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransD, ContoursAffineTransD, HomMat2DTranslate)</l>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransT, SelectedXLD1, ['rect2_phi','contlength'], 'and', [-0.2,200], [0.2,9000000])</l>
+<l>length_xld (SelectedXLD1, Length)</l>
+<l>tuple_max (Length, Max)</l>
+<l>select_shape_xld (SelectedXLD1, SelectedXLD1, 'contlength', 'and', Max-1, 9000000)</l>
+<c></c>
+<l>union_collinear_contours_xld (SelectedXLD1, SelectedXLD1, 1000, 1000, 2, 0.6, 'attr_keep')</l>
+<l>fit_line_contour_xld (SelectedXLD1, 'tukey', -1, 0, 5, 2, RowBegin, ColBegin, RowEnd, ColEnd, Nr, Nc, Dist)</l>
+<c></c>
+<l>tuple_abs (Nc, Abs1)</l>
+<l>tuple_asin (Abs1, ASin1)</l>
+<c></c>
+<l>* rota_xld (SelectedXLD1, SelectedXLD1, -ASin1)</l>
+<c></c>
+<l>try</l>
+<l>    get_contour_xld (SelectedXLD1, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean1)</l>
+<c></c>
+<l>catch (Exception)</l>
+<l>    Mean1 := 0</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransD, SelectedXLD2, ['rect2_phi','contlength'], 'and', [-0.2,200], [0.2,9000000])</l>
+<l>length_xld (SelectedXLD2, Length)</l>
+<l>tuple_max (Length, Max)</l>
+<l>select_shape_xld (SelectedXLD2, SelectedXLD2, 'contlength', 'and', Max-1, 9000000)</l>
+<c></c>
+<l>union_collinear_contours_xld (SelectedXLD2, SelectedXLD2, 200, 200, 2, 0.5, 'attr_keep')</l>
+<c></c>
+<c></c>
+<l>* rota_xld (SelectedXLD2, SelectedXLD2, -ASin1)</l>
+<l>try</l>
+<c></c>
+<c></c>
+<l>    get_contour_xld (SelectedXLD2, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean2)</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<l>A := (Mean2-Mean1)*0.015</l>
+<l>return ()</l>
+</body>
+<docu id="Edge_C_COPY_2">
+<parameters>
+<parameter id="A"/>
+<parameter id="SelectedXLDD"/>
+<parameter id="SelectedXLDT"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Edge_D_COPY_2">
+<interface>
+<io>
+<par name="SelectedXLDT" base_type="iconic" dimension="0"/>
+<par name="SelectedXLDD" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="A" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, 0.7734+1.583, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDT, ContoursAffineTransT, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 900, 0, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransT, ContoursAffineTransT, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, 0.7856, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDD, ContoursAffineTransD, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 3000, -2300, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransD, ContoursAffineTransD, HomMat2DTranslate)</l>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransT, SelectedXLD1, ['rect2_phi','contlength'], 'and', [-0.2,500], [0.2,9000000])</l>
+<l>length_xld (SelectedXLD1, Length)</l>
+<l>tuple_max (Length, Max)</l>
+<l>select_shape_xld (SelectedXLD1, SelectedXLD1, 'contlength', 'and', Max-1, 9000000)</l>
+<c></c>
+<l>union_collinear_contours_xld (SelectedXLD1, SelectedXLD1, 200, 200, 2, 0.5, 'attr_keep')</l>
+<l>fit_line_contour_xld (SelectedXLD1, 'tukey', -1, 0, 5, 2, RowBegin, ColBegin, RowEnd, ColEnd, Nr, Nc, Dist)</l>
+<c></c>
+<l>tuple_abs (Nc, Abs1)</l>
+<l>tuple_asin (Abs1, ASin1)</l>
+<c></c>
+<l>* rota_xld (SelectedXLD1, SelectedXLD1, -ASin1)</l>
+<c></c>
+<l>try</l>
+<l>    get_contour_xld (SelectedXLD1, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean1)</l>
+<c></c>
+<l>catch (Exception)</l>
+<l>    Mean1 := 0</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransD, SelectedXLD2, ['rect2_phi','contlength'], 'and', [-0.2,200], [0.2,9000000])</l>
+<l>length_xld (SelectedXLD2, Length)</l>
+<l>tuple_max (Length, Max)</l>
+<l>select_shape_xld (SelectedXLD2, SelectedXLD2, 'contlength', 'and', Max-1, 9000000)</l>
+<c></c>
+<l>union_collinear_contours_xld (SelectedXLD2, SelectedXLD2, 200, 200, 2, 0.5, 'attr_keep')</l>
+<c></c>
+<c></c>
+<l>* rota_xld (SelectedXLD2, SelectedXLD2, -ASin1)</l>
+<l>try</l>
+<c></c>
+<c></c>
+<l>    get_contour_xld (SelectedXLD2, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean2)</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<l>A := (Mean2-Mean1)*0.015</l>
+<l>return ()</l>
+</body>
+<docu id="Edge_D_COPY_2">
+<parameters>
+<parameter id="A"/>
+<parameter id="SelectedXLDD"/>
+<parameter id="SelectedXLDT"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Edge_A_COPY_2">
+<interface>
+<io>
+<par name="SelectedXLDT" base_type="iconic" dimension="0"/>
+<par name="SelectedXLDD" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="A" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, -0.786, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDT, ContoursAffineTransT, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 900, 0, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransT, ContoursAffineTransT, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, -2.356, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDD, ContoursAffineTransD, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, -2000, 2400, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransD, ContoursAffineTransD, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransT, SelectedXLD1, ['rect2_phi','contlength'], 'and', [-0.2,500], [0.2,9000000])</l>
+<l>length_xld (SelectedXLD1, Length)</l>
+<l>tuple_max (Length, Max)</l>
+<l>select_shape_xld (SelectedXLD1, SelectedXLD1, 'contlength', 'and', Max-1, 9000000)</l>
+<l>union_collinear_contours_xld (SelectedXLD1, SelectedXLD1, 200, 200, 2, 0.5, 'attr_keep')</l>
+<l>fit_line_contour_xld (SelectedXLD1, 'tukey', -1, 0, 5, 2, RowBegin, ColBegin, RowEnd, ColEnd, Nr, Nc, Dist)</l>
+<c></c>
+<l>tuple_abs (Nc, Abs1)</l>
+<l>tuple_asin (Abs1, ASin1)</l>
+<c></c>
+<l>* rota_xld (SelectedXLD1, SelectedXLD1, -ASin1)</l>
+<c></c>
+<l>try</l>
+<l>    get_contour_xld (SelectedXLD1, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean1)</l>
+<c></c>
+<l>catch (Exception)</l>
+<l>    Mean1 := 0</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransD, SelectedXLD2, ['rect2_phi','contlength'], 'and', [-0.2,200], [0.2,9000000])</l>
+<l>length_xld (SelectedXLD2, Length)</l>
+<l>tuple_max (Length, Max)</l>
+<l>select_shape_xld (SelectedXLD2, SelectedXLD2, 'contlength', 'and', Max-1, 9000000)</l>
+<c></c>
+<c></c>
+<l>union_collinear_contours_xld (SelectedXLD2, SelectedXLD2, 400, 400, 2, 0.5, 'attr_keep')</l>
+<c></c>
+<c></c>
+<l>fit_line_contour_xld (SelectedXLD2, 'tukey', -1, 0, 5, 2, RowBegin, ColBegin, RowEnd, ColEnd, Nr, Nc, Dist)</l>
+<c></c>
+<l>tuple_abs (Nc, Abs1)</l>
+<l>tuple_asin (Abs1, ASin1)</l>
+<c></c>
+<l>* rota_xld (SelectedXLD2, SelectedXLD2, -ASin1)</l>
+<c></c>
+<c></c>
+<l>try</l>
+<c></c>
+<c></c>
+<l>    get_contour_xld (SelectedXLD2, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean2)</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>A := -(Mean2-Mean1)*0.015</l>
+<l>return ()</l>
+</body>
+<docu id="Edge_A_COPY_2">
+<parameters>
+<parameter id="A"/>
+<parameter id="SelectedXLDD"/>
+<parameter id="SelectedXLDT"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Edge_C_COPY_3">
+<interface>
+<io>
+<par name="SelectedXLDT" base_type="iconic" dimension="0"/>
+<par name="SelectedXLDD" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="A" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, 0.7982+1.565, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDT, ContoursAffineTransT, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 900, 0, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransT, ContoursAffineTransT, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, 0.787, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDD, ContoursAffineTransD, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 3000, -2400, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransD, ContoursAffineTransD, HomMat2DTranslate)</l>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransT, SelectedXLD1, ['rect2_phi','contlength'], 'and', [-0.2,200], [0.2,9000000])</l>
+<l>length_xld (SelectedXLD1, Length)</l>
+<l>tuple_max (Length, Max)</l>
+<l>select_shape_xld (SelectedXLD1, SelectedXLD1, 'contlength', 'and', Max-1, 9000000)</l>
+<c></c>
+<l>union_collinear_contours_xld (SelectedXLD1, SelectedXLD1, 1000, 1000, 2, 0.6, 'attr_keep')</l>
+<l>fit_line_contour_xld (SelectedXLD1, 'tukey', -1, 0, 5, 2, RowBegin, ColBegin, RowEnd, ColEnd, Nr, Nc, Dist)</l>
+<c></c>
+<l>tuple_abs (Nc, Abs1)</l>
+<l>tuple_asin (Abs1, ASin1)</l>
+<c></c>
+<l>* rota_xld (SelectedXLD1, SelectedXLD1, -ASin1)</l>
+<c></c>
+<l>try</l>
+<l>    get_contour_xld (SelectedXLD1, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean1)</l>
+<c></c>
+<l>catch (Exception)</l>
+<l>    Mean1 := 0</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransD, SelectedXLD2, ['rect2_phi','contlength'], 'and', [-0.2,200], [0.2,9000000])</l>
+<l>length_xld (SelectedXLD2, Length)</l>
+<l>tuple_max (Length, Max)</l>
+<l>select_shape_xld (SelectedXLD2, SelectedXLD2, 'contlength', 'and', Max-1, 9000000)</l>
+<c></c>
+<l>union_collinear_contours_xld (SelectedXLD2, SelectedXLD2, 200, 200, 2, 0.5, 'attr_keep')</l>
+<c></c>
+<c></c>
+<l>* rota_xld (SelectedXLD2, SelectedXLD2, -ASin1)</l>
+<l>try</l>
+<c></c>
+<c></c>
+<l>    get_contour_xld (SelectedXLD2, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean2)</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<l>A := (Mean2-Mean1)*0.015</l>
+<l>return ()</l>
+</body>
+<docu id="Edge_C_COPY_3">
+<parameters>
+<parameter id="A"/>
+<parameter id="SelectedXLDD"/>
+<parameter id="SelectedXLDT"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Edge_D_COPY_3">
+<interface>
+<io>
+<par name="SelectedXLDT" base_type="iconic" dimension="0"/>
+<par name="SelectedXLDD" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="A" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, 0.7734+1.63, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDT, ContoursAffineTransT, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 900, 0, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransT, ContoursAffineTransT, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, 0.794, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDD, ContoursAffineTransD, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 3000, -2300, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransD, ContoursAffineTransD, HomMat2DTranslate)</l>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransT, SelectedXLD1, ['rect2_phi','contlength'], 'and', [-0.2,500], [0.2,9000000])</l>
+<l>length_xld (SelectedXLD1, Length)</l>
+<l>tuple_max (Length, Max)</l>
+<l>select_shape_xld (SelectedXLD1, SelectedXLD1, 'contlength', 'and', Max-1, 9000000)</l>
+<c></c>
+<l>union_collinear_contours_xld (SelectedXLD1, SelectedXLD1, 200, 200, 2, 0.5, 'attr_keep')</l>
+<l>fit_line_contour_xld (SelectedXLD1, 'tukey', -1, 0, 5, 2, RowBegin, ColBegin, RowEnd, ColEnd, Nr, Nc, Dist)</l>
+<c></c>
+<l>tuple_abs (Nc, Abs1)</l>
+<l>tuple_asin (Abs1, ASin1)</l>
+<c></c>
+<l>* rota_xld (SelectedXLD1, SelectedXLD1, -ASin1)</l>
+<c></c>
+<l>try</l>
+<l>    get_contour_xld (SelectedXLD1, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean1)</l>
+<c></c>
+<l>catch (Exception)</l>
+<l>    Mean1 := 0</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransD, SelectedXLD2, ['rect2_phi','contlength'], 'and', [-0.2,200], [0.2,9000000])</l>
+<l>length_xld (SelectedXLD2, Length)</l>
+<l>tuple_max (Length, Max)</l>
+<l>select_shape_xld (SelectedXLD2, SelectedXLD2, 'contlength', 'and', Max-1, 9000000)</l>
+<c></c>
+<l>union_collinear_contours_xld (SelectedXLD2, SelectedXLD2, 200, 200, 2, 0.5, 'attr_keep')</l>
+<c></c>
+<c></c>
+<l>* rota_xld (SelectedXLD2, SelectedXLD2, -ASin1)</l>
+<l>try</l>
+<c></c>
+<c></c>
+<l>    get_contour_xld (SelectedXLD2, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean2)</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<l>A := (Mean2-Mean1)*0.015</l>
+<l>return ()</l>
+</body>
+<docu id="Edge_D_COPY_3">
+<parameters>
+<parameter id="A"/>
+<parameter id="SelectedXLDD"/>
+<parameter id="SelectedXLDT"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="Edge_A_COPY_3">
+<interface>
+<io>
+<par name="SelectedXLDT" base_type="iconic" dimension="0"/>
+<par name="SelectedXLDD" base_type="iconic" dimension="0"/>
+</io>
+<oc>
+<par name="A" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, -0.794, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDT, ContoursAffineTransT, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, 900, 0, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransT, ContoursAffineTransT, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_rotate (HomMat2DIdentity, -2.316, 0, 0, HomMat2DRotate)</l>
+<l>affine_trans_contour_xld (SelectedXLDD, ContoursAffineTransD, HomMat2DRotate)</l>
+<c></c>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<c></c>
+<l>hom_mat2d_translate (HomMat2DIdentity, -2000, 2400, HomMat2DTranslate)</l>
+<l>affine_trans_contour_xld (ContoursAffineTransD, ContoursAffineTransD, HomMat2DTranslate)</l>
+<c></c>
+<c></c>
+<c></c>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransT, SelectedXLD1, ['rect2_phi','contlength'], 'and', [-0.2,500], [0.2,9000000])</l>
+<l>length_xld (SelectedXLD1, Length)</l>
+<l>tuple_max (Length, Max)</l>
+<l>select_shape_xld (SelectedXLD1, SelectedXLD1, 'contlength', 'and', Max-1, 9000000)</l>
+<l>union_collinear_contours_xld (SelectedXLD1, SelectedXLD1, 200, 200, 2, 0.5, 'attr_keep')</l>
+<l>fit_line_contour_xld (SelectedXLD1, 'tukey', -1, 0, 5, 2, RowBegin, ColBegin, RowEnd, ColEnd, Nr, Nc, Dist)</l>
+<c></c>
+<l>tuple_abs (Nc, Abs1)</l>
+<l>tuple_asin (Abs1, ASin1)</l>
+<c></c>
+<l>* rota_xld (SelectedXLD1, SelectedXLD1, -ASin1)</l>
+<c></c>
+<l>try</l>
+<l>    get_contour_xld (SelectedXLD1, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean1)</l>
+<c></c>
+<l>catch (Exception)</l>
+<l>    Mean1 := 0</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>select_shape_xld (ContoursAffineTransD, SelectedXLD2, ['rect2_phi','contlength'], 'and', [-0.2,200], [0.2,9000000])</l>
+<l>length_xld (SelectedXLD2, Length)</l>
+<l>tuple_max (Length, Max)</l>
+<l>select_shape_xld (SelectedXLD2, SelectedXLD2, 'contlength', 'and', Max-1, 9000000)</l>
+<c></c>
+<c></c>
+<l>union_collinear_contours_xld (SelectedXLD2, SelectedXLD2, 400, 400, 2, 0.5, 'attr_keep')</l>
+<c></c>
+<c></c>
+<l>fit_line_contour_xld (SelectedXLD2, 'tukey', -1, 0, 5, 2, RowBegin, ColBegin, RowEnd, ColEnd, Nr, Nc, Dist)</l>
+<c></c>
+<l>tuple_abs (Nc, Abs1)</l>
+<l>tuple_asin (Abs1, ASin1)</l>
+<c></c>
+<l>* rota_xld (SelectedXLD2, SelectedXLD2, -ASin1)</l>
+<c></c>
+<c></c>
+<l>try</l>
+<c></c>
+<c></c>
+<l>    get_contour_xld (SelectedXLD2, Row, Col)</l>
+<l>remove_max_min (Row, 2, Row)</l>
+<l>    tuple_mean (Row, Mean2)</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<c></c>
+<l>A := -(Mean2-Mean1)*0.015</l>
+<l>return ()</l>
+</body>
+<docu id="Edge_A_COPY_3">
+<parameters>
+<parameter id="A"/>
+<parameter id="SelectedXLDD"/>
+<parameter id="SelectedXLDT"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>
