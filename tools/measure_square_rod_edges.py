@@ -31,6 +31,7 @@ import csv
 import json
 import math
 import os
+import re
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional, Tuple
 
@@ -107,6 +108,14 @@ class HeightSource:
 
     def row(self, obj: int, row_index: int) -> np.ndarray:
         raise NotImplementedError
+
+
+@dataclass
+class CalibrationCapture:
+    source: HeightSource
+    capture_id: str
+    bar_id: str
+    orientation: str = "normal"
 
 
 class HobjSource(HeightSource):
@@ -379,15 +388,47 @@ def source_common_range(
     return common_start, common_end
 
 
-def calibration_hobjs_from_folder(folder: str) -> List[str]:
-    hobjs = [
-        os.path.join(folder, name)
-        for name in os.listdir(folder)
-        if name.lower().endswith(".hobj")
-    ]
-    if not hobjs:
+def normalize_bar_id(value: str) -> str:
+    """Normalize operator-entered bar IDs without changing their core text."""
+
+    text = os.path.splitext(os.path.basename(str(value).strip()))[0]
+    text = re.sub(r"\s*_\s*", "_", text)
+    text = re.sub(r"\s+", " ", text)
+    return text
+
+
+def bar_id_key(value: str) -> str:
+    return normalize_bar_id(value).casefold()
+
+
+def calibration_hobjs_from_folder(folder: str) -> List[Tuple[str, str, str]]:
+    """Discover calibration captures as ``(path, bar_id, capture_id)``.
+
+    Preferred layout::
+
+        root/<bar_id>/<capture>.hobj
+
+    Multiple HOBJ files in one child folder are repeat captures of the same
+    physical bar.  Flat ``root/<bar_id>.hobj`` input remains supported for
+    older calibration archives.
+    """
+
+    root = os.path.abspath(folder)
+    found: List[Tuple[str, str, str]] = []
+    for current, _, names in os.walk(root):
+        for name in names:
+            if not name.lower().endswith(".hobj"):
+                continue
+            path = os.path.join(current, name)
+            relative_parent = os.path.relpath(current, root)
+            raw_bar_id = os.path.splitext(name)[0] if relative_parent == "." else os.path.basename(current)
+            bar_id = normalize_bar_id(raw_bar_id)
+            capture_stem = os.path.splitext(name)[0]
+            capture_id = capture_stem if relative_parent == "." else f"{bar_id}/{capture_stem}"
+            found.append((path, bar_id, capture_id))
+    if not found:
         raise ValueError(f"No .hobj files found in calibration folder: {folder}")
-    return sorted(hobjs, key=lambda p: (is_turnover_capture(p), os.path.basename(p)))
+    return sorted(found, key=lambda item: (bar_id_key(item[1]), is_turnover_capture(item[0]), item[2].casefold()))
 
 
 def is_turnover_capture(path: str) -> bool:
@@ -521,8 +562,12 @@ def solve_direction_matrix(local_dirs: List[np.ndarray], target_dirs: List[Tuple
     return best_matrix, best_error
 
 
-def average_orthogonal_matrices(matrices: List[np.ndarray]) -> np.ndarray:
-    mean = np.mean(np.stack(matrices), axis=0)
+def average_orthogonal_matrices(
+    matrices: List[np.ndarray],
+    weights: Optional[List[float]] = None,
+) -> np.ndarray:
+    stack = np.stack(matrices)
+    mean = np.mean(stack, axis=0) if weights is None else np.average(stack, axis=0, weights=np.asarray(weights, dtype=float))
     u, _, vt = np.linalg.svd(mean)
     return u @ vt
 
@@ -634,28 +679,43 @@ def apply_corner_biases(
 
 
 def build_calibration_from_captures(
-    captures: List[Tuple[HeightSource, str, str]],
+    captures: List[CalibrationCapture],
     standard: Dict[str, Dict[str, float]],
     standards_by_bar: Optional[Dict[str, Dict[str, Dict[str, float]]]] = None,
 ) -> Dict:
-    samples: Dict[int, List[Tuple[CornerResult, Tuple[float, float]]]] = {1: [], 2: [], 3: [], 4: []}
-    calibration_records: List[Tuple[Dict[int, CornerResult], Dict[str, Tuple[float, float]]]] = []
+    samples: Dict[int, List[Tuple[CornerResult, Tuple[float, float], float]]] = {1: [], 2: [], 3: [], 4: []}
+    calibration_records: List[Tuple[Dict[int, CornerResult], Dict[str, Tuple[float, float]], float]] = []
     calibration_rows: Dict[str, Dict[str, Dict[str, object]]] = {}
     common_ranges: Dict[str, List[int]] = {}
+    captures_per_bar: Dict[str, int] = {}
+    for capture in captures:
+        key = bar_id_key(capture.bar_id)
+        captures_per_bar[key] = captures_per_bar.get(key, 0) + 1
 
     used_standards: Dict[str, Dict[str, Dict[str, float]]] = {}
-    for source, capture_name, orientation in captures:
+    capture_metadata: Dict[str, Dict[str, object]] = {}
+    for capture in captures:
+        source = capture.source
+        capture_name = capture.capture_id
+        bar_key = bar_id_key(capture.bar_id)
+        orientation = capture.orientation
         capture_standard = standard
         if standards_by_bar is not None:
             try:
-                capture_standard = standards_by_bar[capture_name.casefold()]
+                capture_standard = standards_by_bar[bar_key]
             except KeyError as exc:
                 available = ", ".join(sorted(standards_by_bar))
                 raise ValueError(
-                    f"No cross_section truth for calibration capture '{capture_name}'. "
-                    f"CSV bar_id must equal the HOBJ file name without .hobj. Available: {available}"
+                    f"No cross_section truth for calibration bar folder '{capture.bar_id}'. "
+                    f"CSV bar_id must equal the folder name. Available: {available}"
                 ) from exc
         used_standards[capture_name] = capture_standard
+        capture_metadata[capture_name] = {
+            "bar_id": capture.bar_id,
+            "orientation": orientation,
+            "repeat_count_for_bar": captures_per_bar[bar_key],
+        }
+        sample_weight = 1.0 / (captures_per_bar[bar_key] * len(capture_standard))
         common_start, common_end = source_common_range(source)
         common_ranges[capture_name] = [common_start, common_end]
         calibration_rows[capture_name] = {}
@@ -671,34 +731,38 @@ def build_calibration_from_captures(
             for obj in [1, 2, 3, 4]:
                 corner, representative_row = representative_corner_from_row_range(source, obj, first_row, last_row)
                 row_info["representative_rows"][str(obj)] = representative_row
-                samples[obj].append((corner, points[OBJECT_TO_POINT[obj]]))
+                samples[obj].append((corner, points[OBJECT_TO_POINT[obj]], sample_weight))
                 record_corners[obj] = corner
-            calibration_records.append((record_corners, points))
+            calibration_records.append((record_corners, points, sample_weight))
 
     transforms = {}
     for obj in [1, 2, 3, 4]:
         matrices: List[np.ndarray] = []
         direction_errors: List[float] = []
-        for corner, _ in samples[obj]:
+        matrix_weights: List[float] = []
+        for corner, _, weight in samples[obj]:
             matrix, error = solve_direction_matrix(local_face_directions(corner), EXPECTED_FACE_DIRECTIONS[obj])
             matrices.append(matrix)
             direction_errors.append(error)
-        matrix = average_orthogonal_matrices(matrices)
+            matrix_weights.append(weight)
+        matrix = average_orthogonal_matrices(matrices, matrix_weights)
         translations = []
-        for corner, target in samples[obj]:
+        translation_weights = []
+        for corner, target, weight in samples[obj]:
             mapped = matrix @ np.array([corner.vx, corner.vz], dtype=float)
             translations.append((target[0] - mapped[0], target[1] - mapped[1]))
-        tx = float(np.mean([t[0] for t in translations]))
-        tz = float(np.mean([t[1] for t in translations]))
+            translation_weights.append(weight)
+        tx = float(np.average([t[0] for t in translations], weights=translation_weights))
+        tz = float(np.average([t[1] for t in translations], weights=translation_weights))
         transforms[str(obj)] = {
             "matrix": matrix.tolist(),
             "translation": [tx, tz],
-            "direction_error_mean": float(np.mean(direction_errors)),
+            "direction_error_mean": float(np.average(direction_errors, weights=matrix_weights)),
         }
 
     transform_objects = {int(k): v for k, v in transforms.items()}
-    residuals: Dict[str, List[Tuple[float, float]]] = {p: [] for p in ["P1", "P2", "P3", "P4"]}
-    for record_corners, target_points in calibration_records:
+    residuals: Dict[str, List[Tuple[float, float, float]]] = {p: [] for p in ["P1", "P2", "P3", "P4"]}
+    for record_corners, target_points, weight in calibration_records:
         raw_points = {
             OBJECT_TO_POINT[obj]: apply_transform(transform_objects[obj], record_corners[obj].vx, record_corners[obj].vz)
             for obj in [1, 2, 3, 4]
@@ -707,14 +771,23 @@ def build_calibration_from_captures(
         for point_name in ["P1", "P2", "P3", "P4"]:
             target = target_points[point_name]
             actual = reconstructed[point_name]
-            residuals[point_name].append((target[0] - actual[0], target[1] - actual[1]))
+            residuals[point_name].append((target[0] - actual[0], target[1] - actual[1], weight))
     corner_biases = {
         point_name: [
-            float(np.mean([r[0] for r in values])),
-            float(np.mean([r[1] for r in values])),
+            float(np.average([r[0] for r in values], weights=[r[2] for r in values])),
+            float(np.average([r[1] for r in values], weights=[r[2] for r in values])),
         ]
         for point_name, values in residuals.items()
     }
+
+    captured_bar_ids = sorted({capture.bar_id for capture in captures}, key=str.casefold)
+    unused_truth_bar_ids = []
+    if standards_by_bar is not None:
+        captured_keys = {bar_id_key(bar) for bar in captured_bar_ids}
+        unused_truth_bar_ids = sorted(
+            [bar_id for bar_id in standards_by_bar if bar_id not in captured_keys],
+            key=str.casefold,
+        )
 
     return {
         "version": 6,
@@ -725,6 +798,10 @@ def build_calibration_from_captures(
         "calibration_rows": calibration_rows,
         "standard": standard,
         "standards_by_capture": used_standards,
+        "capture_metadata": capture_metadata,
+        "captured_bar_ids": captured_bar_ids,
+        "unused_truth_bar_ids": unused_truth_bar_ids,
+        "bar_weighting": "equal_per_bar_then_equal_per_repeat_and_position",
         "transforms": transforms,
         "corner_biases": corner_biases,
     }
@@ -736,7 +813,10 @@ def build_calibration(
     common_end: int,
     standard: Dict[str, Dict[str, float]],
 ) -> Dict:
-    return build_calibration_from_captures([(source, "single", "normal")], standard)
+    return build_calibration_from_captures(
+        [CalibrationCapture(source=source, capture_id="single", bar_id="single")],
+        standard,
+    )
 
 
 def load_standard(path: Optional[str]) -> Dict[str, Dict[str, float]]:
@@ -762,7 +842,7 @@ def load_standard_truth_csv(path: str) -> Dict[str, Dict[str, Dict[str, float]]]
         record_type = str(row.get("record_type", "")).strip().lower()
         if record_type != "cross_section":
             continue
-        bar_id = str(row.get("bar_id", "")).strip()
+        bar_id = normalize_bar_id(str(row.get("bar_id", "")).strip())
         if not bar_id:
             raise ValueError("cross_section rows need a bar_id matching the HOBJ file name without .hobj")
         raw_percent = str(row.get("position_percent", "")).strip().replace("%", "")
@@ -791,7 +871,7 @@ def load_standard_truth_csv(path: str) -> Dict[str, Dict[str, Dict[str, float]]]
                     f"cross_section position {raw_percent} is missing a numeric {edge}_mm value"
                 ) from exc
         name = f"range{start_percent * 100:g}_{end_percent * 100:g}"
-        bar_standard = standards_by_bar.setdefault(bar_id.casefold(), {})
+        bar_standard = standards_by_bar.setdefault(bar_id_key(bar_id), {})
         if name in bar_standard:
             raise ValueError(
                 f"Duplicate cross_section truth row for bar_id={bar_id}, position_percent={raw_percent}"
@@ -813,7 +893,7 @@ def standard_for_bar(
     bar_id: str,
 ) -> Dict[str, Dict[str, float]]:
     try:
-        return standards_by_bar[bar_id.casefold()]
+        return standards_by_bar[bar_id_key(bar_id)]
     except KeyError as exc:
         available = ", ".join(sorted(standards_by_bar))
         raise ValueError(
@@ -1143,6 +1223,128 @@ def mean_face_verticality_error(face_angles: Dict[str, float]) -> float:
     return float(np.mean(values)) if len(values) == 4 else math.nan
 
 
+def measure_endface_angles_for_capture(
+    capture: CalibrationCapture,
+    calibration: Dict,
+    x_scale: float,
+    y_scale: float,
+    window_mm: float,
+) -> Dict[str, Dict[str, float]]:
+    """Measure the eight raw face-to-end angles needed by end-face calibration."""
+
+    source = capture.source
+    valid_ranges = source_valid_ranges(source)
+    common_start, common_end = source_common_range(source, valid_ranges)
+    transforms = {int(key): value for key, value in calibration["transforms"].items()}
+    rows: List[Dict[str, object]] = []
+    for fraction in np.linspace(0.1, 0.9, 9):
+        row_index = int(round(common_start + float(fraction) * (common_end - common_start)))
+        corners = {obj: extract_corner_from_row(source.row(obj, row_index), x_scale) for obj in [1, 2, 3, 4]}
+        if not all(corner.valid for corner in corners.values()):
+            continue
+        raw_points = {
+            OBJECT_TO_POINT[obj]: apply_transform(transforms[obj], corners[obj].vx, corners[obj].vz)
+            for obj in [1, 2, 3, 4]
+        }
+        points = reconstruct_points_from_global_sides(corners, transforms, raw_points)
+        points = apply_corner_biases(points, calibration)
+        record: Dict[str, object] = {
+            "record": "slice",
+            "valid": True,
+            "y_mm": (row_index - common_start) * y_scale,
+        }
+        for point_name, (x, z) in points.items():
+            record[f"{point_name}_x"] = x
+            record[f"{point_name}_z"] = z
+        rows.append(record)
+    if len(rows) < 3:
+        raise ValueError(f"Calibration capture {capture.capture_id} has fewer than three usable section rows")
+    rod_axis = fit_rod_axis(rows)
+    endfaces = fit_endfaces_from_source(
+        source,
+        valid_ranges,
+        transforms,
+        calibration,
+        common_start,
+        rod_axis,
+        x_scale,
+        y_scale,
+        window_mm,
+    )
+    section_points = mean_cross_section_points(rows)
+    return {
+        end: face_to_endface_angles(section_points, endfaces[end], rod_axis)
+        for end in ["head", "tail"]
+    }
+
+
+def build_balanced_endface_angle_calibration_model(
+    captures: List[CalibrationCapture],
+    calibration: Dict,
+    truth_csv_path: str,
+    x_scale: float,
+    y_scale: float,
+    window_mm: float,
+) -> Dict[str, object]:
+    """Fit eight offsets with equal bar weight and equal repeat weight within each bar."""
+
+    raw_by_bar: Dict[str, List[Tuple[str, Dict[str, Dict[str, float]]]]] = {}
+    display_bar_ids: Dict[str, str] = {}
+    for capture in captures:
+        bar_key = bar_id_key(capture.bar_id)
+        display_bar_ids[bar_key] = capture.bar_id
+        raw = measure_endface_angles_for_capture(capture, calibration, x_scale, y_scale, window_mm)
+        raw_by_bar.setdefault(bar_key, []).append((capture.capture_id, raw))
+
+    per_bar: Dict[str, Dict[str, object]] = {}
+    bar_offsets: List[Dict[str, Dict[str, float]]] = []
+    for bar_key, measurements in raw_by_bar.items():
+        bar_id = display_bar_ids[bar_key]
+        truth = read_manual_endface_angle_truth(truth_csv_path, bar_id)
+        if not truth:
+            raise ValueError(f"No direct end-face angle truth was found for calibration bar {bar_id}")
+        mean_raw: Dict[str, Dict[str, float]] = {"head": {}, "tail": {}}
+        offsets: Dict[str, Dict[str, float]] = {"head": {}, "tail": {}}
+        for end in ["head", "tail"]:
+            for face in ["A", "B", "C", "D"]:
+                values = [angles[end][face] for _, angles in measurements if face in angles.get(end, {})]
+                if len(values) != len(measurements):
+                    raise ValueError(f"Missing raw angle {end}-{face} in one or more captures for bar {bar_id}")
+                mean_raw[end][face] = float(np.mean(np.asarray(values, dtype=float)))
+                offsets[end][face] = truth[end][face] - mean_raw[end][face]
+        bar_offsets.append(offsets)
+        per_bar[bar_id] = {
+            "capture_ids": [capture_id for capture_id, _ in measurements],
+            "capture_count": len(measurements),
+            "mean_raw_angles_deg": mean_raw,
+            "manual_truth_angles_deg": truth,
+            "angle_offsets_deg": offsets,
+        }
+
+    combined: Dict[str, Dict[str, float]] = {"head": {}, "tail": {}}
+    for end in ["head", "tail"]:
+        for face in ["A", "B", "C", "D"]:
+            combined[end][face] = float(np.mean([offsets[end][face] for offsets in bar_offsets]))
+    captured_bar_ids = sorted({capture.bar_id for capture in captures}, key=str.casefold)
+    truth_bar_ids = read_manual_truth_bar_ids(truth_csv_path, "endface_angle")
+    captured_keys = {bar_id_key(bar_id) for bar_id in captured_bar_ids}
+    unused_truth_bar_ids = [
+        bar_id
+        for key, bar_id in sorted(truth_bar_ids.items(), key=lambda item: item[1].casefold())
+        if key not in captured_keys
+    ]
+    return {
+        "version": 3,
+        "model": "endface_face_angle_offset",
+        "note": "Each bar is weighted equally; repeat HOBJ captures are averaged within their parent bar folder first.",
+        "bar_weighting": "equal_per_bar_then_equal_per_repeat",
+        "captured_bar_ids": captured_bar_ids,
+        "unused_truth_bar_ids": unused_truth_bar_ids,
+        "angle_offsets_deg": combined,
+        "per_bar": per_bar,
+    }
+
+
 def manual_position_fraction(row: Dict[str, str], ordinal: int) -> float:
     raw_fraction = str(row.get("position_fraction", "")).strip()
     raw_percent = str(row.get("position_percent", "")).strip()
@@ -1198,6 +1400,19 @@ def first_float(row: Dict[str, str], names: Iterable[str]) -> Optional[float]:
     return None
 
 
+def read_manual_truth_bar_ids(path: str, record_type: Optional[str] = None) -> Dict[str, str]:
+    with open(path, "r", encoding="utf-8-sig", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    bar_ids: Dict[str, str] = {}
+    for row in rows:
+        if record_type and str(row.get("record_type", "")).strip().lower() != record_type:
+            continue
+        bar_id = normalize_bar_id(str(row.get("bar_id", "")).strip())
+        if bar_id:
+            bar_ids[bar_id_key(bar_id)] = bar_id
+    return bar_ids
+
+
 def read_manual_endface_truth(
     path: str,
     section_points: Dict[str, Tuple[float, float]],
@@ -1207,12 +1422,12 @@ def read_manual_endface_truth(
 
     with open(path, "r", encoding="utf-8-sig", newline="") as handle:
         rows = list(csv.DictReader(handle))
-    target_ids = {bar_id.strip().lower(), os.path.splitext(os.path.basename(bar_id))[0].lower()}
+    target_ids = {bar_id_key(bar_id)}
     matching = [
         row
         for row in rows
         if not str(row.get("bar_id", "")).strip()
-        or str(row.get("bar_id", "")).strip().lower() in target_ids
+        or bar_id_key(str(row.get("bar_id", "")).strip()) in target_ids
     ]
     if not matching:
         raise ValueError(f"No end-face truth rows match bar_id={bar_id}")
@@ -1270,13 +1485,15 @@ def read_manual_endface_angle_truth(path: str, bar_id: str) -> Dict[str, Dict[st
 
     with open(path, "r", encoding="utf-8-sig", newline="") as handle:
         rows = list(csv.DictReader(handle))
-    target_ids = {bar_id.strip().lower(), os.path.splitext(os.path.basename(bar_id))[0].lower()}
+    target_ids = {bar_id_key(bar_id)}
     grouped: Dict[str, Dict[str, List[float]]] = {
         end: {face: [] for face in ["A", "B", "C", "D"]}
         for end in ["head", "tail"]
     }
     for row in rows:
-        row_bar = str(row.get("bar_id", "")).strip().lower()
+        row_bar = str(row.get("bar_id", "")).strip()
+        if row_bar and row_bar not in target_ids:
+            row_bar = bar_id_key(row_bar)
         if row_bar and row_bar not in target_ids:
             continue
         end = normalize_end_name(str(row.get("end", row.get("端面", ""))))
@@ -1680,38 +1897,65 @@ def main() -> int:
     common_start = 0
     common_end = 0
     valid_ranges: Dict[int, Tuple[int, int]] = {}
+    calibration_captures: List[CalibrationCapture] = []
 
     if args.calibration:
-        source = detect_input(args)
-        valid_ranges = source_valid_ranges(source)
-        common_start, common_end = source_common_range(source, valid_ranges)
         with open(args.calibration, "r", encoding="utf-8") as f:
             calibration = json.load(f)
+        if args.input and os.path.isdir(args.input) and args.save_endface_calibration:
+            for path, bar_id, capture_id in calibration_hobjs_from_folder(args.input):
+                calibration_captures.append(
+                    CalibrationCapture(
+                        source=HobjSource(path, args.width, args.height),
+                        capture_id=capture_id,
+                        bar_id=bar_id,
+                        orientation="swap_bd" if is_turnover_capture(path) else "normal",
+                    )
+                )
+            source = calibration_captures[0].source
+        else:
+            source = detect_input(args)
+        valid_ranges = source_valid_ranges(source)
+        common_start, common_end = source_common_range(source, valid_ranges)
         print(
             "Using calibration: "
             f"{args.calibration} "
             f"(version={calibration.get('version')}, model={calibration.get('model', 'unknown')})"
         )
+        if calibration_captures:
+            print("End-face calibration captures:")
+            for capture in calibration_captures:
+                print(f"  {capture.capture_id}: bar_id={capture.bar_id}")
     else:
         standards_by_bar = load_standard_truth_csv(args.calibration_truth_csv) if args.calibration_truth_csv else None
         standard = load_standard(args.standard_json)
         if args.input and os.path.isdir(args.input):
-            hobj_paths = calibration_hobjs_from_folder(args.input)
-            captures = []
-            for path in hobj_paths:
-                name = os.path.splitext(os.path.basename(path))[0]
+            discovered = calibration_hobjs_from_folder(args.input)
+            for path, bar_id, capture_id in discovered:
                 orientation = "swap_bd" if is_turnover_capture(path) else "normal"
-                captures.append((HobjSource(path, args.width, args.height), name, orientation))
+                calibration_captures.append(
+                    CalibrationCapture(
+                        source=HobjSource(path, args.width, args.height),
+                        capture_id=capture_id,
+                        bar_id=bar_id,
+                        orientation=orientation,
+                    )
+                )
             if standards_by_bar is not None:
-                standard = standard_for_bar(standards_by_bar, captures[0][1])
-            calibration = build_calibration_from_captures(captures, standard, standards_by_bar)
+                standard = standard_for_bar(standards_by_bar, calibration_captures[0].bar_id)
+            calibration = build_calibration_from_captures(calibration_captures, standard, standards_by_bar)
             # Use the first calibration source to produce an immediate CSV sanity check.
-            source = captures[0][0]
+            source = calibration_captures[0].source
             valid_ranges = source_valid_ranges(source)
             common_start, common_end = source_common_range(source, valid_ranges)
             print("Calibration captures:")
-            for _, name, orientation in captures:
-                print(f"  {name}: orientation={orientation}")
+            for capture in calibration_captures:
+                print(
+                    f"  {capture.capture_id}: bar_id={capture.bar_id}, "
+                    f"orientation={capture.orientation}"
+                )
+            for missing_bar in calibration.get("unused_truth_bar_ids", []):
+                print(f"  SKIP truth bar without HOBJ folder: {missing_bar}")
         else:
             source = detect_input(args)
             valid_ranges = source_valid_ranges(source)
@@ -1831,14 +2075,27 @@ def main() -> int:
     }
     truth_endfaces: Dict[str, EndFaceFit] = {}
     truth_face_angles: Dict[str, Dict[str, float]] = {}
-    truth_bar_id = os.path.splitext(os.path.basename(getattr(source, "path", "")))[0] or input_stem(args)
+    truth_bar_id = (
+        calibration_captures[0].bar_id
+        if calibration_captures
+        else os.path.splitext(os.path.basename(getattr(source, "path", "")))[0] or input_stem(args)
+    )
     if truth_csv_path:
         truth_face_angles = read_manual_endface_angle_truth(truth_csv_path, truth_bar_id)
         if not truth_face_angles:
             truth_endfaces = read_manual_endface_truth(truth_csv_path, section_points, truth_bar_id)
 
     if args.save_endface_calibration:
-        if truth_face_angles:
+        if calibration_captures and truth_face_angles:
+            endface_model = build_balanced_endface_angle_calibration_model(
+                calibration_captures,
+                calibration,
+                truth_csv_path,
+                args.x_scale,
+                args.y_scale,
+                args.endface_window_mm,
+            )
+        elif truth_face_angles:
             endface_model = build_endface_face_angle_calibration_model(
                 raw_face_angles,
                 truth_face_angles,

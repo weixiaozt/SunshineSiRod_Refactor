@@ -1,82 +1,82 @@
 record_type,bar_id,position_percent,end,face,position,A_mm,B_mm,C_mm,D_mm,angle_deg
-cross_section,BAR_001,15-25,-,-,-,,,,,-
-cross_section,BAR_001,45-55,-,-,-,,,,,-
-cross_section,BAR_001,70-80,-,-,-,,,,,-
-cross_section,BAR_002,15-25,-,-,-,,,,,-
-cross_section,BAR_002,45-55,-,-,-,,,,,-
-cross_section,BAR_002,70-80,-,-,-,,,,,-
-cross_section,BAR_003,15-25,-,-,-,,,,,-
-cross_section,BAR_003,45-55,-,-,-,,,,,-
-cross_section,BAR_003,70-80,-,-,-,,,,,-
-endface_angle,BAR_001,-,head,A,1,-,-,-,-,
-endface_angle,BAR_001,-,head,A,2,-,-,-,-,
-endface_angle,BAR_001,-,head,A,3,-,-,-,-,
-endface_angle,BAR_001,-,head,B,1,-,-,-,-,
-endface_angle,BAR_001,-,head,B,2,-,-,-,-,
-endface_angle,BAR_001,-,head,B,3,-,-,-,-,
-endface_angle,BAR_001,-,head,C,1,-,-,-,-,
-endface_angle,BAR_001,-,head,C,2,-,-,-,-,
-endface_angle,BAR_001,-,head,C,3,-,-,-,-,
-endface_angle,BAR_001,-,head,D,1,-,-,-,-,
-endface_angle,BAR_001,-,head,D,2,-,-,-,-,
-endface_angle,BAR_001,-,head,D,3,-,-,-,-,
-endface_angle,BAR_001,-,tail,A,1,-,-,-,-,
-endface_angle,BAR_001,-,tail,A,2,-,-,-,-,
-endface_angle,BAR_001,-,tail,A,3,-,-,-,-,
-endface_angle,BAR_001,-,tail,B,1,-,-,-,-,
-endface_angle,BAR_001,-,tail,B,2,-,-,-,-,
-endface_angle,BAR_001,-,tail,B,3,-,-,-,-,
-endface_angle,BAR_001,-,tail,C,1,-,-,-,-,
-endface_angle,BAR_001,-,tail,C,2,-,-,-,-,
-endface_angle,BAR_001,-,tail,C,3,-,-,-,-,
-endface_angle,BAR_001,-,tail,D,1,-,-,-,-,
-endface_angle,BAR_001,-,tail,D,2,-,-,-,-,
-endface_angle,BAR_001,-,tail,D,3,-,-,-,-,
-endface_angle,BAR_002,-,head,A,1,-,-,-,-,
-endface_angle,BAR_002,-,head,A,2,-,-,-,-,
-endface_angle,BAR_002,-,head,A,3,-,-,-,-,
-endface_angle,BAR_002,-,head,B,1,-,-,-,-,
-endface_angle,BAR_002,-,head,B,2,-,-,-,-,
-endface_angle,BAR_002,-,head,B,3,-,-,-,-,
-endface_angle,BAR_002,-,head,C,1,-,-,-,-,
-endface_angle,BAR_002,-,head,C,2,-,-,-,-,
-endface_angle,BAR_002,-,head,C,3,-,-,-,-,
-endface_angle,BAR_002,-,head,D,1,-,-,-,-,
-endface_angle,BAR_002,-,head,D,2,-,-,-,-,
-endface_angle,BAR_002,-,head,D,3,-,-,-,-,
-endface_angle,BAR_002,-,tail,A,1,-,-,-,-,
-endface_angle,BAR_002,-,tail,A,2,-,-,-,-,
-endface_angle,BAR_002,-,tail,A,3,-,-,-,-,
-endface_angle,BAR_002,-,tail,B,1,-,-,-,-,
-endface_angle,BAR_002,-,tail,B,2,-,-,-,-,
-endface_angle,BAR_002,-,tail,B,3,-,-,-,-,
-endface_angle,BAR_002,-,tail,C,1,-,-,-,-,
-endface_angle,BAR_002,-,tail,C,2,-,-,-,-,
-endface_angle,BAR_002,-,tail,C,3,-,-,-,-,
-endface_angle,BAR_002,-,tail,D,1,-,-,-,-,
-endface_angle,BAR_002,-,tail,D,2,-,-,-,-,
-endface_angle,BAR_002,-,tail,D,3,-,-,-,-,
-endface_angle,BAR_003,-,head,A,1,-,-,-,-,
-endface_angle,BAR_003,-,head,A,2,-,-,-,-,
-endface_angle,BAR_003,-,head,A,3,-,-,-,-,
-endface_angle,BAR_003,-,head,B,1,-,-,-,-,
-endface_angle,BAR_003,-,head,B,2,-,-,-,-,
-endface_angle,BAR_003,-,head,B,3,-,-,-,-,
-endface_angle,BAR_003,-,head,C,1,-,-,-,-,
-endface_angle,BAR_003,-,head,C,2,-,-,-,-,
-endface_angle,BAR_003,-,head,C,3,-,-,-,-,
-endface_angle,BAR_003,-,head,D,1,-,-,-,-,
-endface_angle,BAR_003,-,head,D,2,-,-,-,-,
-endface_angle,BAR_003,-,head,D,3,-,-,-,-,
-endface_angle,BAR_003,-,tail,A,1,-,-,-,-,
-endface_angle,BAR_003,-,tail,A,2,-,-,-,-,
-endface_angle,BAR_003,-,tail,A,3,-,-,-,-,
-endface_angle,BAR_003,-,tail,B,1,-,-,-,-,
-endface_angle,BAR_003,-,tail,B,2,-,-,-,-,
-endface_angle,BAR_003,-,tail,B,3,-,-,-,-,
-endface_angle,BAR_003,-,tail,C,1,-,-,-,-,
-endface_angle,BAR_003,-,tail,C,2,-,-,-,-,
-endface_angle,BAR_003,-,tail,C,3,-,-,-,-,
-endface_angle,BAR_003,-,tail,D,1,-,-,-,-,
-endface_angle,BAR_003,-,tail,D,2,-,-,-,-,
-endface_angle,BAR_003,-,tail,D,3,-,-,-,-,
+cross_section, 2606006A61-DTB_3,15-25,-,-,-,,,,,-
+cross_section, 2606006A61-DTB_3,45-55,-,-,-,,,,,-
+cross_section, 2606006A61-DTB_3,70-80,-,-,-,,,,,-
+cross_section,2606005B22-CTT_3,15-25,-,-,-,,,,,-
+cross_section,2606005B22-CTT_3,45-55,-,-,-,,,,,-
+cross_section,2606005B22-CTT_3,70-80,-,-,-,,,,,-
+cross_section,2606005B22-CTB_3,15-25,-,-,-,,,,,-
+cross_section,2606005B22-CTB_3,45-55,-,-,-,,,,,-
+cross_section,2606005B22-CTB_3,70-80,-,-,-,,,,,-
+endface_angle, 2606006A61-DTB_3,-,head,A,1,-,-,-,-,90
+endface_angle, 2606006A61-DTB_3,-,head,A,2,-,-,-,-,90
+endface_angle, 2606006A61-DTB_3,-,head,A,3,-,-,-,-,89.95
+endface_angle, 2606006A61-DTB_3,-,head,B,1,-,-,-,-,89.98
+endface_angle, 2606006A61-DTB_3,-,head,B,2,-,-,-,-,89.99
+endface_angle, 2606006A61-DTB_3,-,head,B,3,-,-,-,-,89.98
+endface_angle, 2606006A61-DTB_3,-,head,C,1,-,-,-,-,89.93
+endface_angle, 2606006A61-DTB_3,-,head,C,2,-,-,-,-,89.96
+endface_angle, 2606006A61-DTB_3,-,head,C,3,-,-,-,-,89.92
+endface_angle, 2606006A61-DTB_3,-,head,D,1,-,-,-,-,89.95
+endface_angle, 2606006A61-DTB_3,-,head,D,2,-,-,-,-,89.95
+endface_angle, 2606006A61-DTB_3,-,head,D,3,-,-,-,-,89.97
+endface_angle, 2606006A61-DTB_3,-,tail,A,1,-,-,-,-,89.89
+endface_angle, 2606006A61-DTB_3,-,tail,A,2,-,-,-,-,89.91
+endface_angle, 2606006A61-DTB_3,-,tail,A,3,-,-,-,-,89.92
+endface_angle, 2606006A61-DTB_3,-,tail,B,1,-,-,-,-,89.93
+endface_angle, 2606006A61-DTB_3,-,tail,B,2,-,-,-,-,89.93
+endface_angle, 2606006A61-DTB_3,-,tail,B,3,-,-,-,-,89.93
+endface_angle, 2606006A61-DTB_3,-,tail,C,1,-,-,-,-,89.97
+endface_angle, 2606006A61-DTB_3,-,tail,C,2,-,-,-,-,89.96
+endface_angle, 2606006A61-DTB_3,-,tail,C,3,-,-,-,-,89.95
+endface_angle, 2606006A61-DTB_3,-,tail,D,1,-,-,-,-,89.98
+endface_angle, 2606006A61-DTB_3,-,tail,D,2,-,-,-,-,89.97
+endface_angle, 2606006A61-DTB_3,-,tail,D,3,-,-,-,-,89.97
+endface_angle,2606005B22-CTT_3,-,head,A,1,-,-,-,-,89.94
+endface_angle,2606005B22-CTT_3,-,head,A,2,-,-,-,-,89.98
+endface_angle,2606005B22-CTT_3,-,head,A,3,-,-,-,-,89.94
+endface_angle,2606005B22-CTT_3,-,head,B,1,-,-,-,-,89.95
+endface_angle,2606005B22-CTT_3,-,head,B,2,-,-,-,-,89.94
+endface_angle,2606005B22-CTT_3,-,head,B,3,-,-,-,-,89.93
+endface_angle,2606005B22-CTT_3,-,head,C,1,-,-,-,-,89.98
+endface_angle,2606005B22-CTT_3,-,head,C,2,-,-,-,-,89.96
+endface_angle,2606005B22-CTT_3,-,head,C,3,-,-,-,-,89.94
+endface_angle,2606005B22-CTT_3,-,head,D,1,-,-,-,-,90.02
+endface_angle,2606005B22-CTT_3,-,head,D,2,-,-,-,-,90.01
+endface_angle,2606005B22-CTT_3,-,head,D,3,-,-,-,-,90.03
+endface_angle,2606005B22-CTT_3,-,tail,A,1,-,-,-,-,89.94
+endface_angle,2606005B22-CTT_3,-,tail,A,2,-,-,-,-,89.96
+endface_angle,2606005B22-CTT_3,-,tail,A,3,-,-,-,-,89.96
+endface_angle,2606005B22-CTT_3,-,tail,B,1,-,-,-,-,89.98
+endface_angle,2606005B22-CTT_3,-,tail,B,2,-,-,-,-,90
+endface_angle,2606005B22-CTT_3,-,tail,B,3,-,-,-,-,90.03
+endface_angle,2606005B22-CTT_3,-,tail,C,1,-,-,-,-,89.99
+endface_angle,2606005B22-CTT_3,-,tail,C,2,-,-,-,-,89.92
+endface_angle,2606005B22-CTT_3,-,tail,C,3,-,-,-,-,89.95
+endface_angle,2606005B22-CTT_3,-,tail,D,1,-,-,-,-,89.88
+endface_angle,2606005B22-CTT_3,-,tail,D,2,-,-,-,-,89.88
+endface_angle,2606005B22-CTT_3,-,tail,D,3,-,-,-,-,89.9
+endface_angle,2606005B22-CTB_3,-,head,A,1,-,-,-,-,89.98
+endface_angle,2606005B22-CTB_3,-,head,A,2,-,-,-,-,89.97
+endface_angle,2606005B22-CTB_3,-,head,A,3,-,-,-,-,90
+endface_angle,2606005B22-CTB_3,-,head,B,1,-,-,-,-,90.03
+endface_angle,2606005B22-CTB_3,-,head,B,2,-,-,-,-,90.04
+endface_angle,2606005B22-CTB_3,-,head,B,3,-,-,-,-,90.04
+endface_angle,2606005B22-CTB_3,-,head,C,1,-,-,-,-,89.94
+endface_angle,2606005B22-CTB_3,-,head,C,2,-,-,-,-,89.92
+endface_angle,2606005B22-CTB_3,-,head,C,3,-,-,-,-,89.94
+endface_angle,2606005B22-CTB_3,-,head,D,1,-,-,-,-,89.9
+endface_angle,2606005B22-CTB_3,-,head,D,2,-,-,-,-,89.88
+endface_angle,2606005B22-CTB_3,-,head,D,3,-,-,-,-,89.88
+endface_angle,2606005B22-CTB_3,-,tail,A,1,-,-,-,-,89.94
+endface_angle,2606005B22-CTB_3,-,tail,A,2,-,-,-,-,89.92
+endface_angle,2606005B22-CTB_3,-,tail,A,3,-,-,-,-,89.92
+endface_angle,2606005B22-CTB_3,-,tail,B,1,-,-,-,-,89.95
+endface_angle,2606005B22-CTB_3,-,tail,B,2,-,-,-,-,89.95
+endface_angle,2606005B22-CTB_3,-,tail,B,3,-,-,-,-,89.95
+endface_angle,2606005B22-CTB_3,-,tail,C,1,-,-,-,-,89.99
+endface_angle,2606005B22-CTB_3,-,tail,C,2,-,-,-,-,89.87
+endface_angle,2606005B22-CTB_3,-,tail,C,3,-,-,-,-,89.97
+endface_angle,2606005B22-CTB_3,-,tail,D,1,-,-,-,-,90
+endface_angle,2606005B22-CTB_3,-,tail,D,2,-,-,-,-,90
+endface_angle,2606005B22-CTB_3,-,tail,D,3,-,-,-,-,89.99

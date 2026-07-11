@@ -3,6 +3,7 @@ import math
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 
@@ -10,9 +11,12 @@ from tools.measure_square_rod_edges import (
     EndFaceFit,
     HeightSource,
     INVALID_Z,
+    CalibrationCapture,
     apply_endface_calibration_model,
     build_endface_calibration_model,
     build_endface_face_angle_calibration_model,
+    build_balanced_endface_angle_calibration_model,
+    calibration_hobjs_from_folder,
     face_to_endface_angles,
     fit_endfaces_from_source,
     load_standard_truth_csv,
@@ -47,6 +51,53 @@ class SyntheticHeightSource(HeightSource):
 
 
 class EndFacePerpendicularityTests(unittest.TestCase):
+    def test_discovers_repeat_hobjs_by_parent_bar_folder(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            for bar_id, captures in {"BAR_A": ["one", "two", "three"], "BAR_B _3": ["one", "two"]}.items():
+                bar_folder = root / bar_id
+                bar_folder.mkdir()
+                for capture in captures:
+                    (bar_folder / f"{capture}.hobj").touch()
+            discovered = calibration_hobjs_from_folder(str(root))
+        self.assertEqual([item[1] for item in discovered].count("BAR_A"), 3)
+        self.assertEqual([item[1] for item in discovered].count("BAR_B_3"), 2)
+        self.assertIn("BAR_A/one", [item[2] for item in discovered])
+        self.assertIn("BAR_B_3/one", [item[2] for item in discovered])
+
+    def test_endface_offsets_weight_each_bar_equally(self) -> None:
+        source = SyntheticHeightSource()
+        captures = [
+            CalibrationCapture(source, "BAR_A/one", "BAR_A"),
+            CalibrationCapture(source, "BAR_A/two", "BAR_A"),
+            CalibrationCapture(source, "BAR_A/three", "BAR_A"),
+            CalibrationCapture(source, "BAR_B/one", "BAR_B"),
+            CalibrationCapture(source, "BAR_B/two", "BAR_B"),
+        ]
+        raw_values = {"BAR_A/one": 90.0, "BAR_A/two": 91.0, "BAR_A/three": 92.0, "BAR_B/one": 80.0, "BAR_B/two": 82.0}
+
+        def fake_measure(capture, *_args):
+            value = raw_values[capture.capture_id]
+            return {end: {face: value for face in ["A", "B", "C", "D"]} for end in ["head", "tail"]}
+
+        with tempfile.TemporaryDirectory() as folder:
+            truth_path = Path(folder) / "truth.csv"
+            with truth_path.open("w", newline="", encoding="utf-8-sig") as handle:
+                writer = csv.DictWriter(handle, fieldnames=["record_type", "bar_id", "end", "face", "position", "angle_deg"])
+                writer.writeheader()
+                for bar_id in ["BAR_A", "BAR_B"]:
+                    for end in ["head", "tail"]:
+                        for face in ["A", "B", "C", "D"]:
+                            for position in [1, 2, 3]:
+                                writer.writerow({"record_type": "endface_angle", "bar_id": bar_id, "end": end, "face": face, "position": position, "angle_deg": 90.0})
+                writer.writerow({"record_type": "endface_angle", "bar_id": "BAR_C", "end": "head", "face": "A", "position": 1, "angle_deg": 90.0})
+            with patch("tools.measure_square_rod_edges.measure_endface_angles_for_capture", side_effect=fake_measure):
+                model = build_balanced_endface_angle_calibration_model(captures, {}, str(truth_path), 1.0, 1.0, 1.0)
+        # BAR_A offset = -1, BAR_B offset = +9; equal bar weighting gives +4.
+        self.assertAlmostEqual(model["angle_offsets_deg"]["head"]["A"], 4.0, places=9)
+        self.assertEqual(model["captured_bar_ids"], ["BAR_A", "BAR_B"])
+        self.assertEqual(model["unused_truth_bar_ids"], ["BAR_C"])
+
     def test_reads_cross_section_rows_from_unified_calibration_csv(self) -> None:
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "calibration.csv"
