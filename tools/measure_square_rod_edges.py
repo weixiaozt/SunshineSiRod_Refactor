@@ -294,6 +294,30 @@ def find_valid_row_range(source: HeightSource, obj: int, min_points: int = 100, 
     return good[0], good[-1]
 
 
+def representative_corner_from_row_range(
+    source: HeightSource,
+    obj: int,
+    first_row: int,
+    last_row: int,
+    sample_count: int = 9,
+) -> Tuple[CornerResult, int]:
+    """Return the valid corner closest to the range's robust median corner."""
+
+    if last_row < first_row:
+        raise ValueError(f"Invalid calibration row range: {first_row}..{last_row}")
+    rows = sorted(set(int(round(v)) for v in np.linspace(first_row, last_row, num=max(1, sample_count))))
+    candidates = [(row, extract_corner_from_row(source.row(obj, row))) for row in rows]
+    candidates = [(row, corner) for row, corner in candidates if corner.valid]
+    if not candidates:
+        raise RuntimeError(f"Calibration failed in rows {first_row}..{last_row}, object {obj}: no valid corner")
+    if len(candidates) == 1:
+        return candidates[0][1], candidates[0][0]
+    median_vx = float(np.median([corner.vx for _, corner in candidates]))
+    median_vz = float(np.median([corner.vz for _, corner in candidates]))
+    row, corner = min(candidates, key=lambda item: math.hypot(item[1].vx - median_vx, item[1].vz - median_vz))
+    return corner, row
+
+
 def circle_intersections(
     c0: Tuple[float, float],
     r0: float,
@@ -612,25 +636,41 @@ def apply_corner_biases(
 def build_calibration_from_captures(
     captures: List[Tuple[HeightSource, str, str]],
     standard: Dict[str, Dict[str, float]],
+    standards_by_bar: Optional[Dict[str, Dict[str, Dict[str, float]]]] = None,
 ) -> Dict:
     samples: Dict[int, List[Tuple[CornerResult, Tuple[float, float]]]] = {1: [], 2: [], 3: [], 4: []}
     calibration_records: List[Tuple[Dict[int, CornerResult], Dict[str, Tuple[float, float]]]] = []
-    calibration_rows: Dict[str, Dict[str, int]] = {}
+    calibration_rows: Dict[str, Dict[str, Dict[str, object]]] = {}
     common_ranges: Dict[str, List[int]] = {}
 
+    used_standards: Dict[str, Dict[str, Dict[str, float]]] = {}
     for source, capture_name, orientation in captures:
+        capture_standard = standard
+        if standards_by_bar is not None:
+            try:
+                capture_standard = standards_by_bar[capture_name.casefold()]
+            except KeyError as exc:
+                available = ", ".join(sorted(standards_by_bar))
+                raise ValueError(
+                    f"No cross_section truth for calibration capture '{capture_name}'. "
+                    f"CSV bar_id must equal the HOBJ file name without .hobj. Available: {available}"
+                ) from exc
+        used_standards[capture_name] = capture_standard
         common_start, common_end = source_common_range(source)
         common_ranges[capture_name] = [common_start, common_end]
         calibration_rows[capture_name] = {}
-        for name, item in standard.items():
-            row = int(round(common_start + item["percent"] * (common_end - common_start)))
-            calibration_rows[capture_name][name] = row
+        for name, item in capture_standard.items():
+            start_percent = float(item.get("start_percent", item["percent"]))
+            end_percent = float(item.get("end_percent", item["percent"]))
+            first_row = int(round(common_start + start_percent * (common_end - common_start)))
+            last_row = int(round(common_start + end_percent * (common_end - common_start)))
+            row_info: Dict[str, object] = {"start_row": first_row, "end_row": last_row, "representative_rows": {}}
+            calibration_rows[capture_name][name] = row_info
             points = target_points_from_edges(orientation_edges(item, orientation))
             record_corners: Dict[int, CornerResult] = {}
             for obj in [1, 2, 3, 4]:
-                corner = extract_corner_from_row(source.row(obj, row))
-                if not corner.valid:
-                    raise RuntimeError(f"Calibration failed at {capture_name}/{name}, object {obj}: {corner.reason}")
+                corner, representative_row = representative_corner_from_row_range(source, obj, first_row, last_row)
+                row_info["representative_rows"][str(obj)] = representative_row
                 samples[obj].append((corner, points[OBJECT_TO_POINT[obj]]))
                 record_corners[obj] = corner
             calibration_records.append((record_corners, points))
@@ -684,6 +724,7 @@ def build_calibration_from_captures(
         "common_ranges": common_ranges,
         "calibration_rows": calibration_rows,
         "standard": standard,
+        "standards_by_capture": used_standards,
         "transforms": transforms,
         "corner_biases": corner_biases,
     }
@@ -704,6 +745,81 @@ def load_standard(path: Optional[str]) -> Dict[str, Dict[str, float]]:
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
     return data
+
+
+def load_standard_truth_csv(path: str) -> Dict[str, Dict[str, Dict[str, float]]]:
+    """Read cross-section truth from the unified manual-calibration CSV.
+
+    The file also contains end-face rows.  Only rows with
+    ``record_type=cross_section`` are consumed here; their position may be a
+    fraction (0.2) or a percent (20).
+    """
+
+    with open(path, "r", encoding="utf-8-sig", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    standards_by_bar: Dict[str, Dict[str, Dict[str, float]]] = {}
+    for row in rows:
+        record_type = str(row.get("record_type", "")).strip().lower()
+        if record_type != "cross_section":
+            continue
+        bar_id = str(row.get("bar_id", "")).strip()
+        if not bar_id:
+            raise ValueError("cross_section rows need a bar_id matching the HOBJ file name without .hobj")
+        raw_percent = str(row.get("position_percent", "")).strip().replace("%", "")
+        parts = raw_percent.split("-")
+        if len(parts) not in {1, 2}:
+            raise ValueError(f"cross_section position_percent must be a point or range such as 25 or 15-25: {raw_percent}")
+        try:
+            start_percent = float(parts[0])
+            end_percent = float(parts[-1])
+        except ValueError as exc:
+            raise ValueError("cross_section rows need a numeric position_percent or range") from exc
+        if start_percent > 1.0:
+            start_percent /= 100.0
+        if end_percent > 1.0:
+            end_percent /= 100.0
+        if not 0.0 < start_percent <= end_percent < 1.0:
+            raise ValueError(f"cross_section position_percent must stay between 0 and 100: {raw_percent}")
+        percent = (start_percent + end_percent) * 0.5
+        edges: Dict[str, float] = {"percent": percent, "start_percent": start_percent, "end_percent": end_percent}
+        for edge in ["A", "B", "C", "D"]:
+            raw_value = str(row.get(f"{edge}_mm", row.get(edge, ""))).strip()
+            try:
+                edges[edge] = float(raw_value)
+            except ValueError as exc:
+                raise ValueError(
+                    f"cross_section position {raw_percent} is missing a numeric {edge}_mm value"
+                ) from exc
+        name = f"range{start_percent * 100:g}_{end_percent * 100:g}"
+        bar_standard = standards_by_bar.setdefault(bar_id.casefold(), {})
+        if name in bar_standard:
+            raise ValueError(
+                f"Duplicate cross_section truth row for bar_id={bar_id}, position_percent={raw_percent}"
+            )
+        bar_standard[name] = edges
+    if not standards_by_bar:
+        raise ValueError("No record_type=cross_section rows were found in the calibration truth CSV")
+    for bar_id, standard in standards_by_bar.items():
+        if len(standard) < 3:
+            raise ValueError(
+                f"bar_id={bar_id} needs at least three cross_section truth rows at known longitudinal positions"
+            )
+        standards_by_bar[bar_id] = dict(sorted(standard.items(), key=lambda item: item[1]["percent"]))
+    return standards_by_bar
+
+
+def standard_for_bar(
+    standards_by_bar: Dict[str, Dict[str, Dict[str, float]]],
+    bar_id: str,
+) -> Dict[str, Dict[str, float]]:
+    try:
+        return standards_by_bar[bar_id.casefold()]
+    except KeyError as exc:
+        available = ", ".join(sorted(standards_by_bar))
+        raise ValueError(
+            f"No cross_section truth for '{bar_id}'. CSV bar_id must equal the HOBJ file name without .hobj. "
+            f"Available: {available}"
+        ) from exc
 
 
 def detect_input(args: argparse.Namespace) -> HeightSource:
@@ -1333,7 +1449,12 @@ def resolve_output_path(args: argparse.Namespace) -> str:
         else:
             path = output
     else:
-        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f"{stem}_measure.csv")
+        path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "results",
+            "measurements",
+            f"{stem}_measure.csv",
+        )
     return path if args.overwrite else unique_path(path)
 
 
@@ -1511,14 +1632,18 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Measure square-rod side lengths from HOBJ or four TIFFs.")
     parser.add_argument("--input", help="Path to .hobj file or a folder containing object_1..object_4 TIFFs")
     parser.add_argument("--tifs", nargs=4, help="Four TIFF files in object order: obj1 obj2 obj3 obj4")
-    parser.add_argument("--output", help="Output CSV path or directory. Defaults to tools/<hobj_name>_measure.csv")
+    parser.add_argument("--output", help="Output CSV path or directory. Defaults to tools/results/measurements/<hobj_name>_measure.csv")
     parser.add_argument("--overwrite", action="store_true", help="Allow overwriting an existing CSV")
     parser.add_argument("--calibration", help="Existing calibration JSON to reuse")
     parser.add_argument("--save-calibration", help="Save generated calibration JSON")
     parser.add_argument("--standard-json", help="Standard measurement JSON; defaults to the latest measured standard")
-    parser.add_argument("--endface-truth-csv", help="Signed 24-point manual truth CSV: head/tail x A/B/C/D x three positions")
+    parser.add_argument(
+        "--calibration-truth-csv",
+        help="Unified manual calibration CSV: cross_section A/B/C/D rows plus optional endface_angle rows",
+    )
+    parser.add_argument("--endface-truth-csv", help="Manual end-face truth CSV: direct angles or signed 24-point readings")
     parser.add_argument("--endface-calibration", help="Existing end-face slope-offset calibration JSON")
-    parser.add_argument("--save-endface-calibration", help="Create an end-face calibration JSON from this input and --endface-truth-csv")
+    parser.add_argument("--save-endface-calibration", help="Create an end-face calibration JSON from this input and manual truth CSV")
     parser.add_argument("--endface-window-mm", type=float, default=15.0, help="Longitudinal window used to find each physical end boundary")
     parser.add_argument("--step-mm", type=float, default=10.0, help="Slice spacing in mm along rod length")
     parser.add_argument("--step-rows", type=int, help="Slice spacing in rows; overrides --step-mm")
@@ -1543,8 +1668,11 @@ def main() -> int:
         raise ValueError(
             "Provide --calibration for measurement. Use --save-calibration only when the input is the standard calibration bar."
         )
-    if args.save_endface_calibration and not args.endface_truth_csv:
-        raise ValueError("--save-endface-calibration requires --endface-truth-csv")
+    if args.standard_json and args.calibration_truth_csv:
+        raise ValueError("Use only one of --standard-json or --calibration-truth-csv")
+    truth_csv_path = args.endface_truth_csv or args.calibration_truth_csv
+    if args.save_endface_calibration and not truth_csv_path:
+        raise ValueError("--save-endface-calibration requires --endface-truth-csv or --calibration-truth-csv")
     if args.endface_window_mm <= 0.0:
         raise ValueError("--endface-window-mm must be positive")
 
@@ -1565,6 +1693,7 @@ def main() -> int:
             f"(version={calibration.get('version')}, model={calibration.get('model', 'unknown')})"
         )
     else:
+        standards_by_bar = load_standard_truth_csv(args.calibration_truth_csv) if args.calibration_truth_csv else None
         standard = load_standard(args.standard_json)
         if args.input and os.path.isdir(args.input):
             hobj_paths = calibration_hobjs_from_folder(args.input)
@@ -1573,7 +1702,9 @@ def main() -> int:
                 name = os.path.splitext(os.path.basename(path))[0]
                 orientation = "swap_bd" if is_turnover_capture(path) else "normal"
                 captures.append((HobjSource(path, args.width, args.height), name, orientation))
-            calibration = build_calibration_from_captures(captures, standard)
+            if standards_by_bar is not None:
+                standard = standard_for_bar(standards_by_bar, captures[0][1])
+            calibration = build_calibration_from_captures(captures, standard, standards_by_bar)
             # Use the first calibration source to produce an immediate CSV sanity check.
             source = captures[0][0]
             valid_ranges = source_valid_ranges(source)
@@ -1585,6 +1716,8 @@ def main() -> int:
             source = detect_input(args)
             valid_ranges = source_valid_ranges(source)
             common_start, common_end = source_common_range(source, valid_ranges)
+            if standards_by_bar is not None:
+                standard = standard_for_bar(standards_by_bar, input_stem(args))
             calibration = build_calibration(source, common_start, common_end, standard)
         if args.save_calibration:
             os.makedirs(os.path.dirname(os.path.abspath(args.save_calibration)), exist_ok=True)
@@ -1698,24 +1831,25 @@ def main() -> int:
     }
     truth_endfaces: Dict[str, EndFaceFit] = {}
     truth_face_angles: Dict[str, Dict[str, float]] = {}
-    if args.endface_truth_csv:
-        truth_face_angles = read_manual_endface_angle_truth(args.endface_truth_csv, input_stem(args))
+    truth_bar_id = os.path.splitext(os.path.basename(getattr(source, "path", "")))[0] or input_stem(args)
+    if truth_csv_path:
+        truth_face_angles = read_manual_endface_angle_truth(truth_csv_path, truth_bar_id)
         if not truth_face_angles:
-            truth_endfaces = read_manual_endface_truth(args.endface_truth_csv, section_points, input_stem(args))
+            truth_endfaces = read_manual_endface_truth(truth_csv_path, section_points, truth_bar_id)
 
     if args.save_endface_calibration:
         if truth_face_angles:
             endface_model = build_endface_face_angle_calibration_model(
                 raw_face_angles,
                 truth_face_angles,
-                input_stem(args),
+                truth_bar_id,
             )
         else:
             endface_model = build_endface_calibration_model(
                 raw_endfaces,
                 truth_endfaces,
                 rod_axis,
-                input_stem(args),
+                truth_bar_id,
             )
         os.makedirs(os.path.dirname(os.path.abspath(args.save_endface_calibration)), exist_ok=True)
         with open(args.save_endface_calibration, "w", encoding="utf-8") as handle:

@@ -32,10 +32,14 @@ __pycache__/
 *.py[cod]
 tools/*_measure.csv
 tools/*_check.csv
+tools/results/
 tools/dashboard_results/
+tools/calibration/truth/*.csv
 tools/web_ui_config.local.json
 tools/dashboard_auto_seen.local.json
 image/script/*_results*.csv
+offline_measurement_package/
+offline_measurement_package.zip
 
 # Local logs and temporary files
 *.log

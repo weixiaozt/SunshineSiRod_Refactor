@@ -1,9 +1,9 @@
 {
   "data_root": "D:\\path\\to\\measurement-data",
-  "output_dir": "D:\\path\\to\\measurement-results",
+  "output_dir": "D:\\ProjectCode\\SunshineSiRod_Refactor\\tools\\results\\measurements",
   "script_path": "D:\\ProjectCode\\SunshineSiRod_Refactor\\tools\\measure_square_rod_edges.py",
-  "calibration_path": "D:\\ProjectCode\\SunshineSiRod_Refactor\\tools\\camera_calibration_model.json",
-  "truth_csv_path": "D:\\path\\to\\manual-truth.csv",
+  "calibration_path": "D:\\ProjectCode\\SunshineSiRod_Refactor\\tools\\calibration\\models\\camera_calibration_model.json",
+  "truth_csv_path": "D:\\ProjectCode\\SunshineSiRod_Refactor\\tools\\calibration\\truth\\manual_calibration_truth.csv",
   "step_mm": 10.0,
   "edge_offsets_mm": {
     "A": 0.0,

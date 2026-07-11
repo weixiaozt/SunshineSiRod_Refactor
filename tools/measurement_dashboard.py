@@ -33,9 +33,9 @@ CONFIG_PATH = TOOLS_DIR / "web_ui_config.local.json"
 AUTO_STATE_PATH = TOOLS_DIR / "dashboard_auto_seen.local.json"
 DEFAULT_CONFIG = {
     "data_root": r"D:\Image_risen",
-    "output_dir": str(TOOLS_DIR / "dashboard_results"),
+    "output_dir": str(TOOLS_DIR / "results" / "measurements"),
     "script_path": str(TOOLS_DIR / "measure_square_rod_edges.py"),
-    "calibration_path": str(TOOLS_DIR / "camera_calibration_model.json"),
+    "calibration_path": str(TOOLS_DIR / "calibration" / "models" / "camera_calibration_model.json"),
     "truth_csv_path": "",
     "step_mm": 10.0,
     "edge_offsets_mm": {"A": 0.0, "B": 0.0, "C": 0.0, "D": 0.0},
@@ -269,6 +269,7 @@ def calibration_summary(config: dict[str, Any]) -> dict[str, Any]:
         "note": data.get("note", ""),
         "corner_biases": biases,
         "standard": data.get("standard", {}),
+        "standards_by_capture": data.get("standards_by_capture", {}),
         "manual_edge_offsets_mm": config["edge_offsets_mm"],
         "manual_endface_angle_offsets_deg": config["endface_angle_offsets_deg"],
     }

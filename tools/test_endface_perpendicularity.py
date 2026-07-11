@@ -15,6 +15,7 @@ from tools.measure_square_rod_edges import (
     build_endface_face_angle_calibration_model,
     face_to_endface_angles,
     fit_endfaces_from_source,
+    load_standard_truth_csv,
     apply_endface_face_angle_calibration_model,
     read_manual_endface_angle_truth,
     read_manual_endface_truth,
@@ -46,6 +47,25 @@ class SyntheticHeightSource(HeightSource):
 
 
 class EndFacePerpendicularityTests(unittest.TestCase):
+    def test_reads_cross_section_rows_from_unified_calibration_csv(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "calibration.csv"
+            with path.open("w", newline="", encoding="utf-8-sig") as handle:
+                writer = csv.DictWriter(
+                    handle,
+                    fieldnames=["record_type", "bar_id", "position_percent", "end", "face", "position", "A_mm", "B_mm", "C_mm", "D_mm", "angle_deg"],
+                )
+                writer.writeheader()
+                for bar_id, offset in [("BAR001", 0.0), ("BAR002", 1.0)]:
+                    for percent, a in [("15-25", 210.01), ("45-55", 210.02), ("70-80", 210.03)]:
+                        writer.writerow({"record_type": "cross_section", "bar_id": bar_id, "position_percent": percent, "A_mm": a + offset, "B_mm": 104.0, "C_mm": 210.0, "D_mm": 104.0})
+                writer.writerow({"record_type": "endface_angle", "bar_id": "BAR001", "end": "head", "face": "A", "position": 1, "angle_deg": 90.0})
+            standard = load_standard_truth_csv(str(path))
+        self.assertEqual(list(standard), ["bar001", "bar002"])
+        self.assertEqual(list(standard["bar001"]), ["range15_25", "range45_55", "range70_80"])
+        self.assertEqual(standard["bar001"]["range45_55"], {"percent": 0.5, "start_percent": 0.45, "end_percent": 0.55, "A": 210.02, "B": 104.0, "C": 210.0, "D": 104.0})
+        self.assertEqual(standard["bar002"]["range45_55"]["A"], 211.02)
+
     def test_face_to_end_angles_are_90_for_square_end(self) -> None:
         section = {"P1": (210.0, 104.0), "P2": (0.0, 0.0), "P3": (0.0, 104.0), "P4": (210.0, 0.0)}
         fit = EndFaceFit(end="head", valid=True, normal_x=0.0, normal_y=1.0, normal_z=0.0)
