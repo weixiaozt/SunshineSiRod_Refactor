@@ -1,0 +1,28 @@
+{
+  "data_root": "D:\\path\\to\\measurement-data",
+  "output_dir": "D:\\path\\to\\measurement-results",
+  "script_path": "D:\\ProjectCode\\SunshineSiRod_Refactor\\tools\\measure_square_rod_edges.py",
+  "calibration_path": "D:\\ProjectCode\\SunshineSiRod_Refactor\\tools\\camera_calibration_model.json",
+  "truth_csv_path": "D:\\path\\to\\manual-truth.csv",
+  "step_mm": 10.0,
+  "edge_offsets_mm": {
+    "A": 0.0,
+    "B": 0.0,
+    "C": 0.0,
+    "D": 0.0
+  },
+  "endface_angle_offsets_deg": {
+    "head": {
+      "A": 0.0,
+      "B": 0.0,
+      "C": 0.0,
+      "D": 0.0
+    },
+    "tail": {
+      "A": 0.0,
+      "B": 0.0,
+      "C": 0.0,
+      "D": 0.0
+    }
+  }
+}

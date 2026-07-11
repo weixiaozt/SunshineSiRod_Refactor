@@ -32,6 +32,9 @@ __pycache__/
 *.py[cod]
 tools/*_measure.csv
 tools/*_check.csv
+tools/dashboard_results/
+tools/web_ui_config.local.json
+tools/dashboard_auto_seen.local.json
 image/script/*_results*.csv
 
 # Local logs and temporary files

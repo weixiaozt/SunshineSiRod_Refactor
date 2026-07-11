@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Square Rod Measurement Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div><p class="eyebrow" data-i18n="eyebrow">QUALITY INSPECTION</p><h1 data-i18n="title">Square Rod Measurement</h1></div>
+    <div class="header-actions"><span id="modelVersion" class="model-badge">Calibration &mdash;</span><button class="text-button" id="languageButton" type="button">&#20013;&#25991;</button><button class="primary-button" id="settingsButton" type="button" data-i18n="settings">Settings</button></div>
+  </header>
+
+  <main>
+    <section class="control-panel">
+      <div class="input-summary"><span class="status-dot"></span><div><strong id="dataRoot">&mdash;</strong><small data-i18n="dataDirectory">Measurement data directory</small></div></div>
+      <label class="file-picker"><span data-i18n="measurementFile">Measurement file</span><select id="fileSelect"><option data-i18n="loading">Loading files&hellip;</option></select></label>
+      <button id="refreshButton" class="secondary-button" type="button" data-i18n="refresh">Refresh</button><button id="measureButton" class="primary-button manual-measure-button" type="button" data-i18n="runMeasurement">Run measurement</button><button id="autoDetectButton" class="primary-button" type="button">Start auto detection</button>
+    </section>
+    <p id="notice" class="notice" role="status"></p>
+
+    <section class="geometry-section">
+      <div class="section-heading"><div><p class="eyebrow" data-i18n="measurementVisuals">MEASUREMENT VISUALS</p><h2 data-i18n="visualGuide">Measurement visual guide</h2></div><span id="resultSource" class="muted" data-i18n="awaitingResult">Awaiting result</span></div>
+
+      <div class="measurement-row">
+        <article class="visual-card cross-section-card">
+          <div class="visual-card-heading"><div><p class="eyebrow" data-i18n="crossSection">CROSS-SECTION</p><h3 data-i18n="crossSectionMap">Edge and diagonal map</h3></div><span data-i18n="crossSectionTag">Top view</span></div>
+          <div class="cross-section-detail" aria-label="Detailed cross-section measurement diagram">
+            <span class="corner-dot dot-p3">P3 / C1</span><span class="corner-dot dot-p1">P1 / C2</span><span class="corner-dot dot-p2">P2 / C3</span><span class="corner-dot dot-p4">P4 / C4</span>
+            <span class="edge-measure measure-a">A <b data-field="A_mm">&mdash;</b></span><span class="edge-measure measure-b">B <b data-field="B_mm">&mdash;</b></span><span class="edge-measure measure-c">C <b data-field="C_mm">&mdash;</b></span><span class="edge-measure measure-d">D <b data-field="D_mm">&mdash;</b></span>
+            <span class="chamfer-segment chamfer-p3"></span><span class="chamfer-segment chamfer-p1"></span><span class="chamfer-segment chamfer-p2"></span><span class="chamfer-segment chamfer-p4"></span><span class="cross-projection cross-projection-x">X</span><span class="cross-projection cross-projection-z">Z</span>
+            <span class="diagonal-line d1"></span><span class="diagonal-line d2"></span><span class="diagonal-tag diag-one">D2 <b data-field="diag2_M3_M4_mm">&mdash;</b></span><span class="diagonal-tag diag-two">D1 <b data-field="diag1_M1_M2_mm">&mdash;</b></span>
+            <span class="midpoint-marker m1">M1</span><span class="midpoint-marker m2">M2</span><span class="midpoint-marker m3">M3</span><span class="midpoint-marker m4">M4</span>
+          </div>
+          <p class="visual-note" data-i18n="crossSectionNote">A&ndash;D are free four-corner edge lengths. D1/D2 use chamfer midpoints M1&ndash;M4.</p>
+        </article>
+        <section class="data-panel edge-data-panel"><div class="data-panel-heading"><p class="eyebrow" data-i18n="edgeDimensions">EDGE DIMENSIONS</p><h3 data-i18n="edgeAndSymmetry">Edge and symmetry values</h3></div><div class="paired-metric-grid">
+          <article class="metric-card"><span>Edge A</span><strong data-field="A_mm">&mdash;</strong><small>mm</small></article><article class="metric-card"><span>Edge B</span><strong data-field="B_mm">&mdash;</strong><small>mm</small></article><article class="metric-card"><span>Edge C</span><strong data-field="C_mm">&mdash;</strong><small>mm</small></article><article class="metric-card"><span>Edge D</span><strong data-field="D_mm">&mdash;</strong><small>mm</small></article>
+          <article class="metric-card"><span data-i18n="diagonal1">Diagonal 1</span><strong data-field="diag1_M1_M2_mm">&mdash;</strong><small>mm</small></article><article class="metric-card"><span data-i18n="diagonal2">Diagonal 2</span><strong data-field="diag2_M3_M4_mm">&mdash;</strong><small>mm</small></article><article class="metric-card accent"><span>A &minus; C</span><strong data-derived="aMinusC">&mdash;</strong><small>mm</small></article><article class="metric-card accent"><span>B &minus; D</span><strong data-derived="bMinusD">&mdash;</strong><small>mm</small></article><article class="metric-card accent"><span data-i18n="diagonalDifference">Diagonal difference</span><strong data-derived="diagonalDifference">&mdash;</strong><small>mm</small></article>
+        </div></section>
+      </div>
+
+      <div class="measurement-row">
+        <article class="visual-card endface-card">
+          <div class="visual-card-heading"><div><p class="eyebrow" data-i18n="endFaceVisual">END-FACE VIEW</p><h3 data-i18n="endFaceMap">Head and tail perpendicularity</h3></div><span data-i18n="sideView">Side view</span></div>
+          <div class="endface-visual" aria-label="Rod end-face perpendicularity diagram"><span class="end-plane head-plane"></span><span class="end-plane tail-plane"></span><span class="rod-body"></span><span class="rod-axis"></span><span class="right-angle head-angle">90&deg;</span><span class="right-angle tail-angle">90&deg;</span><span class="end-label label-head" data-i18n="head">Head</span><span class="end-label label-tail" data-i18n="tail">Tail</span><span class="axis-label" data-i18n="rodAxis">Rod axis</span></div>
+          <p class="visual-note" data-i18n="endfaceNote">Values will appear here when the measurement script provides end-face results.</p>
+        </article>
+        <section class="data-panel endface-data-panel">
+          <div class="data-panel-heading"><p class="eyebrow" data-i18n="wholeRod">WHOLE ROD</p><h3 data-i18n="endFaceMap">Head and tail perpendicularity</h3></div>
+          <div class="paired-metric-grid endface-summary-grid"><article class="metric-card"><span data-i18n="rodLength">Rod length</span><strong data-field="stick_length_mm">&mdash;</strong><small>mm</small></article><article class="metric-card pending"><span data-i18n="headEndFace">Head end-face perpendicularity</span><strong data-field="head_endface_verticality_deg">&mdash;</strong><small>&deg;</small></article><article class="metric-card pending"><span data-i18n="tailEndFace">Tail end-face perpendicularity</span><strong data-field="tail_endface_verticality_deg">&mdash;</strong><small>&deg;</small></article></div>
+          <div class="endface-angle-groups">
+            <section class="endface-angle-group"><h4 data-i18n="headFaceAngles">Head end-face angles</h4><div class="endface-angle-grid">
+              <article><span>A</span><strong data-field="head_A_endface_angle_deg">&mdash;</strong><small>&deg;</small></article><article><span>B</span><strong data-field="head_B_endface_angle_deg">&mdash;</strong><small>&deg;</small></article><article><span>C</span><strong data-field="head_C_endface_angle_deg">&mdash;</strong><small>&deg;</small></article><article><span>D</span><strong data-field="head_D_endface_angle_deg">&mdash;</strong><small>&deg;</small></article>
+            </div></section>
+            <section class="endface-angle-group"><h4 data-i18n="tailFaceAngles">Tail end-face angles</h4><div class="endface-angle-grid">
+              <article><span>A</span><strong data-field="tail_A_endface_angle_deg">&mdash;</strong><small>&deg;</small></article><article><span>B</span><strong data-field="tail_B_endface_angle_deg">&mdash;</strong><small>&deg;</small></article><article><span>C</span><strong data-field="tail_C_endface_angle_deg">&mdash;</strong><small>&deg;</small></article><article><span>D</span><strong data-field="tail_D_endface_angle_deg">&mdash;</strong><small>&deg;</small></article>
+            </div></section>
+          </div>
+        </section>
+      </div>
+
+      <div class="measurement-row chamfer-row">
+        <article class="visual-card chamfer-card">
+          <div class="visual-card-heading"><div><p class="eyebrow" data-i18n="cornerGeometry">CORNER GEOMETRY</p><h3 data-i18n="chamferMap">Chamfer, perpendicularity and projections</h3></div><span data-i18n="cornerDetail">Enlarged corner</span></div>
+          <div class="chamfer-layout"><div class="chamfer-visual" aria-label="Chamfer and X Z projection diagram"><span class="face face-horizontal"></span><span class="face face-vertical"></span><span class="chamfer-edge"></span><span class="chamfer-label">Chamfer</span><span class="projection projection-x">X</span><span class="projection projection-z">Z</span><span class="right-angle corner-angle">90&deg; &minus; &theta;</span><span class="intersection-t1">T1</span><span class="intersection-t2">T2</span></div><div class="chamfer-explanation"><p data-i18n="chamferNote">The chamfer length is T1&ndash;T2. Projection X and Projection Z are the horizontal and height components of the same segment.</p><div class="formula-row"><span>Chamfer = |T1 &minus; T2|</span><span>Projection X = &Delta;X</span><span>Projection Z = &Delta;Z</span></div></div></div>
+        </article>
+        <section class="data-panel corner-data-panel"><div class="data-panel-heading"><p class="eyebrow" data-i18n="cornerGeometry">CORNER GEOMETRY</p><h3 data-i18n="cornerData">Four-corner data</h3></div><div class="corner-grid" id="cornerGrid"></div></section>
+      </div>
+    </section>
+
+    <details class="calibration-panel" id="calibrationPanel" open><summary><span><span class="eyebrow" data-i18n="calibration">CALIBRATION</span><strong data-i18n="calibrationCheck">Calibration and compensation check</strong></span><span class="summary-arrow">&#8964;</span></summary><div id="calibrationContent" class="calibration-content"><p data-i18n="loading">Loading&hellip;</p></div></details>
+  </main>
+
+  <dialog id="settingsDialog"><form method="dialog" id="settingsForm"><div class="dialog-header"><div><p class="eyebrow" data-i18n="settings">SETTINGS</p><h2 data-i18n="pathSettings">Paths and measurement settings</h2></div><button class="close-button" value="cancel" aria-label="Close">&times;</button></div><label><span data-i18n="dataDirectory">Measurement data directory</span><input name="data_root" required></label><label><span data-i18n="resultDirectory">Result save directory</span><input name="output_dir" required></label><label><span data-i18n="scriptPath">Measurement script path</span><input name="script_path" required></label><label><span data-i18n="calibrationPath">Calibration model path</span><input name="calibration_path" required></label><label><span data-i18n="truthPath">Manual-truth CSV path</span><input name="truth_csv_path" placeholder="Optional"></label><label><span data-i18n="sliceSpacing">Slice spacing (mm)</span><input name="step_mm" type="number" min="0.001" step="any" required></label><p class="dialog-note" data-i18n="pathNote">Paths are saved locally on this computer.</p><div class="dialog-actions"><button value="cancel" class="secondary-button" data-i18n="cancel">Cancel</button><button id="saveSettingsButton" value="default" class="primary-button" data-i18n="save">Save settings</button></div></form></dialog>
+  <script src="app.js"></script>
+</body>
+</html>

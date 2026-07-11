@@ -82,6 +82,25 @@ class CornerResult:
     reason: str = ""
 
 
+@dataclass
+class EndFaceFit:
+    """Plane fit for one physical rod end in global X/Y/Z coordinates."""
+
+    end: str
+    valid: bool
+    slope_x: float = math.nan
+    slope_z: float = math.nan
+    intercept_y: float = math.nan
+    normal_x: float = math.nan
+    normal_y: float = math.nan
+    normal_z: float = math.nan
+    verticality_deg: float = math.nan
+    point_count: int = 0
+    inlier_count: int = 0
+    rmse_mm: float = math.nan
+    reason: str = ""
+
+
 class HeightSource:
     width: int
     height: int
@@ -319,8 +338,16 @@ def orientation_edges(edges: Dict[str, float], orientation: str) -> Dict[str, fl
     return out
 
 
-def source_common_range(source: HeightSource) -> Tuple[int, int]:
-    ranges = {obj: find_valid_row_range(source, obj) for obj in [1, 2, 3, 4]}
+def source_valid_ranges(source: HeightSource) -> Dict[int, Tuple[int, int]]:
+    return {obj: find_valid_row_range(source, obj) for obj in [1, 2, 3, 4]}
+
+
+def source_common_range(
+    source: HeightSource,
+    ranges: Optional[Dict[int, Tuple[int, int]]] = None,
+) -> Tuple[int, int]:
+    if ranges is None:
+        ranges = source_valid_ranges(source)
     common_start = max(r[0] for r in ranges.values())
     common_end = min(r[1] for r in ranges.values())
     if common_end <= common_start:
@@ -733,6 +760,547 @@ def edge_lengths(points: Dict[str, Tuple[float, float]]) -> Dict[str, float]:
     }
 
 
+def normalized_axis(axis: np.ndarray) -> np.ndarray:
+    norm = float(np.linalg.norm(axis))
+    if norm <= 1e-12:
+        return np.array([0.0, 1.0, 0.0], dtype=float)
+    out = np.asarray(axis, dtype=float) / norm
+    return out if out[1] >= 0.0 else -out
+
+
+def robust_plane_y_from_xz(
+    points_xyz: np.ndarray,
+    end: str,
+    rod_axis: Optional[np.ndarray] = None,
+) -> EndFaceFit:
+    """Fit Y = slope_x * X + slope_z * Z + intercept using robust MAD rejection."""
+
+    arr = np.asarray(points_xyz, dtype=float)
+    if arr.ndim != 2 or arr.shape[1] != 3:
+        return EndFaceFit(end=end, valid=False, reason="end-face points must be an N x 3 array")
+    arr = arr[np.all(np.isfinite(arr), axis=1)]
+    if len(arr) < 12:
+        return EndFaceFit(end=end, valid=False, point_count=len(arr), reason="fewer than 12 usable end-face points")
+
+    design = np.column_stack([arr[:, 0], arr[:, 2], np.ones(len(arr))])
+    target_y = arr[:, 1]
+    keep = np.ones(len(arr), dtype=bool)
+    coef = np.zeros(3, dtype=float)
+    for _ in range(6):
+        if int(keep.sum()) < 12:
+            break
+        coef, *_ = np.linalg.lstsq(design[keep], target_y[keep], rcond=None)
+        residual = target_y - design @ coef
+        centre = float(np.median(residual[keep]))
+        mad = float(np.median(np.abs(residual[keep] - centre)))
+        sigma = 1.4826 * mad
+        threshold = max(0.015, 3.5 * sigma)
+        updated = np.abs(residual - centre) <= threshold
+        if int(updated.sum()) < max(12, len(arr) // 4):
+            break
+        if np.array_equal(updated, keep):
+            keep = updated
+            break
+        keep = updated
+
+    if int(keep.sum()) < 12:
+        return EndFaceFit(end=end, valid=False, point_count=len(arr), inlier_count=int(keep.sum()), reason="plane fit retained too few inliers")
+
+    coef, *_ = np.linalg.lstsq(design[keep], target_y[keep], rcond=None)
+    residual = target_y[keep] - design[keep] @ coef
+    rmse = float(np.sqrt(np.mean(residual * residual)))
+    slope_x, slope_z, intercept = (float(v) for v in coef)
+    normal = normalized_axis(np.array([-slope_x, 1.0, -slope_z], dtype=float))
+    axis = normalized_axis(np.array([0.0, 1.0, 0.0], dtype=float) if rod_axis is None else rod_axis)
+    cosine = float(np.clip(abs(normal @ axis), 0.0, 1.0))
+    verticality = math.degrees(math.acos(cosine))
+    return EndFaceFit(
+        end=end,
+        valid=True,
+        slope_x=slope_x,
+        slope_z=slope_z,
+        intercept_y=intercept,
+        normal_x=float(normal[0]),
+        normal_y=float(normal[1]),
+        normal_z=float(normal[2]),
+        verticality_deg=verticality,
+        point_count=len(arr),
+        inlier_count=int(keep.sum()),
+        rmse_mm=rmse,
+    )
+
+
+def fit_rod_axis(rows: List[Dict[str, object]]) -> np.ndarray:
+    """Fit the actual rod centre trajectory instead of assuming it follows the scanner Y axis."""
+
+    centres: List[Tuple[float, float, float]] = []
+    for row in rows:
+        if row.get("record") != "slice" or row.get("valid") is not True:
+            continue
+        try:
+            y = float(row["y_mm"])
+            x = float(np.mean([float(row[f"P{i}_x"]) for i in [1, 2, 3, 4]]))
+            z = float(np.mean([float(row[f"P{i}_z"]) for i in [1, 2, 3, 4]]))
+        except (KeyError, TypeError, ValueError):
+            continue
+        centres.append((x, y, z))
+    if len(centres) < 3:
+        return np.array([0.0, 1.0, 0.0], dtype=float)
+
+    arr = np.array(centres, dtype=float)
+    y = arr[:, 1]
+    dx_dy, _ = np.polyfit(y, arr[:, 0], 1)
+    dz_dy, _ = np.polyfit(y, arr[:, 2], 1)
+    for _ in range(3):
+        predicted_x = dx_dy * y + float(np.median(arr[:, 0] - dx_dy * y))
+        predicted_z = dz_dy * y + float(np.median(arr[:, 2] - dz_dy * y))
+        residual = np.hypot(arr[:, 0] - predicted_x, arr[:, 2] - predicted_z)
+        med = float(np.median(residual))
+        sigma = 1.4826 * float(np.median(np.abs(residual - med))) + 1e-9
+        keep = residual <= med + 3.5 * sigma
+        if int(keep.sum()) < 3:
+            break
+        dx_dy, _ = np.polyfit(y[keep], arr[keep, 0], 1)
+        dz_dy, _ = np.polyfit(y[keep], arr[keep, 2], 1)
+    return normalized_axis(np.array([float(dx_dy), 1.0, float(dz_dy)], dtype=float))
+
+
+def endface_boundary_points_for_camera(
+    source: HeightSource,
+    obj: int,
+    end: str,
+    valid_range: Tuple[int, int],
+    transform: object,
+    calibration: Dict,
+    common_start: int,
+    x_scale: float,
+    y_scale: float,
+    window_mm: float,
+    min_run_rows: int = 3,
+    column_step: int = 4,
+) -> np.ndarray:
+    """Extract the first/last continuous material boundary for one camera."""
+
+    row0, row1 = valid_range
+    window_rows = max(12, int(round(window_mm / y_scale)))
+    if end == "head":
+        block_start = row0
+        block_end = min(row1, row0 + window_rows - 1)
+    elif end == "tail":
+        block_start = max(row0, row1 - window_rows + 1)
+        block_end = row1
+    else:
+        raise ValueError(f"Unknown end: {end}")
+    if block_end - block_start + 1 < min_run_rows:
+        return np.empty((0, 3), dtype=float)
+
+    block = np.stack([source.row(obj, row) for row in range(block_start, block_end + 1)]).astype(float, copy=False)
+    valid = (block > INVALID_Z) & np.isfinite(block) & (np.abs(block) > 1e-6)
+    runs = valid.copy()
+    if end == "head":
+        for offset in range(1, min_run_rows):
+            runs[:-offset] &= valid[offset:]
+            runs[-offset:] = False
+    else:
+        for offset in range(1, min_run_rows):
+            runs[offset:] &= valid[:-offset]
+            runs[:offset] = False
+
+    candidate_cols = np.flatnonzero(np.any(runs, axis=0))[:: max(1, column_step)]
+    if candidate_cols.size == 0:
+        return np.empty((0, 3), dtype=float)
+    bias = calibration.get("corner_biases", {}).get(OBJECT_TO_POINT[obj], [0.0, 0.0])
+    points: List[Tuple[float, float, float]] = []
+    for col in candidate_cols:
+        available = np.flatnonzero(runs[:, col])
+        if available.size == 0:
+            continue
+        local_row = int(available[0] if end == "head" else available[-1])
+        if end == "head":
+            inside = slice(local_row, min(len(block), local_row + 6))
+        else:
+            inside = slice(max(0, local_row - 5), local_row + 1)
+        z_values = block[inside, col]
+        z_values = z_values[(z_values > INVALID_Z) & np.isfinite(z_values) & (np.abs(z_values) > 1e-6)]
+        if z_values.size < min_run_rows:
+            continue
+        local_x = float(col) * x_scale
+        local_z = float(np.median(z_values))
+        global_x, global_z = apply_transform(transform, local_x, local_z)
+        global_x += float(bias[0])
+        global_z += float(bias[1])
+        global_y = float(block_start + local_row - common_start) * y_scale
+        points.append((global_x, global_y, global_z))
+    return np.asarray(points, dtype=float) if points else np.empty((0, 3), dtype=float)
+
+
+def fit_endfaces_from_source(
+    source: HeightSource,
+    valid_ranges: Dict[int, Tuple[int, int]],
+    transforms: Dict[int, object],
+    calibration: Dict,
+    common_start: int,
+    rod_axis: np.ndarray,
+    x_scale: float,
+    y_scale: float,
+    window_mm: float,
+) -> Dict[str, EndFaceFit]:
+    results: Dict[str, EndFaceFit] = {}
+    for end in ["head", "tail"]:
+        clouds = [
+            endface_boundary_points_for_camera(
+                source,
+                obj,
+                end,
+                valid_ranges[obj],
+                transforms[obj],
+                calibration,
+                common_start,
+                x_scale,
+                y_scale,
+                window_mm,
+            )
+            for obj in [1, 2, 3, 4]
+        ]
+        nonempty = [cloud for cloud in clouds if len(cloud)]
+        if not nonempty:
+            results[end] = EndFaceFit(end=end, valid=False, reason="no continuous end boundary was found")
+            continue
+        results[end] = robust_plane_y_from_xz(np.vstack(nonempty), end, rod_axis)
+    return results
+
+
+def mean_cross_section_points(rows: List[Dict[str, object]]) -> Dict[str, Tuple[float, float]]:
+    points: Dict[str, Tuple[float, float]] = {}
+    for point_name in ["P1", "P2", "P3", "P4"]:
+        values: List[Tuple[float, float]] = []
+        for row in rows:
+            if row.get("record") != "slice" or row.get("valid") is not True:
+                continue
+            try:
+                values.append((float(row[f"{point_name}_x"]), float(row[f"{point_name}_z"])))
+            except (KeyError, TypeError, ValueError):
+                continue
+        if not values:
+            raise ValueError(f"Cannot determine mean cross-section point {point_name}")
+        arr = np.asarray(values, dtype=float)
+        points[point_name] = (float(np.median(arr[:, 0])), float(np.median(arr[:, 1])))
+    return points
+
+
+def face_to_endface_angles(
+    section_points: Dict[str, Tuple[float, float]],
+    endface_fit: EndFaceFit,
+    rod_axis: np.ndarray,
+) -> Dict[str, float]:
+    """Return the included angle between each actual side plane and one end plane."""
+
+    if not endface_fit.valid:
+        return {}
+    face_ends = {
+        "A": ("P3", "P1"),
+        "B": ("P1", "P4"),
+        "C": ("P2", "P4"),
+        "D": ("P3", "P2"),
+    }
+    axis = normalized_axis(rod_axis)
+    end_normal = normalized_axis(
+        np.array([endface_fit.normal_x, endface_fit.normal_y, endface_fit.normal_z], dtype=float)
+    )
+    angles: Dict[str, float] = {}
+    for face, (start_name, finish_name) in face_ends.items():
+        start = section_points[start_name]
+        finish = section_points[finish_name]
+        edge_direction = np.array([finish[0] - start[0], 0.0, finish[1] - start[1]], dtype=float)
+        side_normal = np.cross(edge_direction, axis)
+        norm = float(np.linalg.norm(side_normal))
+        if norm <= 1e-12:
+            continue
+        side_normal /= norm
+        cosine = float(np.clip(abs(side_normal @ end_normal), 0.0, 1.0))
+        angles[face] = math.degrees(math.acos(cosine))
+    return angles
+
+
+def mean_face_verticality_error(face_angles: Dict[str, float]) -> float:
+    values = [abs(90.0 - face_angles[face]) for face in ["A", "B", "C", "D"] if face in face_angles]
+    return float(np.mean(values)) if len(values) == 4 else math.nan
+
+
+def manual_position_fraction(row: Dict[str, str], ordinal: int) -> float:
+    raw_fraction = str(row.get("position_fraction", "")).strip()
+    raw_percent = str(row.get("position_percent", "")).strip()
+    raw_position = str(row.get("position", "")).strip().lower()
+    if raw_fraction:
+        value = float(raw_fraction)
+        if 0.0 <= value <= 1.0:
+            return value
+    if raw_percent:
+        value = float(raw_percent)
+        if 0.0 <= value <= 100.0:
+            return value / 100.0
+    position_aliases = {
+        "1": 0.25,
+        "p1": 0.25,
+        "first": 0.25,
+        "2": 0.50,
+        "p2": 0.50,
+        "middle": 0.50,
+        "mid": 0.50,
+        "3": 0.75,
+        "p3": 0.75,
+        "last": 0.75,
+    }
+    if raw_position in position_aliases:
+        return position_aliases[raw_position]
+    if raw_position:
+        value = float(raw_position)
+        if 0.0 <= value <= 1.0:
+            return value
+    return [0.25, 0.50, 0.75][min(max(ordinal, 0), 2)]
+
+
+def normalize_end_name(value: str) -> str:
+    text = value.strip().lower()
+    if text in {"head", "front", "start", "头", "头部", "头端", "头部端面"}:
+        return "head"
+    if text in {"tail", "rear", "end", "尾", "尾部", "尾端", "尾部端面"}:
+        return "tail"
+    return text
+
+
+def first_float(row: Dict[str, str], names: Iterable[str]) -> Optional[float]:
+    for name in names:
+        raw = row.get(name, "")
+        if raw not in ("", None):
+            try:
+                value = float(raw)
+            except (TypeError, ValueError):
+                continue
+            if math.isfinite(value):
+                return value
+    return None
+
+
+def read_manual_endface_truth(
+    path: str,
+    section_points: Dict[str, Tuple[float, float]],
+    bar_id: str,
+) -> Dict[str, EndFaceFit]:
+    """Read the user's 4 faces x 3 positions x 2 ends signed gauge readings."""
+
+    with open(path, "r", encoding="utf-8-sig", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    target_ids = {bar_id.strip().lower(), os.path.splitext(os.path.basename(bar_id))[0].lower()}
+    matching = [
+        row
+        for row in rows
+        if not str(row.get("bar_id", "")).strip()
+        or str(row.get("bar_id", "")).strip().lower() in target_ids
+    ]
+    if not matching:
+        raise ValueError(f"No end-face truth rows match bar_id={bar_id}")
+
+    face_ends = {
+        "A": ("P3", "P1"),
+        "B": ("P1", "P4"),
+        "C": ("P2", "P4"),
+        "D": ("P3", "P2"),
+    }
+    grouped: Dict[str, List[Tuple[float, float, float]]] = {"head": [], "tail": []}
+    counts: Dict[Tuple[str, str], int] = {}
+    for row in matching:
+        end = normalize_end_name(str(row.get("end", row.get("端面", ""))))
+        face = str(row.get("face", row.get("面", ""))).strip().upper()
+        if end not in grouped or face not in face_ends:
+            continue
+        deviation = first_float(
+            row,
+            ["deviation_mm", "reading_mm", "value_mm", "perpendicularity_mm", "偏差_mm", "量规读数_mm"],
+        )
+        if deviation is None:
+            continue
+        key = (end, face)
+        ordinal = counts.get(key, 0)
+        counts[key] = ordinal + 1
+        x = first_float(row, ["x_mm", "X_mm", "x", "X"])
+        z = first_float(row, ["z_mm", "Z_mm", "z", "Z"])
+        if x is None or z is None:
+            fraction = manual_position_fraction(row, ordinal)
+            start_name, end_name = face_ends[face]
+            start = section_points[start_name]
+            finish = section_points[end_name]
+            x = start[0] + fraction * (finish[0] - start[0])
+            z = start[1] + fraction * (finish[1] - start[1])
+        grouped[end].append((float(x), float(deviation), float(z)))
+
+    fits: Dict[str, EndFaceFit] = {}
+    for end in ["head", "tail"]:
+        missing = [face for face in ["A", "B", "C", "D"] if counts.get((end, face), 0) < 3]
+        if missing:
+            fits[end] = EndFaceFit(
+                end=end,
+                valid=False,
+                point_count=len(grouped[end]),
+                reason=f"manual truth needs three readings on faces: {','.join(missing)}",
+            )
+            continue
+        fits[end] = robust_plane_y_from_xz(np.asarray(grouped[end], dtype=float), end)
+    return fits
+
+
+def read_manual_endface_angle_truth(path: str, bar_id: str) -> Dict[str, Dict[str, float]]:
+    """Average three direct gauge angle readings for each end/face pair."""
+
+    with open(path, "r", encoding="utf-8-sig", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    target_ids = {bar_id.strip().lower(), os.path.splitext(os.path.basename(bar_id))[0].lower()}
+    grouped: Dict[str, Dict[str, List[float]]] = {
+        end: {face: [] for face in ["A", "B", "C", "D"]}
+        for end in ["head", "tail"]
+    }
+    for row in rows:
+        row_bar = str(row.get("bar_id", "")).strip().lower()
+        if row_bar and row_bar not in target_ids:
+            continue
+        end = normalize_end_name(str(row.get("end", row.get("端面", ""))))
+        face = str(row.get("face", row.get("面", ""))).strip().upper()
+        if end not in grouped or face not in grouped[end]:
+            continue
+        angle = first_float(row, ["angle_deg", "included_angle_deg", "value_deg", "夹角_deg", "量规角度_deg"])
+        if angle is not None:
+            grouped[end][face].append(angle)
+
+    if not any(grouped[end][face] for end in grouped for face in grouped[end]):
+        return {}
+    means: Dict[str, Dict[str, float]] = {"head": {}, "tail": {}}
+    for end in ["head", "tail"]:
+        for face in ["A", "B", "C", "D"]:
+            values = grouped[end][face]
+            if len(values) != 3:
+                raise ValueError(f"Manual angle truth requires exactly three readings for {end}-{face}; got {len(values)}")
+            means[end][face] = float(np.mean(np.asarray(values, dtype=float)))
+    return means
+
+
+def build_endface_face_angle_calibration_model(
+    raw_angles: Dict[str, Dict[str, float]],
+    truth_angles: Dict[str, Dict[str, float]],
+    source_name: str,
+) -> Dict[str, object]:
+    offsets: Dict[str, Dict[str, float]] = {"head": {}, "tail": {}}
+    for end in ["head", "tail"]:
+        for face in ["A", "B", "C", "D"]:
+            if face not in raw_angles.get(end, {}) or face not in truth_angles.get(end, {}):
+                raise ValueError(f"Cannot calibrate missing end-face angle {end}-{face}")
+            offsets[end][face] = truth_angles[end][face] - raw_angles[end][face]
+    return {
+        "version": 2,
+        "model": "endface_face_angle_offset",
+        "source": source_name,
+        "note": "Each offset equals the mean of three direct gauge angles minus the raw visual face-to-end angle.",
+        "angle_offsets_deg": offsets,
+        "manual_truth_angles_deg": truth_angles,
+    }
+
+
+def apply_endface_face_angle_calibration_model(
+    raw_angles: Dict[str, Dict[str, float]],
+    model: Optional[Dict[str, object]],
+) -> Dict[str, Dict[str, float]]:
+    corrected = {end: dict(values) for end, values in raw_angles.items()}
+    if not model or model.get("model") != "endface_face_angle_offset":
+        return corrected
+    offsets = model.get("angle_offsets_deg")
+    if not isinstance(offsets, dict):
+        return corrected
+    for end in ["head", "tail"]:
+        end_offsets = offsets.get(end, {})
+        if not isinstance(end_offsets, dict):
+            continue
+        for face in ["A", "B", "C", "D"]:
+            if face in corrected.get(end, {}):
+                corrected[end][face] += float(end_offsets.get(face, 0.0))
+    return corrected
+
+
+def rod_axis_slopes(rod_axis: np.ndarray) -> Tuple[float, float]:
+    axis = normalized_axis(rod_axis)
+    if abs(float(axis[1])) <= 1e-12:
+        return 0.0, 0.0
+    return float(axis[0] / axis[1]), float(axis[2] / axis[1])
+
+
+def build_endface_calibration_model(
+    raw_fits: Dict[str, EndFaceFit],
+    truth_fits: Dict[str, EndFaceFit],
+    rod_axis: np.ndarray,
+    source_name: str,
+) -> Dict[str, object]:
+    axis_x, axis_z = rod_axis_slopes(rod_axis)
+    ends: Dict[str, Dict[str, float]] = {}
+    for end in ["head", "tail"]:
+        raw = raw_fits[end]
+        truth = truth_fits[end]
+        if not raw.valid or not truth.valid:
+            raise ValueError(f"Cannot calibrate {end}: raw={raw.reason or 'ok'}, truth={truth.reason or 'ok'}")
+        raw_residual_x = raw.slope_x + axis_x
+        raw_residual_z = raw.slope_z + axis_z
+        ends[end] = {
+            "slope_offset_x": truth.slope_x - raw_residual_x,
+            "slope_offset_z": truth.slope_z - raw_residual_z,
+            "raw_residual_slope_x": raw_residual_x,
+            "raw_residual_slope_z": raw_residual_z,
+            "truth_slope_x": truth.slope_x,
+            "truth_slope_z": truth.slope_z,
+            "truth_verticality_deg": truth.verticality_deg,
+        }
+    return {
+        "version": 1,
+        "model": "endface_plane_slope_offset",
+        "source": source_name,
+        "note": "Offsets are fitted from signed 4-face x 3-position manual readings. Raw visual values remain in the measurement CSV.",
+        "ends": ends,
+    }
+
+
+def apply_endface_calibration_model(
+    raw_fit: EndFaceFit,
+    rod_axis: np.ndarray,
+    model: Optional[Dict[str, object]],
+) -> EndFaceFit:
+    if not raw_fit.valid or not model:
+        return raw_fit
+    ends = model.get("ends")
+    if not isinstance(ends, dict):
+        return raw_fit
+    end_model = ends.get(raw_fit.end)
+    if not isinstance(end_model, dict):
+        return raw_fit
+    axis_x, axis_z = rod_axis_slopes(rod_axis)
+    residual_x = raw_fit.slope_x + axis_x + float(end_model.get("slope_offset_x", 0.0))
+    residual_z = raw_fit.slope_z + axis_z + float(end_model.get("slope_offset_z", 0.0))
+    corrected_slope_x = residual_x - axis_x
+    corrected_slope_z = residual_z - axis_z
+    normal = normalized_axis(np.array([-corrected_slope_x, 1.0, -corrected_slope_z], dtype=float))
+    axis = normalized_axis(rod_axis)
+    cosine = float(np.clip(abs(normal @ axis), 0.0, 1.0))
+    return EndFaceFit(
+        end=raw_fit.end,
+        valid=True,
+        slope_x=corrected_slope_x,
+        slope_z=corrected_slope_z,
+        intercept_y=raw_fit.intercept_y,
+        normal_x=float(normal[0]),
+        normal_y=float(normal[1]),
+        normal_z=float(normal[2]),
+        verticality_deg=math.degrees(math.acos(cosine)),
+        point_count=raw_fit.point_count,
+        inlier_count=raw_fit.inlier_count,
+        rmse_mm=raw_fit.rmse_mm,
+    )
+
+
 def input_stem(args: argparse.Namespace) -> str:
     if args.input and os.path.isfile(args.input):
         return os.path.splitext(os.path.basename(args.input))[0]
@@ -783,6 +1351,48 @@ def write_csv(path: str, rows: List[Dict[str, object]]) -> None:
         "diag1_M1_M2_mm",
         "diag2_M3_M4_mm",
         "stick_length_mm",
+        "head_endface_raw_verticality_deg",
+        "tail_endface_raw_verticality_deg",
+        "head_endface_plane_verticality_deg",
+        "tail_endface_plane_verticality_deg",
+        "head_endface_verticality_deg",
+        "tail_endface_verticality_deg",
+        "head_A_endface_raw_angle_deg",
+        "head_B_endface_raw_angle_deg",
+        "head_C_endface_raw_angle_deg",
+        "head_D_endface_raw_angle_deg",
+        "tail_A_endface_raw_angle_deg",
+        "tail_B_endface_raw_angle_deg",
+        "tail_C_endface_raw_angle_deg",
+        "tail_D_endface_raw_angle_deg",
+        "head_A_endface_angle_deg",
+        "head_B_endface_angle_deg",
+        "head_C_endface_angle_deg",
+        "head_D_endface_angle_deg",
+        "tail_A_endface_angle_deg",
+        "tail_B_endface_angle_deg",
+        "tail_C_endface_angle_deg",
+        "tail_D_endface_angle_deg",
+        "head_A_endface_truth_angle_deg",
+        "head_B_endface_truth_angle_deg",
+        "head_C_endface_truth_angle_deg",
+        "head_D_endface_truth_angle_deg",
+        "tail_A_endface_truth_angle_deg",
+        "tail_B_endface_truth_angle_deg",
+        "tail_C_endface_truth_angle_deg",
+        "tail_D_endface_truth_angle_deg",
+        "head_A_endface_difference_deg",
+        "head_B_endface_difference_deg",
+        "head_C_endface_difference_deg",
+        "head_D_endface_difference_deg",
+        "tail_A_endface_difference_deg",
+        "tail_B_endface_difference_deg",
+        "tail_C_endface_difference_deg",
+        "tail_D_endface_difference_deg",
+        "head_endface_truth_deg",
+        "tail_endface_truth_deg",
+        "head_endface_difference_deg",
+        "tail_endface_difference_deg",
         "P1_x",
         "P1_z",
         "P2_x",
@@ -819,12 +1429,49 @@ def write_csv(path: str, rows: List[Dict[str, object]]) -> None:
         "obj3_projection_z_mm",
         "obj4_projection_x_mm",
         "obj4_projection_z_mm",
+        "endface",
+        "endface_fit_kind",
+        "endface_slope_x",
+        "endface_slope_z",
+        "endface_intercept_y",
+        "endface_normal_x",
+        "endface_normal_y",
+        "endface_normal_z",
+        "endface_point_count",
+        "endface_inlier_count",
+        "endface_rmse_mm",
         "note",
     ]
     with open(path, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
+
+
+def endface_fit_record(fit: EndFaceFit, fit_kind: str) -> Dict[str, object]:
+    record: Dict[str, object] = {
+        "record": "endface_fit",
+        "valid": fit.valid,
+        "endface": fit.end,
+        "endface_fit_kind": fit_kind,
+        "endface_point_count": fit.point_count,
+        "endface_inlier_count": fit.inlier_count,
+        "note": fit.reason,
+    }
+    if fit.valid:
+        record.update(
+            {
+                "endface_slope_x": round(fit.slope_x, 9),
+                "endface_slope_z": round(fit.slope_z, 9),
+                "endface_intercept_y": round(fit.intercept_y, 6),
+                "endface_normal_x": round(fit.normal_x, 9),
+                "endface_normal_y": round(fit.normal_y, 9),
+                "endface_normal_z": round(fit.normal_z, 9),
+                "endface_rmse_mm": round(fit.rmse_mm, 6),
+            }
+        )
+        record[f"{fit.end}_endface_verticality_deg"] = round(fit.verticality_deg, 6)
+    return record
 
 
 def add_summary_rows(rows: List[Dict[str, object]]) -> None:
@@ -869,6 +1516,10 @@ def main() -> int:
     parser.add_argument("--calibration", help="Existing calibration JSON to reuse")
     parser.add_argument("--save-calibration", help="Save generated calibration JSON")
     parser.add_argument("--standard-json", help="Standard measurement JSON; defaults to the latest measured standard")
+    parser.add_argument("--endface-truth-csv", help="Signed 24-point manual truth CSV: head/tail x A/B/C/D x three positions")
+    parser.add_argument("--endface-calibration", help="Existing end-face slope-offset calibration JSON")
+    parser.add_argument("--save-endface-calibration", help="Create an end-face calibration JSON from this input and --endface-truth-csv")
+    parser.add_argument("--endface-window-mm", type=float, default=15.0, help="Longitudinal window used to find each physical end boundary")
     parser.add_argument("--step-mm", type=float, default=10.0, help="Slice spacing in mm along rod length")
     parser.add_argument("--step-rows", type=int, help="Slice spacing in rows; overrides --step-mm")
     parser.add_argument("--ignore-end-percent", type=float, default=0.05, help="Ignore this percent at both ends")
@@ -892,14 +1543,20 @@ def main() -> int:
         raise ValueError(
             "Provide --calibration for measurement. Use --save-calibration only when the input is the standard calibration bar."
         )
+    if args.save_endface_calibration and not args.endface_truth_csv:
+        raise ValueError("--save-endface-calibration requires --endface-truth-csv")
+    if args.endface_window_mm <= 0.0:
+        raise ValueError("--endface-window-mm must be positive")
 
     source: Optional[HeightSource] = None
     common_start = 0
     common_end = 0
+    valid_ranges: Dict[int, Tuple[int, int]] = {}
 
     if args.calibration:
         source = detect_input(args)
-        common_start, common_end = source_common_range(source)
+        valid_ranges = source_valid_ranges(source)
+        common_start, common_end = source_common_range(source, valid_ranges)
         with open(args.calibration, "r", encoding="utf-8") as f:
             calibration = json.load(f)
         print(
@@ -919,13 +1576,15 @@ def main() -> int:
             calibration = build_calibration_from_captures(captures, standard)
             # Use the first calibration source to produce an immediate CSV sanity check.
             source = captures[0][0]
-            common_start, common_end = source_common_range(source)
+            valid_ranges = source_valid_ranges(source)
+            common_start, common_end = source_common_range(source, valid_ranges)
             print("Calibration captures:")
             for _, name, orientation in captures:
                 print(f"  {name}: orientation={orientation}")
         else:
             source = detect_input(args)
-            common_start, common_end = source_common_range(source)
+            valid_ranges = source_valid_ranges(source)
+            common_start, common_end = source_common_range(source, valid_ranges)
             calibration = build_calibration(source, common_start, common_end, standard)
         if args.save_calibration:
             os.makedirs(os.path.dirname(os.path.abspath(args.save_calibration)), exist_ok=True)
@@ -935,6 +1594,8 @@ def main() -> int:
     transforms = {int(k): v for k, v in calibration["transforms"].items()}
     if source is None:
         raise RuntimeError("No measurement source was loaded")
+    if not valid_ranges:
+        valid_ranges = source_valid_ranges(source)
 
     margin = int(round(args.ignore_end_percent * (common_end - common_start)))
     first_row = common_start + margin
@@ -1009,7 +1670,115 @@ def main() -> int:
             record[f"obj{obj}_projection_z_mm"] = round(corners[obj].projection_z_mm, 6) if corners[obj].valid and not math.isnan(corners[obj].projection_z_mm) else ""
         output_rows.append(record)
 
+    rod_axis = fit_rod_axis(output_rows)
+    raw_endfaces = fit_endfaces_from_source(
+        source,
+        valid_ranges,
+        transforms,
+        calibration,
+        common_start,
+        rod_axis,
+        args.x_scale,
+        args.y_scale,
+        args.endface_window_mm,
+    )
+
+    endface_model: Optional[Dict[str, object]] = None
+    if args.endface_calibration:
+        with open(args.endface_calibration, "r", encoding="utf-8") as handle:
+            loaded_model = json.load(handle)
+        if loaded_model.get("model") not in {"endface_plane_slope_offset", "endface_face_angle_offset"}:
+            raise ValueError(f"Unsupported end-face calibration model: {loaded_model.get('model')}")
+        endface_model = loaded_model
+
+    section_points = mean_cross_section_points(output_rows)
+    raw_face_angles = {
+        end: face_to_endface_angles(section_points, raw_endfaces[end], rod_axis)
+        for end in ["head", "tail"]
+    }
+    truth_endfaces: Dict[str, EndFaceFit] = {}
+    truth_face_angles: Dict[str, Dict[str, float]] = {}
+    if args.endface_truth_csv:
+        truth_face_angles = read_manual_endface_angle_truth(args.endface_truth_csv, input_stem(args))
+        if not truth_face_angles:
+            truth_endfaces = read_manual_endface_truth(args.endface_truth_csv, section_points, input_stem(args))
+
+    if args.save_endface_calibration:
+        if truth_face_angles:
+            endface_model = build_endface_face_angle_calibration_model(
+                raw_face_angles,
+                truth_face_angles,
+                input_stem(args),
+            )
+        else:
+            endface_model = build_endface_calibration_model(
+                raw_endfaces,
+                truth_endfaces,
+                rod_axis,
+                input_stem(args),
+            )
+        os.makedirs(os.path.dirname(os.path.abspath(args.save_endface_calibration)), exist_ok=True)
+        with open(args.save_endface_calibration, "w", encoding="utf-8") as handle:
+            json.dump(endface_model, handle, ensure_ascii=False, indent=2)
+
+    corrected_endfaces = {
+        end: apply_endface_calibration_model(raw_endfaces[end], rod_axis, endface_model)
+        for end in ["head", "tail"]
+    }
+    corrected_face_angles = {
+        end: face_to_endface_angles(section_points, corrected_endfaces[end], rod_axis)
+        for end in ["head", "tail"]
+    }
+    corrected_face_angles = apply_endface_face_angle_calibration_model(corrected_face_angles, endface_model)
+    for row in output_rows:
+        if row.get("record") != "slice":
+            continue
+        for end in ["head", "tail"]:
+            raw_fit = raw_endfaces[end]
+            corrected_fit = corrected_endfaces[end]
+            truth_fit = truth_endfaces.get(end)
+            if raw_fit.valid:
+                row[f"{end}_endface_plane_verticality_deg"] = round(raw_fit.verticality_deg, 6)
+            raw_error = mean_face_verticality_error(raw_face_angles[end])
+            if math.isfinite(raw_error):
+                row[f"{end}_endface_raw_verticality_deg"] = round(raw_error, 6)
+            for face, angle in raw_face_angles[end].items():
+                row[f"{end}_{face}_endface_raw_angle_deg"] = round(angle, 6)
+            if corrected_fit.valid:
+                corrected_error = mean_face_verticality_error(corrected_face_angles[end])
+                if math.isfinite(corrected_error):
+                    row[f"{end}_endface_verticality_deg"] = round(corrected_error, 6)
+            for face, angle in corrected_face_angles[end].items():
+                row[f"{end}_{face}_endface_angle_deg"] = round(angle, 6)
+            if end in truth_face_angles:
+                truth_error = mean_face_verticality_error(truth_face_angles[end])
+                if math.isfinite(truth_error):
+                    row[f"{end}_endface_truth_deg"] = round(truth_error, 6)
+                    corrected_error = mean_face_verticality_error(corrected_face_angles[end])
+                    if math.isfinite(corrected_error):
+                        row[f"{end}_endface_difference_deg"] = round(corrected_error - truth_error, 6)
+                for face, truth_angle in truth_face_angles[end].items():
+                    row[f"{end}_{face}_endface_truth_angle_deg"] = round(truth_angle, 6)
+                    if face in corrected_face_angles[end]:
+                        row[f"{end}_{face}_endface_difference_deg"] = round(
+                            corrected_face_angles[end][face] - truth_angle,
+                            6,
+                        )
+            if truth_fit and truth_fit.valid:
+                row[f"{end}_endface_truth_deg"] = round(truth_fit.verticality_deg, 6)
+                if corrected_fit.valid:
+                    row[f"{end}_endface_difference_deg"] = round(
+                        corrected_fit.verticality_deg - truth_fit.verticality_deg,
+                        6,
+                    )
+
     add_summary_rows(output_rows)
+    for end in ["head", "tail"]:
+        output_rows.append(endface_fit_record(raw_endfaces[end], "raw_visual"))
+        if endface_model and endface_model.get("model") == "endface_plane_slope_offset":
+            output_rows.append(endface_fit_record(corrected_endfaces[end], "corrected_visual"))
+        if end in truth_endfaces:
+            output_rows.append(endface_fit_record(truth_endfaces[end], "manual_truth"))
     output_path = resolve_output_path(args)
     write_csv(output_path, output_rows)
     print(f"CSV written: {output_path}")
@@ -1017,6 +1786,17 @@ def main() -> int:
     print(f"Measured rows: {first_row}..{last_row}, step_rows={step_rows}")
     if not args.calibration and args.save_calibration:
         print(f"Calibration written: {args.save_calibration}")
+    if args.save_endface_calibration:
+        print(f"End-face calibration written: {args.save_endface_calibration}")
+    for end in ["head", "tail"]:
+        raw_fit = raw_endfaces[end]
+        if raw_fit.valid:
+            print(
+                f"{end.capitalize()} end-face raw: {raw_fit.verticality_deg:.6f} deg, "
+                f"points={raw_fit.inlier_count}/{raw_fit.point_count}, rmse={raw_fit.rmse_mm:.6f} mm"
+            )
+        else:
+            print(f"{end.capitalize()} end-face raw unavailable: {raw_fit.reason}")
     return 0
 
 
