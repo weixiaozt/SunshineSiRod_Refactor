@@ -40,11 +40,13 @@ DEFAULT_CONFIG = {
     "output_dir": str(RUNTIME_DIR.parent / "results" / "measurements") if FROZEN_APP else str(TOOLS_DIR / "results" / "measurements"),
     "script_path": str(RUNTIME_DIR.parent / "MeasureSquareRod" / "MeasureSquareRod.exe") if FROZEN_APP else str(TOOLS_DIR / "measure_square_rod_edges.py"),
     "calibration_path": str(TOOLS_DIR / "calibration" / "models" / "camera_calibration_model_210_105.json"),
+    "drift_calibration_path": str(TOOLS_DIR / "calibration" / "models" / "mechanical_drift_model_210_105.json"),
     "endface_calibration_path": str(TOOLS_DIR / "calibration" / "models" / "endface_calibration_model_210_105.json"),
     "truth_csv_path": str(TOOLS_DIR / "calibration" / "truth" / "210_105.csv"),
     "step_mm": 10.0,
     "edge_offsets_mm": {"A": 0.0, "B": 0.0, "C": 0.0, "D": 0.0},
     "diagonal_offsets_mm": {"diag1": 0.0, "diag2": 0.0},
+    "length_offset_mm": 0.0,
     "endface_angle_offsets_deg": {
         "head": {"A": 0.0, "B": 0.0, "C": 0.0, "D": 0.0},
         "tail": {"A": 0.0, "B": 0.0, "C": 0.0, "D": 0.0},
@@ -78,7 +80,7 @@ def load_config() -> dict[str, Any]:
                     config[key] = value
         except (OSError, json.JSONDecodeError):
             pass
-    for key in ("data_root", "output_dir", "script_path", "calibration_path", "endface_calibration_path", "truth_csv_path"):
+    for key in ("data_root", "output_dir", "script_path", "calibration_path", "drift_calibration_path", "endface_calibration_path", "truth_csv_path"):
         config[key] = resolved(str(config.get(key, "")))
     try:
         config["step_mm"] = float(config.get("step_mm", 10.0))
@@ -98,6 +100,10 @@ def load_config() -> dict[str, Any]:
             config["diagonal_offsets_mm"][diagonal] = float(diagonal_offsets.get(diagonal, 0.0))
         except (AttributeError, TypeError, ValueError):
             config["diagonal_offsets_mm"][diagonal] = 0.0
+    try:
+        config["length_offset_mm"] = float(config.get("length_offset_mm", 0.0))
+    except (TypeError, ValueError):
+        config["length_offset_mm"] = 0.0
     endface_offsets = config.get("endface_angle_offsets_deg", {})
     config["endface_angle_offsets_deg"] = {"head": {}, "tail": {}}
     for end in ("head", "tail"):
@@ -112,7 +118,7 @@ def load_config() -> dict[str, Any]:
 
 def save_config(settings: dict[str, Any]) -> dict[str, Any]:
     config = load_config()
-    for key in ("data_root", "output_dir", "script_path", "calibration_path", "endface_calibration_path", "truth_csv_path"):
+    for key in ("data_root", "output_dir", "script_path", "calibration_path", "drift_calibration_path", "endface_calibration_path", "truth_csv_path"):
         value = settings.get(key, config[key])
         if not isinstance(value, str):
             raise ValueError(f"{key} must be a path string")
@@ -141,6 +147,11 @@ def save_config(settings: dict[str, Any]) -> dict[str, Any]:
                 config["diagonal_offsets_mm"][diagonal] = float(provided.get(diagonal, 0.0))
             except (TypeError, ValueError) as exc:
                 raise ValueError(f"Manual compensation for {diagonal} must be a number") from exc
+    if "length_offset_mm" in settings:
+        try:
+            config["length_offset_mm"] = float(settings["length_offset_mm"])
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Manual rod-length compensation must be a number") from exc
     if "endface_angle_offsets_deg" in settings:
         provided = settings["endface_angle_offsets_deg"]
         if not isinstance(provided, dict):
@@ -217,6 +228,7 @@ def apply_manual_offsets(
     summary: dict[str, str],
     edge_offsets: dict[str, float],
     diagonal_offsets: dict[str, float],
+    length_offset: float,
     endface_offsets: dict[str, dict[str, float]],
 ) -> dict[str, str]:
     """Return a corrected copy; source measurement CSV values are never overwritten."""
@@ -230,6 +242,9 @@ def apply_manual_offsets(
         value = field_number(summary, field)
         if value is not None:
             corrected[field] = f"{value + float(diagonal_offsets.get(diagonal, 0.0)):.6f}"
+    length = field_number(summary, "stick_length_mm")
+    if length is not None:
+        corrected["stick_length_mm"] = f"{length + float(length_offset):.6f}"
     for end in ("head", "tail"):
         corrected_angles: list[float] = []
         for face in ("A", "B", "C", "D"):
@@ -246,6 +261,10 @@ def apply_manual_offsets(
 
 
 STATISTICS_VALUE_FIELDS = [
+    "measurement_valid", "drift_status", "drift_correction_applied", "drift_model_version",
+    "drift_amplitude", "drift_confidence", "drift_fit_rmse_mm", "drift_correlation",
+    "drift_camera_amplitude_spread",
+    *[f"obj{obj}_{field}" for obj in (1, 2, 3, 4) for field in ("drift_x_mm", "drift_z_mm", "drift_amplitude")],
     "A_mm", "B_mm", "C_mm", "D_mm",
     "diag1_M1_M2_mm", "diag2_M3_M4_mm",
     "A_minus_C_mm", "B_minus_D_mm", "diagonal_difference_mm",
@@ -318,6 +337,12 @@ def append_measurement_statistics(
 def _ensure_statistics_database(database: Path, csv_snapshot: Path, fields: list[str]) -> None:
     """Create the durable statistics store and migrate an existing CSV once."""
     if database.exists():
+        with closing(sqlite3.connect(database)) as connection:
+            existing = {row[1] for row in connection.execute("PRAGMA table_info(measurement_statistics)")}
+            for field in fields:
+                if field not in existing:
+                    connection.execute(f'ALTER TABLE measurement_statistics ADD COLUMN "{field}" TEXT')
+            connection.commit()
         return
     columns = ", ".join(f'"{field}" TEXT' for field in fields)
     with closing(sqlite3.connect(database)) as connection:
@@ -388,6 +413,13 @@ def calibration_summary(config: dict[str, Any]) -> dict[str, Any]:
             endface_data = json.loads(endface_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             endface_data = {}
+    drift_path = Path(config["drift_calibration_path"])
+    drift_data: dict[str, Any] = {}
+    if drift_path.is_file():
+        try:
+            drift_data = json.loads(drift_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            drift_data = {}
     return {
         "available": True,
         "path": str(path),
@@ -401,7 +433,14 @@ def calibration_summary(config: dict[str, Any]) -> dict[str, Any]:
         "endface_available": bool(endface_data),
         "endface_version": endface_data.get("version", "—"),
         "endface_model": endface_data.get("model", "—"),
+        "drift_path": str(drift_path),
+        "drift_available": bool(drift_data),
+        "drift_version": drift_data.get("version", "-"),
+        "drift_model": drift_data.get("model", "-"),
+        "drift_normal_capture_count": drift_data.get("normal_capture_count", 0),
+        "drift_abnormal_capture_count": drift_data.get("abnormal_capture_count", 0),
         "manual_edge_offsets_mm": config["edge_offsets_mm"],
+        "manual_length_offset_mm": config["length_offset_mm"],
         "manual_endface_angle_offsets_deg": config["endface_angle_offsets_deg"],
     }
 
@@ -516,7 +555,7 @@ def mark_continuous_capture_processed(path: Path) -> None:
 
 def run_measurement(config: dict[str, Any], input_path: Path) -> dict[str, Any]:
     """Measure one input, preserve its slice CSV, and append global statistics."""
-    for name in ("script_path", "calibration_path", "endface_calibration_path"):
+    for name in ("script_path", "calibration_path", "drift_calibration_path", "endface_calibration_path"):
         if not Path(config[name]).is_file():
             raise RuntimeError(f"Configured {name.replace('_', ' ')} was not found")
     output_dir = Path(config["output_dir"])
@@ -529,6 +568,7 @@ def run_measurement(config: dict[str, Any], input_path: Path) -> dict[str, Any]:
     command = ([str(script_path)] if script_path.suffix.lower() == ".exe" else [sys.executable, str(script_path)]) + [
         "--input", str(input_path),
         "--calibration", config["calibration_path"],
+        "--drift-calibration", config["drift_calibration_path"],
         "--endface-calibration", config["endface_calibration_path"],
         "--output", str(output_path),
         "--overwrite", "--step-mm", str(config["step_mm"]),
@@ -552,10 +592,20 @@ def run_measurement(config: dict[str, Any], input_path: Path) -> dict[str, Any]:
         raw_summary,
         config["edge_offsets_mm"],
         config["diagonal_offsets_mm"],
+        config["length_offset_mm"],
         config["endface_angle_offsets_deg"],
     )
     result["raw_summary"] = raw_summary
     result["corrected_summary"] = corrected_summary
+    result["drift"] = {
+        key: raw_summary.get(key, "")
+        for key in (
+            "measurement_valid", "drift_status", "drift_detected", "drift_correction_applied",
+            "drift_model_version", "drift_amplitude", "drift_confidence", "drift_fit_rmse_mm",
+            "drift_correlation", "drift_camera_amplitude_spread",
+            *[f"obj{obj}_{field}" for obj in (1, 2, 3, 4) for field in ("drift_x_mm", "drift_z_mm", "drift_amplitude")],
+        )
+    }
     result["statistics_csv_path"] = str(
         append_measurement_statistics(
             output_dir,

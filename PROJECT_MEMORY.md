@@ -1,5 +1,7 @@
 # Project Memory
 
+2026-07-12：新增独立的正向四相机机械漂移模型 `tools\calibration\models\mechanical_drift_model_210_105.json`。正式拟合仅使用同一根 CTB 标准棒正常3张与异常2张；每个 HOBJ 独立判定 normal / abnormal_corrected / unknown_invalid。详细规则见 `tools\calibration\mechanical_drift_principles.md`。Web 已开放棒长手工补偿。
+
 详细测量几何、倒角/端面计算和连续测量保存规则：`tools\calibration\measurement_geometry_principles.md`。
 
 ## 标定铁律（长期有效）

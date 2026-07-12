@@ -32,11 +32,18 @@ import json
 import math
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
 from PIL import Image
+
+try:
+    from .mechanical_drift import classify as classify_mechanical_drift
+    from .mechanical_drift import local_shift as mechanical_drift_local_shift
+except ImportError:  # Direct script / PyInstaller entry point.
+    from mechanical_drift import classify as classify_mechanical_drift
+    from mechanical_drift import local_shift as mechanical_drift_local_shift
 
 
 WIDTH = 3200
@@ -321,6 +328,49 @@ def extract_corner_from_row(row_values: np.ndarray, x_scale: float = X_SCALE_MM)
         seg_start_col=c0,
         seg_end_col=c1,
     )
+
+
+def sample_local_corner_profile(
+    source: HeightSource,
+    common_start: int,
+    common_end: int,
+    fractions: Iterable[float],
+    x_scale: float = X_SCALE_MM,
+) -> np.ndarray:
+    """Sample the four raw local corner vertices used for drift classification."""
+    stations = [float(value) for value in fractions]
+    profile = np.empty((4, len(stations), 2), dtype=float)
+    for object_index, obj in enumerate((1, 2, 3, 4)):
+        for station_index, fraction in enumerate(stations):
+            row = int(round(common_start + fraction * (common_end - common_start)))
+            corner = extract_corner_from_row(source.row(obj, row), x_scale)
+            if not corner.valid:
+                raise RuntimeError(
+                    f"Drift detection failed at obj{obj}, {fraction:.2%}: {corner.reason}"
+                )
+            profile[object_index, station_index] = [corner.vx, corner.vz]
+    return profile
+
+
+def subtract_local_drift(corner: CornerResult, shift_x: float, shift_z: float) -> CornerResult:
+    """Translate one complete local corner observation before camera calibration."""
+    if not corner.valid:
+        return corner
+    values = {
+        "vx": corner.vx - shift_x,
+        "vz": corner.vz - shift_z,
+        "face1_mid_x": corner.face1_mid_x - shift_x,
+        "face1_mid_z": corner.face1_mid_z - shift_z,
+        "face2_mid_x": corner.face2_mid_x - shift_x,
+        "face2_mid_z": corner.face2_mid_z - shift_z,
+        "line1_b": corner.line1_b + corner.line1_m * shift_x - shift_z,
+        "line2_b": corner.line2_b + corner.line2_m * shift_x - shift_z,
+    }
+    if math.isfinite(corner.chamfer_mid_x):
+        values["chamfer_mid_x"] = corner.chamfer_mid_x - shift_x
+    if math.isfinite(corner.chamfer_mid_z):
+        values["chamfer_mid_z"] = corner.chamfer_mid_z - shift_z
+    return replace(corner, **values)
 
 
 def find_valid_row_range(source: HeightSource, obj: int, min_points: int = 100, step: int = 1) -> Tuple[int, int]:
@@ -1081,6 +1131,46 @@ def edge_lengths(points: Dict[str, Tuple[float, float]]) -> Dict[str, float]:
     }
 
 
+def cross_section_geometry(
+    corners: Dict[int, CornerResult],
+    transforms: Dict[int, object],
+    calibration: Dict,
+    geometry_mode: str,
+) -> Tuple[
+    Dict[str, Tuple[float, float]],
+    Dict[str, Tuple[float, float]],
+    Dict[str, float],
+]:
+    """Transform one four-camera slice and return corners, chamfer midpoints and lengths."""
+    points = {
+        point_name: apply_transform(transforms[obj], corners[obj].vx, corners[obj].vz)
+        for obj, point_name in OBJECT_TO_POINT.items()
+    }
+    points = reconstruct_points_from_global_sides(corners, transforms, points)
+    points = apply_corner_biases(points, calibration)
+    free_points = points
+    if geometry_mode == "rectangular":
+        points = fuse_rectangular_cross_section(points)
+    point_deltas = {
+        name: (points[name][0] - free_points[name][0], points[name][1] - free_points[name][1])
+        for name in ("P1", "P2", "P3", "P4")
+    }
+    midpoints: Dict[str, Tuple[float, float]] = {}
+    for obj, point_name in OBJECT_TO_POINT.items():
+        corner = corners[obj]
+        midpoint_name = "M" + point_name[1:]
+        if math.isnan(corner.chamfer_mid_x) or math.isnan(corner.chamfer_mid_z):
+            midpoints[midpoint_name] = points[point_name]
+        else:
+            midpoint = apply_transform(transforms[obj], corner.chamfer_mid_x, corner.chamfer_mid_z)
+            delta = point_deltas[point_name]
+            midpoints[midpoint_name] = (midpoint[0] + delta[0], midpoint[1] + delta[1])
+    lengths = edge_lengths(points)
+    lengths["diag1"] = two_point_distance(midpoints, "M1", "M2")
+    lengths["diag2"] = two_point_distance(midpoints, "M3", "M4")
+    return points, midpoints, lengths
+
+
 def normalized_axis(axis: np.ndarray) -> np.ndarray:
     norm = float(np.linalg.norm(axis))
     if norm <= 1e-12:
@@ -1199,6 +1289,9 @@ def endface_boundary_points_for_camera(
     window_mm: float,
     min_run_rows: int = 3,
     column_step: int = 4,
+    common_end: Optional[int] = None,
+    drift_model: Optional[Dict[str, object]] = None,
+    drift_amplitude: float = 0.0,
 ) -> np.ndarray:
     """Extract the first/last continuous material boundary for one camera."""
 
@@ -1247,6 +1340,12 @@ def endface_boundary_points_for_camera(
             continue
         local_x = float(col) * x_scale
         local_z = float(np.median(z_values))
+        absolute_row = block_start + local_row
+        if drift_model is not None and common_end is not None and common_end > common_start:
+            fraction = (absolute_row - common_start) / (common_end - common_start)
+            shift_x, shift_z = mechanical_drift_local_shift(drift_model, obj, fraction, drift_amplitude)
+            local_x -= shift_x
+            local_z -= shift_z
         global_x, global_z = apply_transform(transform, local_x, local_z)
         global_x += float(bias[0])
         global_z += float(bias[1])
@@ -1265,6 +1364,9 @@ def fit_endfaces_from_source(
     x_scale: float,
     y_scale: float,
     window_mm: float,
+    common_end: Optional[int] = None,
+    drift_model: Optional[Dict[str, object]] = None,
+    drift_amplitude: float = 0.0,
 ) -> Dict[str, EndFaceFit]:
     results: Dict[str, EndFaceFit] = {}
     for end in ["head", "tail"]:
@@ -1280,6 +1382,9 @@ def fit_endfaces_from_source(
                 x_scale,
                 y_scale,
                 window_mm,
+                common_end=common_end,
+                drift_model=drift_model,
+                drift_amplitude=drift_amplitude,
             )
             for obj in [1, 2, 3, 4]
         ]
@@ -1876,6 +1981,22 @@ def write_csv(path: str, rows: List[Dict[str, object]]) -> None:
         "row",
         "y_mm",
         "valid",
+        "measurement_valid",
+        "drift_status",
+        "drift_detected",
+        "drift_correction_applied",
+        "drift_model_version",
+        "drift_amplitude",
+        "drift_confidence",
+        "drift_fit_rmse_mm",
+        "drift_correlation",
+        "drift_camera_amplitude_spread",
+        "drift_raw_A_mm",
+        "drift_raw_B_mm",
+        "drift_raw_C_mm",
+        "drift_raw_D_mm",
+        "drift_raw_diag1_M1_M2_mm",
+        "drift_raw_diag2_M3_M4_mm",
         "A_mm",
         "B_mm",
         "C_mm",
@@ -1883,6 +2004,18 @@ def write_csv(path: str, rows: List[Dict[str, object]]) -> None:
         "diag1_M1_M2_mm",
         "diag2_M3_M4_mm",
         "stick_length_mm",
+        "drift_raw_head_endface_plane_verticality_deg",
+        "drift_raw_tail_endface_plane_verticality_deg",
+        "drift_raw_head_endface_verticality_deg",
+        "drift_raw_tail_endface_verticality_deg",
+        "drift_raw_head_A_endface_angle_deg",
+        "drift_raw_head_B_endface_angle_deg",
+        "drift_raw_head_C_endface_angle_deg",
+        "drift_raw_head_D_endface_angle_deg",
+        "drift_raw_tail_A_endface_angle_deg",
+        "drift_raw_tail_B_endface_angle_deg",
+        "drift_raw_tail_C_endface_angle_deg",
+        "drift_raw_tail_D_endface_angle_deg",
         "head_endface_raw_verticality_deg",
         "tail_endface_raw_verticality_deg",
         "head_endface_plane_verticality_deg",
@@ -1933,6 +2066,14 @@ def write_csv(path: str, rows: List[Dict[str, object]]) -> None:
         "P3_z",
         "P4_x",
         "P4_z",
+        "drift_raw_P1_x",
+        "drift_raw_P1_z",
+        "drift_raw_P2_x",
+        "drift_raw_P2_z",
+        "drift_raw_P3_x",
+        "drift_raw_P3_z",
+        "drift_raw_P4_x",
+        "drift_raw_P4_z",
         "M1_x",
         "M1_z",
         "M2_x",
@@ -1969,6 +2110,18 @@ def write_csv(path: str, rows: List[Dict[str, object]]) -> None:
         "obj4_projection_y_mm",
         "obj4_chamfer_face1_setback_mm",
         "obj4_chamfer_face2_setback_mm",
+        "obj1_drift_x_mm",
+        "obj1_drift_z_mm",
+        "obj1_drift_amplitude",
+        "obj2_drift_x_mm",
+        "obj2_drift_z_mm",
+        "obj2_drift_amplitude",
+        "obj3_drift_x_mm",
+        "obj3_drift_z_mm",
+        "obj3_drift_amplitude",
+        "obj4_drift_x_mm",
+        "obj4_drift_z_mm",
+        "obj4_drift_amplitude",
         "endface",
         "endface_fit_kind",
         "endface_slope_x",
@@ -2018,13 +2171,22 @@ def add_summary_rows(rows: List[Dict[str, object]]) -> None:
     valid_rows = [r for r in rows if r.get("record") == "slice" and r.get("valid") is True]
     if not valid_rows:
         return
-    skip_columns = {"record", "row", "y_mm", "valid", "note"}
-    numeric_columns = [
-        key
-        for key in valid_rows[0].keys()
-        if key not in skip_columns
-        and any(r.get(key) not in ("", None) for r in valid_rows)
-    ]
+    metadata_columns = {
+        "record", "row", "y_mm", "valid", "measurement_valid", "note",
+        "drift_status", "drift_detected", "drift_correction_applied", "drift_model_version",
+    }
+    numeric_columns: List[str] = []
+    for key in valid_rows[0]:
+        if key in metadata_columns:
+            continue
+        values = [row.get(key) for row in valid_rows if row.get(key) not in ("", None)]
+        if not values:
+            continue
+        try:
+            [float(value) for value in values]
+        except (TypeError, ValueError):
+            continue
+        numeric_columns.append(key)
     for stat in ["mean", "min", "max", "range", "std"]:
         out: Dict[str, object] = {"record": stat, "valid": True}
         for column in numeric_columns:
@@ -2044,6 +2206,9 @@ def add_summary_rows(rows: List[Dict[str, object]]) -> None:
             else:
                 value = float(np.std(vals, ddof=0))
             out[column] = round(value, 6)
+        if stat == "mean":
+            for key in metadata_columns - {"record", "row", "y_mm", "valid", "note"}:
+                out[key] = valid_rows[0].get(key, "")
         rows.append(out)
 
 
@@ -2054,6 +2219,7 @@ def main() -> int:
     parser.add_argument("--output", help="Output CSV path or directory. Defaults to tools/results/measurements/<hobj_name>_measure.csv")
     parser.add_argument("--overwrite", action="store_true", help="Allow overwriting an existing CSV")
     parser.add_argument("--calibration", help="Existing calibration JSON to reuse")
+    parser.add_argument("--drift-calibration", help="Independent four-camera mechanical drift model JSON")
     parser.add_argument("--save-calibration", help="Save generated calibration JSON")
     parser.add_argument(
         "--orientation",
@@ -2189,6 +2355,47 @@ def main() -> int:
     if not valid_ranges:
         valid_ranges = source_valid_ranges(source)
 
+    drift_model: Optional[Dict[str, object]] = None
+    drift_result: Dict[str, object] = {
+        "status": "not_configured",
+        "detected": False,
+        "correction_applied": False,
+        "valid": True,
+        "confidence": 1.0,
+        "model_version": "",
+        "amplitude": 0.0,
+        "fit_rmse_mm": 0.0,
+        "normal_rmse_mm": 0.0,
+        "correlation": 0.0,
+        "camera_amplitude_spread": 0.0,
+        "per_camera_amplitude": {str(obj): 0.0 for obj in (1, 2, 3, 4)},
+    }
+    if args.drift_calibration:
+        with open(args.drift_calibration, "r", encoding="utf-8") as handle:
+            loaded_drift_model = json.load(handle)
+        if loaded_drift_model.get("model") != "four_camera_longitudinal_local_drift":
+            raise ValueError(f"Unsupported mechanical drift model: {loaded_drift_model.get('model')}")
+        model_orientation = str(loaded_drift_model.get("orientation", "normal"))
+        if model_orientation != measurement_orientation:
+            drift_result["status"] = "not_applicable_orientation"
+            drift_result["model_version"] = int(loaded_drift_model.get("version", 0))
+        else:
+            drift_model = loaded_drift_model
+            profile = sample_local_corner_profile(
+                source,
+                common_start,
+                common_end,
+                drift_model["sample_fractions"],
+                args.x_scale,
+            )
+            drift_result = classify_mechanical_drift(drift_model, profile)
+            print(
+                "Mechanical drift: "
+                f"status={drift_result['status']}, amplitude={drift_result['amplitude']:.6f}, "
+                f"correlation={drift_result['correlation']:.6f}, "
+                f"fit_rmse={drift_result['fit_rmse_mm']:.6f} mm"
+            )
+
     margin = int(round(args.ignore_end_percent * (common_end - common_start)))
     first_row = common_start + margin
     last_row = common_end - margin
@@ -2196,75 +2403,112 @@ def main() -> int:
 
     stick_length_mm = round((common_end - common_start) * args.y_scale, 6)
     output_rows: List[Dict[str, object]] = []
+    raw_geometry_rows: List[Dict[str, object]] = []
+    measurement_valid = bool(drift_result.get("valid", True))
+    drift_amplitude = float(drift_result.get("amplitude", 0.0))
+    apply_drift = bool(drift_result.get("correction_applied", False)) and drift_model is not None
     for row_index in range(first_row, last_row + 1, step_rows):
-        corners = {obj: extract_corner_from_row(source.row(obj, row_index), args.x_scale) for obj in [1, 2, 3, 4]}
-        valid = all(c.valid for c in corners.values())
+        raw_corners = {obj: extract_corner_from_row(source.row(obj, row_index), args.x_scale) for obj in [1, 2, 3, 4]}
+        valid = all(c.valid for c in raw_corners.values())
+        fraction = (row_index - common_start) / (common_end - common_start)
         record: Dict[str, object] = {
             "record": "slice",
             "row": row_index,
             "y_mm": round((row_index - common_start) * args.y_scale, 6),
             "valid": valid,
+            "measurement_valid": valid and measurement_valid,
             "stick_length_mm": stick_length_mm,
+            "drift_status": drift_result.get("status", "not_configured"),
+            "drift_detected": bool(drift_result.get("detected", False)),
+            "drift_correction_applied": apply_drift,
+            "drift_model_version": drift_result.get("model_version", ""),
+            "drift_amplitude": round(drift_amplitude, 6),
+            "drift_confidence": round(float(drift_result.get("confidence", 0.0)), 6),
+            "drift_fit_rmse_mm": round(float(drift_result.get("fit_rmse_mm", 0.0)), 6),
+            "drift_correlation": round(float(drift_result.get("correlation", 0.0)), 6),
+            "drift_camera_amplitude_spread": round(float(drift_result.get("camera_amplitude_spread", 0.0)), 6),
+        }
+        raw_geometry_record: Dict[str, object] = {
+            "record": "slice",
+            "row": row_index,
+            "y_mm": record["y_mm"],
+            "valid": valid,
         }
         if valid:
-            points: Dict[str, Tuple[float, float]] = {}
-            for obj, point_name in OBJECT_TO_POINT.items():
-                c = corners[obj]
-                points[point_name] = apply_transform(transforms[obj], c.vx, c.vz)
-            points = reconstruct_points_from_global_sides(corners, transforms, points)
-            points = apply_corner_biases(points, active_calibration)
-            free_points = points
-            if args.geometry_mode == "rectangular":
-                points = fuse_rectangular_cross_section(points)
-            point_deltas = {
-                name: (points[name][0] - free_points[name][0], points[name][1] - free_points[name][1])
-                for name in ["P1", "P2", "P3", "P4"]
-            }
-            lengths = edge_lengths(points)
+            raw_points, raw_midpoints, raw_lengths = cross_section_geometry(
+                raw_corners, transforms, active_calibration, args.geometry_mode
+            )
             for edge in ["A", "B", "C", "D"]:
-                record[f"{edge}_mm"] = round(lengths[edge], 6)
+                record[f"drift_raw_{edge}_mm"] = round(raw_lengths[edge], 6)
             for point_name in ["P1", "P2", "P3", "P4"]:
-                px, pz = points[point_name]
-                record[f"{point_name}_x"] = round(px, 6)
-                record[f"{point_name}_z"] = round(pz, 6)
-            midpoints: Dict[str, Tuple[float, float]] = {}
+                px, pz = raw_points[point_name]
+                record[f"drift_raw_{point_name}_x"] = round(px, 6)
+                record[f"drift_raw_{point_name}_z"] = round(pz, 6)
+                raw_geometry_record[f"{point_name}_x"] = px
+                raw_geometry_record[f"{point_name}_z"] = pz
+            record["drift_raw_diag1_M1_M2_mm"] = round(raw_lengths["diag1"], 6)
+            record["drift_raw_diag2_M3_M4_mm"] = round(raw_lengths["diag2"], 6)
+
+            corrected_corners: Dict[int, CornerResult] = {}
             for obj, point_name in OBJECT_TO_POINT.items():
-                corner = corners[obj]
-                midpoint_name = "M" + point_name[1:]
-                if math.isnan(corner.chamfer_mid_x) or math.isnan(corner.chamfer_mid_z):
-                    # If no chamfer segment is found, fall back to the theoretical corner.
-                    midpoints[midpoint_name] = points[point_name]
+                if drift_model is not None:
+                    shift_x, shift_z = mechanical_drift_local_shift(drift_model, obj, fraction, drift_amplitude)
                 else:
-                    raw_midpoint = apply_transform(
-                        transforms[obj],
-                        corner.chamfer_mid_x,
-                        corner.chamfer_mid_z,
-                    )
-                    delta = point_deltas[point_name]
-                    midpoints[midpoint_name] = (
-                        raw_midpoint[0] + delta[0],
-                        raw_midpoint[1] + delta[1],
-                    )
-            record["diag1_M1_M2_mm"] = round(two_point_distance(midpoints, "M1", "M2"), 6)
-            record["diag2_M3_M4_mm"] = round(two_point_distance(midpoints, "M3", "M4"), 6)
-            for midpoint_name in ["M1", "M2", "M3", "M4"]:
-                mx, mz = midpoints[midpoint_name]
-                record[f"{midpoint_name}_x"] = round(mx, 6)
-                record[f"{midpoint_name}_z"] = round(mz, 6)
+                    shift_x, shift_z = 0.0, 0.0
+                record[f"obj{obj}_drift_x_mm"] = round(shift_x, 6)
+                record[f"obj{obj}_drift_z_mm"] = round(shift_z, 6)
+                camera_amplitude = drift_result.get("per_camera_amplitude", {}).get(str(obj), 0.0)
+                record[f"obj{obj}_drift_amplitude"] = round(float(camera_amplitude), 6)
+                corrected_corners[obj] = (
+                    subtract_local_drift(raw_corners[obj], shift_x, shift_z)
+                    if apply_drift
+                    else raw_corners[obj]
+                )
+
+            if measurement_valid:
+                points, midpoints, lengths = cross_section_geometry(
+                    corrected_corners, transforms, active_calibration, args.geometry_mode
+                )
+                for edge in ["A", "B", "C", "D"]:
+                    record[f"{edge}_mm"] = round(lengths[edge], 6)
+                for point_name in ["P1", "P2", "P3", "P4"]:
+                    px, pz = points[point_name]
+                    record[f"{point_name}_x"] = round(px, 6)
+                    record[f"{point_name}_z"] = round(pz, 6)
+                record["diag1_M1_M2_mm"] = round(lengths["diag1"], 6)
+                record["diag2_M3_M4_mm"] = round(lengths["diag2"], 6)
+                for midpoint_name in ["M1", "M2", "M3", "M4"]:
+                    mx, mz = midpoints[midpoint_name]
+                    record[f"{midpoint_name}_x"] = round(mx, 6)
+                    record[f"{midpoint_name}_z"] = round(mz, 6)
         else:
-            record["note"] = "; ".join(f"obj{obj}:{c.reason}" for obj, c in corners.items() if not c.valid)
+            record["note"] = "; ".join(f"obj{obj}:{c.reason}" for obj, c in raw_corners.items() if not c.valid)
 
         for obj in [1, 2, 3, 4]:
-            record[f"obj{obj}_angle_deg"] = round(corners[obj].angle_deg, 6) if corners[obj].valid else ""
-            record[f"obj{obj}_verticality_error_deg"] = round(corners[obj].angle_deg, 6) if corners[obj].valid else ""
-            record[f"obj{obj}_chamfer_mm"] = round(corners[obj].chamfer_mm, 6) if corners[obj].valid and not math.isnan(corners[obj].chamfer_mm) else ""
-            record[f"obj{obj}_projection_x_mm"] = round(corners[obj].projection_x_mm, 6) if corners[obj].valid and not math.isnan(corners[obj].projection_x_mm) else ""
-            record[f"obj{obj}_projection_y_mm"] = round(corners[obj].projection_y_mm, 6) if corners[obj].valid and not math.isnan(corners[obj].projection_y_mm) else ""
-            record[f"obj{obj}_chamfer_face1_setback_mm"] = round(corners[obj].chamfer_face1_setback_mm, 6) if corners[obj].valid and not math.isnan(corners[obj].chamfer_face1_setback_mm) else ""
-            record[f"obj{obj}_chamfer_face2_setback_mm"] = round(corners[obj].chamfer_face2_setback_mm, 6) if corners[obj].valid and not math.isnan(corners[obj].chamfer_face2_setback_mm) else ""
+            corner = raw_corners[obj]
+            record[f"obj{obj}_angle_deg"] = round(corner.angle_deg, 6) if corner.valid else ""
+            record[f"obj{obj}_verticality_error_deg"] = round(corner.angle_deg, 6) if corner.valid else ""
+            record[f"obj{obj}_chamfer_mm"] = round(corner.chamfer_mm, 6) if corner.valid and not math.isnan(corner.chamfer_mm) else ""
+            record[f"obj{obj}_projection_x_mm"] = round(corner.projection_x_mm, 6) if corner.valid and not math.isnan(corner.projection_x_mm) else ""
+            record[f"obj{obj}_projection_y_mm"] = round(corner.projection_y_mm, 6) if corner.valid and not math.isnan(corner.projection_y_mm) else ""
+            record[f"obj{obj}_chamfer_face1_setback_mm"] = round(corner.chamfer_face1_setback_mm, 6) if corner.valid and not math.isnan(corner.chamfer_face1_setback_mm) else ""
+            record[f"obj{obj}_chamfer_face2_setback_mm"] = round(corner.chamfer_face2_setback_mm, 6) if corner.valid and not math.isnan(corner.chamfer_face2_setback_mm) else ""
         output_rows.append(record)
+        raw_geometry_rows.append(raw_geometry_record)
 
-    rod_axis = fit_rod_axis(output_rows)
+    raw_rod_axis = fit_rod_axis(raw_geometry_rows)
+    pre_drift_endfaces = fit_endfaces_from_source(
+        source,
+        valid_ranges,
+        transforms,
+        active_calibration,
+        common_start,
+        raw_rod_axis,
+        args.x_scale,
+        args.y_scale,
+        args.endface_window_mm,
+    )
+    rod_axis = fit_rod_axis(output_rows) if measurement_valid else raw_rod_axis
     raw_endfaces = fit_endfaces_from_source(
         source,
         valid_ranges,
@@ -2275,6 +2519,9 @@ def main() -> int:
         args.x_scale,
         args.y_scale,
         args.endface_window_mm,
+        common_end=common_end,
+        drift_model=drift_model if apply_drift else None,
+        drift_amplitude=drift_amplitude,
     )
 
     endface_model: Optional[Dict[str, object]] = None
@@ -2285,7 +2532,12 @@ def main() -> int:
             raise ValueError(f"Unsupported end-face calibration model: {loaded_model.get('model')}")
         endface_model = endface_calibration_for_orientation(loaded_model, measurement_orientation)
 
-    section_points = mean_cross_section_points(output_rows)
+    pre_drift_section_points = mean_cross_section_points(raw_geometry_rows)
+    pre_drift_face_angles = {
+        end: face_to_endface_angles(pre_drift_section_points, pre_drift_endfaces[end], raw_rod_axis)
+        for end in ["head", "tail"]
+    }
+    section_points = mean_cross_section_points(output_rows) if measurement_valid else pre_drift_section_points
     raw_face_angles = {
         end: face_to_endface_angles(section_points, raw_endfaces[end], rod_axis)
         for end in ["head", "tail"]
@@ -2342,9 +2594,17 @@ def main() -> int:
         if row.get("record") != "slice":
             continue
         for end in ["head", "tail"]:
+            pre_drift_fit = pre_drift_endfaces[end]
             raw_fit = raw_endfaces[end]
             corrected_fit = corrected_endfaces[end]
             truth_fit = truth_endfaces.get(end)
+            if pre_drift_fit.valid:
+                row[f"drift_raw_{end}_endface_plane_verticality_deg"] = round(pre_drift_fit.verticality_deg, 6)
+            pre_drift_error = mean_face_verticality_error(pre_drift_face_angles[end])
+            if math.isfinite(pre_drift_error):
+                row[f"drift_raw_{end}_endface_verticality_deg"] = round(pre_drift_error, 6)
+            for face, angle in pre_drift_face_angles[end].items():
+                row[f"drift_raw_{end}_{face}_endface_angle_deg"] = round(angle, 6)
             if raw_fit.valid:
                 row[f"{end}_endface_plane_verticality_deg"] = round(raw_fit.verticality_deg, 6)
             raw_error = mean_face_verticality_error(raw_face_angles[end])
@@ -2352,13 +2612,14 @@ def main() -> int:
                 row[f"{end}_endface_raw_verticality_deg"] = round(raw_error, 6)
             for face, angle in raw_face_angles[end].items():
                 row[f"{end}_{face}_endface_raw_angle_deg"] = round(angle, 6)
-            if corrected_fit.valid:
+            if corrected_fit.valid and measurement_valid:
                 corrected_error = mean_face_verticality_error(corrected_face_angles[end])
                 if math.isfinite(corrected_error):
                     row[f"{end}_endface_verticality_deg"] = round(corrected_error, 6)
-            for face, angle in corrected_face_angles[end].items():
-                row[f"{end}_{face}_endface_angle_deg"] = round(angle, 6)
-            if end in truth_face_angles:
+            if measurement_valid:
+                for face, angle in corrected_face_angles[end].items():
+                    row[f"{end}_{face}_endface_angle_deg"] = round(angle, 6)
+            if end in truth_face_angles and measurement_valid:
                 truth_error = mean_face_verticality_error(truth_face_angles[end])
                 if math.isfinite(truth_error):
                     row[f"{end}_endface_truth_deg"] = round(truth_error, 6)
@@ -2372,7 +2633,7 @@ def main() -> int:
                             corrected_face_angles[end][face] - truth_angle,
                             6,
                         )
-            if truth_fit and truth_fit.valid:
+            if truth_fit and truth_fit.valid and measurement_valid:
                 row[f"{end}_endface_truth_deg"] = round(truth_fit.verticality_deg, 6)
                 if corrected_fit.valid:
                     row[f"{end}_endface_difference_deg"] = round(

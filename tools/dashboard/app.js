@@ -62,7 +62,7 @@ function renderLanguage() {
   document.documentElement.lang = state.language === 'en' ? 'en' : 'zh-CN';
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   $('#languageButton').textContent = state.language === 'en' ? '中文' : 'EN';
-  renderCorners(); renderResult(); renderCalibrationV2(); updateContinuousButton();
+  renderCorners(); renderResult(); renderDriftStatus(); renderCalibrationV2(); updateContinuousButton();
 }
 function renderCorners() {
   const mapping = [{obj:3,point:'P3',edge:'A / D'}, {obj:1,point:'P1',edge:'A / B'}, {obj:2,point:'P2',edge:'C / D'}, {obj:4,point:'P4',edge:'B / C'}];
@@ -80,6 +80,24 @@ function renderResult() {
   document.querySelectorAll('[data-derived]').forEach(el => { el.textContent = format(derived(summary, el.dataset.derived)); });
   document.querySelectorAll('.pending').forEach(card => card.title = t('endFacePending'));
   $('#resultSource').textContent = state.result ? `${state.result.slice_count} ${state.language === 'en' ? 'slices · CSV mean' : '个切片 · CSV 平均值'}` : t('awaitingResult');
+}
+function renderDriftStatus() {
+  const panel = $('#driftStatus');
+  if (!panel) return;
+  const drift = state.result?.drift;
+  const cn = state.language === 'zh';
+  if (!drift?.drift_status) {
+    panel.className = 'drift-status-panel';
+    panel.innerHTML = `<strong>${cn ? '\u673a\u68b0\u6f02\u79fb' : 'Mechanical drift'}</strong><span>${cn ? '\u7b49\u5f85\u6d4b\u91cf' : 'Awaiting measurement'}</span>`;
+    return;
+  }
+  const status = drift.drift_status;
+  const labels = cn
+    ? {normal:'\u6b63\u5e38\uff0c\u672a\u4fee\u6b63', abnormal_corrected:'\u5df2\u547d\u4e2d\u5f02\u5e38\u6f02\u79fb\u5e76\u4fee\u6b63', unknown_invalid:'\u672a\u77e5\u6f02\u79fb\uff0c\u7ed3\u679c\u65e0\u6548', not_applicable_orientation:'\u5f53\u524d\u65b9\u5411\u4e0d\u9002\u7528\u6f02\u79fb\u6a21\u578b', not_configured:'\u672a\u914d\u7f6e\u6f02\u79fb\u6a21\u578b'}
+    : {normal:'Normal, no correction', abnormal_corrected:'Known abnormal drift corrected', unknown_invalid:'Unknown drift; result invalid', not_applicable_orientation:'Drift model not applicable to this orientation', not_configured:'Drift model not configured'};
+  panel.className = `drift-status-panel ${status === 'abnormal_corrected' ? 'corrected' : status === 'unknown_invalid' ? 'invalid' : 'normal'}`;
+  const cameraDetails = [1,2,3,4].map(obj => `<small>C${obj}: ΔX ${format(drift[`obj${obj}_drift_x_mm`])} / ΔZ ${format(drift[`obj${obj}_drift_z_mm`])} mm · k ${format(drift[`obj${obj}_drift_amplitude`])}</small>`).join('');
+  panel.innerHTML = `<strong>${cn ? '\u673a\u68b0\u6f02\u79fb' : 'Mechanical drift'}: ${labels[status] || status}</strong><span>${cn ? '\u5e45\u5ea6' : 'Amplitude'} ${format(drift.drift_amplitude)} · ${cn ? '\u7f6e\u4fe1\u5ea6' : 'Confidence'} ${format(Number(drift.drift_confidence) * 100)}% · RMSE ${format(drift.drift_fit_rmse_mm)} mm · v${drift.drift_model_version || '—'}</span><div class="drift-camera-values">${cameraDetails}</div>`;
 }
 function renderCalibration() {
   const cal = state.calibration;
@@ -107,10 +125,12 @@ function renderCalibrationV2() {
   const biasRows = Object.entries(cal.corner_biases || {}).map(([point, value]) => `<tr><td>${point}</td><td>${format(value[0])}</td><td>${format(value[1])}</td></tr>`).join('') || '<tr><td colspan="3">—</td></tr>';
   const offsets = state.config?.edge_offsets_mm || cal.manual_edge_offsets_mm || {};
   const diagonalOffsets = state.config?.diagonal_offsets_mm || {diag1:0, diag2:0};
+  const lengthOffset = Number(state.config?.length_offset_mm ?? cal.manual_length_offset_mm ?? 0);
   const offsetInputs = [
     ...['A','B','C','D'].map(edge => ({label:edge, name:`offset_${edge}`, value:offsets[edge]})),
     {label:'D1', name:'offset_diag1', value:diagonalOffsets.diag1},
-    {label:'D2', name:'offset_diag2', value:diagonalOffsets.diag2}
+    {label:'D2', name:'offset_diag2', value:diagonalOffsets.diag2},
+    {label:cn ? '\u68d2\u957f' : 'Length', name:'offset_length', value:lengthOffset}
   ].map(item => `<label>${item.label}<input name="${item.name}" type="number" step="any" value="${Number(item.value || 0)}"></label>`).join('');
   const endfaceOffsets = state.config?.endface_angle_offsets_deg || cal.manual_endface_angle_offsets_deg || {head:{},tail:{}};
   const endfaceInputs = ['head','tail'].map(end => `<div class="endface-offset-block"><strong>${end === 'head' ? (cn ? '\u5934\u90e8' : 'Head') : (cn ? '\u5c3e\u90e8' : 'Tail')}</strong><div class="endface-offset-inputs">${['A','B','C','D'].map(face => `<label>${face}<input name="endface_${end}_${face}" type="number" step="any" value="${Number(endfaceOffsets[end]?.[face] || 0)}"></label>`).join('')}</div></div>`).join('');
@@ -119,13 +139,15 @@ function renderCalibrationV2() {
   const compensationHost = $('#manualCompensationHost');
   const compensationPanel = container.querySelector('.manual-compensation');
   compensationHost.replaceChildren(compensationPanel);
-  compensationHost.querySelector('.offset-section-title').textContent = cn ? '边长与对角线补偿 (mm)' : 'EDGE AND DIAGONAL OFFSETS (mm)';
+  compensationHost.querySelector('.offset-section-title').textContent = cn ? '边长、对角线与棒长补偿 (mm)' : 'EDGE, DIAGONAL AND ROD-LENGTH OFFSETS (mm)';
+  compensationHost.querySelector('.manual-compensation > p:last-child').textContent = cn ? '边长、对角线、棒长和八个端面夹角补偿只修正页面显示值，不覆盖切片 CSV、漂移模型或标定模型。' : 'Edge, diagonal, rod-length and eight end-face angle offsets change displayed values only; slice CSV and calibration models are preserved.';
   compensationHost.querySelectorAll('[data-summary-mode]').forEach(button => button.addEventListener('click', () => { state.displayMode = button.dataset.summaryMode; renderLanguage(); }));
   $('#manualCompensationForm').addEventListener('submit', async event => {
     event.preventDefault();
     const form = event.currentTarget;
     const edge_offsets_mm = {};
     const diagonal_offsets_mm = {};
+    const length_offset_mm = Number(form.elements.offset_length.value || 0);
     const endface_angle_offsets_deg = {head:{}, tail:{}};
     ['A','B','C','D'].forEach(edge => edge_offsets_mm[edge] = Number(form.elements[`offset_${edge}`].value || 0));
     ['diag1','diag2'].forEach(diagonal => diagonal_offsets_mm[diagonal] = Number(form.elements[`offset_${diagonal}`].value || 0));
@@ -133,7 +155,7 @@ function renderCalibrationV2() {
       endface_angle_offsets_deg[end][face] = Number(form.elements[`endface_${end}_${face}`].value || 0);
     }));
     try {
-      state.config = await api('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({edge_offsets_mm, diagonal_offsets_mm, endface_angle_offsets_deg})});
+      state.config = await api('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({edge_offsets_mm, diagonal_offsets_mm, length_offset_mm, endface_angle_offsets_deg})});
       if (state.result?.raw_summary) {
         const raw = state.result.raw_summary;
         const corrected = {...raw};
@@ -144,6 +166,7 @@ function renderCalibrationV2() {
         [['diag1','diag1_M1_M2_mm'], ['diag2','diag2_M3_M4_mm']].forEach(([diagonal, key]) => {
           if (raw[key] !== '' && raw[key] !== undefined) corrected[key] = (Number(raw[key]) + diagonal_offsets_mm[diagonal]).toFixed(6);
         });
+        if (raw.stick_length_mm !== '' && raw.stick_length_mm !== undefined) corrected.stick_length_mm = (Number(raw.stick_length_mm) + length_offset_mm).toFixed(6);
         ['head','tail'].forEach(end => {
           const angles = [];
           ['A','B','C','D'].forEach(face => {

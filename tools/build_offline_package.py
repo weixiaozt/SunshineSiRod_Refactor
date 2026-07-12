@@ -30,7 +30,11 @@ def copy_runtime_resources(stage: Path) -> None:
     truth = calibration / "truth"
     models.mkdir(parents=True)
     truth.mkdir(parents=True)
-    for name in ("camera_calibration_model_210_105.json", "endface_calibration_model_210_105.json"):
+    for name in (
+        "camera_calibration_model_210_105.json",
+        "endface_calibration_model_210_105.json",
+        "mechanical_drift_model_210_105.json",
+    ):
         shutil.copy2(TOOLS / "calibration" / "models" / name, models / name)
     shutil.copy2(TOOLS / "calibration" / "truth" / "210_105.csv", truth / "210_105.csv")
 
@@ -62,6 +66,7 @@ def write_launcher_and_readme() -> None:
         "若该 CSV 被 Excel/WPS 占用，测量仍会保存到 measurement_statistics.sqlite；\r\n"
         "关闭表格后，下一次扫描会自动刷新 CSV。\r\n\r\n"
         "标定铁律：本包内置的 210_105 模型只适用于同一根标准棒、同一规格、同一采集条件。\r\n"
+        "程序会逐个 HOBJ 自动识别正常/已知机械漂移；已知漂移先修正局部坐标，未知漂移要求重测。\r\n"
         "更换规格必须重新做“单棒多次拍多图”标定，并替换相应模型后再测量。\r\n",
         encoding="utf-8",
     )

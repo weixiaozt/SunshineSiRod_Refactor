@@ -1,5 +1,7 @@
 # AGENTS.md
 
+四相机机械漂移的模型分层、识别阈值、raw/corrected 字段和重建命令见：`tools\calibration\mechanical_drift_principles.md`。机械漂移模型必须独立于正常相机标定；禁止把正常/异常 HOBJ 混合平均。
+
 本文件给后续接手本项目的编码代理/工程师使用，记录当前测量定义、标定逻辑、运行方式和注意事项。
 
 详细的几何计算、字段定义与连续测量保存规则见：`tools\calibration\measurement_geometry_principles.md`。

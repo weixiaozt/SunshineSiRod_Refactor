@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Square Rod Measurement Dashboard</title>
-  <link rel="stylesheet" href="styles.css?v=20260712-diagonal-colors">
+  <link rel="stylesheet" href="styles.css?v=20260712-drift-and-length">
 </head>
 <body>
   <header class="topbar">
@@ -20,6 +20,9 @@
       <section id="manualCompensationHost" class="manual-compensation-host"></section>
     </section>
     <p id="notice" class="notice" role="status"></p>
+    <section id="driftStatus" class="drift-status-panel" aria-live="polite">
+      <strong>Mechanical drift</strong><span>Awaiting measurement</span>
+    </section>
 
     <section class="geometry-section">
       <div class="section-heading"><div><p class="eyebrow" data-i18n="measurementVisuals">MEASUREMENT VISUALS</p><h2 data-i18n="visualGuide">Measurement visual guide</h2></div><span id="resultSource" class="muted" data-i18n="awaitingResult">Awaiting result</span></div>
@@ -74,7 +77,7 @@
     <details class="calibration-panel" id="calibrationPanel" open><summary><span><span class="eyebrow" data-i18n="calibration">CALIBRATION</span><strong data-i18n="calibrationCheck">Calibration and compensation check</strong></span><span class="summary-arrow">&#8964;</span></summary><div id="calibrationContent" class="calibration-content"><p data-i18n="loading">Loading&hellip;</p></div></details>
   </main>
 
-  <dialog id="settingsDialog"><form method="dialog" id="settingsForm"><div class="dialog-header"><div><p class="eyebrow" data-i18n="settings">SETTINGS</p><h2 data-i18n="pathSettings">Paths and measurement settings</h2></div><button class="close-button" value="cancel" aria-label="Close">&times;</button></div><label><span data-i18n="dataDirectory">Measurement data directory</span><input name="data_root" required></label><label><span data-i18n="resultDirectory">Result save directory</span><input name="output_dir" required></label><label><span data-i18n="scriptPath">Measurement script path</span><input name="script_path" required></label><label><span data-i18n="calibrationPath">Calibration model path</span><input name="calibration_path" required></label><label><span data-i18n="endfaceCalibrationPath">End-face calibration model path</span><input name="endface_calibration_path" required></label><label><span data-i18n="truthPath">Manual-truth CSV path</span><input name="truth_csv_path" placeholder="Optional"></label><label><span data-i18n="sliceSpacing">Slice spacing (mm)</span><input name="step_mm" type="number" min="0.001" step="any" required></label><p class="dialog-note" data-i18n="pathNote">Paths are saved locally on this computer.</p><div class="dialog-actions"><button value="cancel" class="secondary-button" data-i18n="cancel">Cancel</button><button id="saveSettingsButton" value="default" class="primary-button" data-i18n="save">Save settings</button></div></form></dialog>
-  <script src="app.js?v=20260712-diagonal-compensation"></script>
+  <dialog id="settingsDialog"><form method="dialog" id="settingsForm"><div class="dialog-header"><div><p class="eyebrow" data-i18n="settings">SETTINGS</p><h2 data-i18n="pathSettings">Paths and measurement settings</h2></div><button class="close-button" value="cancel" aria-label="Close">&times;</button></div><label><span data-i18n="dataDirectory">Measurement data directory</span><input name="data_root" required></label><label><span data-i18n="resultDirectory">Result save directory</span><input name="output_dir" required></label><label><span data-i18n="scriptPath">Measurement script path</span><input name="script_path" required></label><label><span data-i18n="calibrationPath">Calibration model path</span><input name="calibration_path" required></label><label><span>Mechanical drift model path / 机械漂移模型路径</span><input name="drift_calibration_path" required></label><label><span data-i18n="endfaceCalibrationPath">End-face calibration model path</span><input name="endface_calibration_path" required></label><label><span data-i18n="truthPath">Manual-truth CSV path</span><input name="truth_csv_path" placeholder="Optional"></label><label><span data-i18n="sliceSpacing">Slice spacing (mm)</span><input name="step_mm" type="number" min="0.001" step="any" required></label><p class="dialog-note" data-i18n="pathNote">Paths are saved locally on this computer.</p><div class="dialog-actions"><button value="cancel" class="secondary-button" data-i18n="cancel">Cancel</button><button id="saveSettingsButton" value="default" class="primary-button" data-i18n="save">Save settings</button></div></form></dialog>
+  <script src="app.js?v=20260712-drift-and-length"></script>
 </body>
 </html>
