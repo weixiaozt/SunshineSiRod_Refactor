@@ -1,0 +1,1356 @@
+{
+  "version": 7,
+  "model": "camera_oriented_transform_with_orientation_models",
+  "note": "Free four-corner measurement with separate normal and turnover camera transforms. Turnover reverses longitudinal truth windows and swaps B/D physical faces; A/C remain unchanged.",
+  "mapping": {
+    "1": "P1/top",
+    "3": "P3/left",
+    "2": "P2/down",
+    "4": "P4/right"
+  },
+  "common_ranges": {
+    "2606005B22-CTB_3/13_08": [
+      1350,
+      18256
+    ],
+    "2606005B22-CTB_3/13_12": [
+      1351,
+      18256
+    ],
+    "2606005B22-CTB_3/13_15": [
+      1351,
+      18256
+    ],
+    "2606005B22-CTB_3/turnover/13_23": [
+      1352,
+      18254
+    ],
+    "2606005B22-CTB_3/turnover/13_26": [
+      1350,
+      18252
+    ],
+    "2606005B22-CTB_3/turnover/13_29": [
+      1347,
+      18248
+    ]
+  },
+  "calibration_rows": {
+    "2606005B22-CTB_3/13_08": {
+      "range15_25": {
+        "start_row": 3886,
+        "end_row": 5576,
+        "source_range": "range15_25",
+        "truth_range": "range15_25",
+        "representative_rows": {
+          "1": 4731,
+          "2": 4731,
+          "3": 4731,
+          "4": 4520
+        }
+      },
+      "range45_55": {
+        "start_row": 8958,
+        "end_row": 10648,
+        "source_range": "range45_55",
+        "truth_range": "range45_55",
+        "representative_rows": {
+          "1": 9803,
+          "2": 9803,
+          "3": 9803,
+          "4": 9803
+        }
+      },
+      "range70_80": {
+        "start_row": 13184,
+        "end_row": 14875,
+        "source_range": "range70_80",
+        "truth_range": "range70_80",
+        "representative_rows": {
+          "1": 14030,
+          "2": 14030,
+          "3": 14241,
+          "4": 14030
+        }
+      }
+    },
+    "2606005B22-CTB_3/13_12": {
+      "range15_25": {
+        "start_row": 3887,
+        "end_row": 5577,
+        "source_range": "range15_25",
+        "truth_range": "range15_25",
+        "representative_rows": {
+          "1": 4943,
+          "2": 4732,
+          "3": 4732,
+          "4": 4521
+        }
+      },
+      "range45_55": {
+        "start_row": 8958,
+        "end_row": 10649,
+        "source_range": "range45_55",
+        "truth_range": "range45_55",
+        "representative_rows": {
+          "1": 9804,
+          "2": 9804,
+          "3": 9804,
+          "4": 9804
+        }
+      },
+      "range70_80": {
+        "start_row": 13184,
+        "end_row": 14875,
+        "source_range": "range70_80",
+        "truth_range": "range70_80",
+        "representative_rows": {
+          "1": 14030,
+          "2": 14030,
+          "3": 14241,
+          "4": 14241
+        }
+      }
+    },
+    "2606005B22-CTB_3/13_15": {
+      "range15_25": {
+        "start_row": 3887,
+        "end_row": 5577,
+        "source_range": "range15_25",
+        "truth_range": "range15_25",
+        "representative_rows": {
+          "1": 4732,
+          "2": 4732,
+          "3": 4732,
+          "4": 4521
+        }
+      },
+      "range45_55": {
+        "start_row": 8958,
+        "end_row": 10649,
+        "source_range": "range45_55",
+        "truth_range": "range45_55",
+        "representative_rows": {
+          "1": 9804,
+          "2": 9804,
+          "3": 9804,
+          "4": 9804
+        }
+      },
+      "range70_80": {
+        "start_row": 13184,
+        "end_row": 14875,
+        "source_range": "range70_80",
+        "truth_range": "range70_80",
+        "representative_rows": {
+          "1": 14030,
+          "2": 14030,
+          "3": 14030,
+          "4": 14241
+        }
+      }
+    },
+    "2606005B22-CTB_3/turnover/13_23": {
+      "range15_25": {
+        "start_row": 3887,
+        "end_row": 5578,
+        "source_range": "range15_25",
+        "truth_range": "range70_80",
+        "representative_rows": {
+          "1": 4732,
+          "2": 4732,
+          "3": 4944,
+          "4": 4521
+        }
+      },
+      "range45_55": {
+        "start_row": 8958,
+        "end_row": 10648,
+        "source_range": "range45_55",
+        "truth_range": "range45_55",
+        "representative_rows": {
+          "1": 9803,
+          "2": 9803,
+          "3": 9803,
+          "4": 9803
+        }
+      },
+      "range70_80": {
+        "start_row": 13183,
+        "end_row": 14874,
+        "source_range": "range70_80",
+        "truth_range": "range15_25",
+        "representative_rows": {
+          "1": 14028,
+          "2": 14028,
+          "3": 14240,
+          "4": 14451
+        }
+      }
+    },
+    "2606005B22-CTB_3/turnover/13_26": {
+      "range15_25": {
+        "start_row": 3885,
+        "end_row": 5576,
+        "source_range": "range15_25",
+        "truth_range": "range70_80",
+        "representative_rows": {
+          "1": 4942,
+          "2": 4730,
+          "3": 4942,
+          "4": 5153
+        }
+      },
+      "range45_55": {
+        "start_row": 8956,
+        "end_row": 10646,
+        "source_range": "range45_55",
+        "truth_range": "range45_55",
+        "representative_rows": {
+          "1": 9801,
+          "2": 9801,
+          "3": 9801,
+          "4": 9801
+        }
+      },
+      "range70_80": {
+        "start_row": 13181,
+        "end_row": 14872,
+        "source_range": "range70_80",
+        "truth_range": "range15_25",
+        "representative_rows": {
+          "1": 14026,
+          "2": 14026,
+          "3": 14238,
+          "4": 14026
+        }
+      }
+    },
+    "2606005B22-CTB_3/turnover/13_29": {
+      "range15_25": {
+        "start_row": 3882,
+        "end_row": 5572,
+        "source_range": "range15_25",
+        "truth_range": "range70_80",
+        "representative_rows": {
+          "1": 4727,
+          "2": 4938,
+          "3": 4938,
+          "4": 4727
+        }
+      },
+      "range45_55": {
+        "start_row": 8952,
+        "end_row": 10643,
+        "source_range": "range45_55",
+        "truth_range": "range45_55",
+        "representative_rows": {
+          "1": 9586,
+          "2": 9798,
+          "3": 9798,
+          "4": 9798
+        }
+      },
+      "range70_80": {
+        "start_row": 13178,
+        "end_row": 14868,
+        "source_range": "range70_80",
+        "truth_range": "range15_25",
+        "representative_rows": {
+          "1": 14023,
+          "2": 14023,
+          "3": 14023,
+          "4": 14234
+        }
+      }
+    }
+  },
+  "standard": {
+    "range15_25": {
+      "percent": 0.2,
+      "start_percent": 0.15,
+      "end_percent": 0.25,
+      "A": 209.99,
+      "B": 105.11,
+      "C": 210.03,
+      "D": 105.11
+    },
+    "range45_55": {
+      "percent": 0.5,
+      "start_percent": 0.45,
+      "end_percent": 0.55,
+      "A": 209.99,
+      "B": 105.12,
+      "C": 210.02,
+      "D": 105.11
+    },
+    "range70_80": {
+      "percent": 0.75,
+      "start_percent": 0.7,
+      "end_percent": 0.8,
+      "A": 209.99,
+      "B": 105.11,
+      "C": 210.02,
+      "D": 105.11
+    }
+  },
+  "standards_by_capture": {
+    "2606005B22-CTB_3/13_08": {
+      "range15_25": {
+        "percent": 0.2,
+        "start_percent": 0.15,
+        "end_percent": 0.25,
+        "A": 209.99,
+        "B": 105.11,
+        "C": 210.03,
+        "D": 105.11
+      },
+      "range45_55": {
+        "percent": 0.5,
+        "start_percent": 0.45,
+        "end_percent": 0.55,
+        "A": 209.99,
+        "B": 105.12,
+        "C": 210.02,
+        "D": 105.11
+      },
+      "range70_80": {
+        "percent": 0.75,
+        "start_percent": 0.7,
+        "end_percent": 0.8,
+        "A": 209.99,
+        "B": 105.11,
+        "C": 210.02,
+        "D": 105.11
+      }
+    },
+    "2606005B22-CTB_3/13_12": {
+      "range15_25": {
+        "percent": 0.2,
+        "start_percent": 0.15,
+        "end_percent": 0.25,
+        "A": 209.99,
+        "B": 105.11,
+        "C": 210.03,
+        "D": 105.11
+      },
+      "range45_55": {
+        "percent": 0.5,
+        "start_percent": 0.45,
+        "end_percent": 0.55,
+        "A": 209.99,
+        "B": 105.12,
+        "C": 210.02,
+        "D": 105.11
+      },
+      "range70_80": {
+        "percent": 0.75,
+        "start_percent": 0.7,
+        "end_percent": 0.8,
+        "A": 209.99,
+        "B": 105.11,
+        "C": 210.02,
+        "D": 105.11
+      }
+    },
+    "2606005B22-CTB_3/13_15": {
+      "range15_25": {
+        "percent": 0.2,
+        "start_percent": 0.15,
+        "end_percent": 0.25,
+        "A": 209.99,
+        "B": 105.11,
+        "C": 210.03,
+        "D": 105.11
+      },
+      "range45_55": {
+        "percent": 0.5,
+        "start_percent": 0.45,
+        "end_percent": 0.55,
+        "A": 209.99,
+        "B": 105.12,
+        "C": 210.02,
+        "D": 105.11
+      },
+      "range70_80": {
+        "percent": 0.75,
+        "start_percent": 0.7,
+        "end_percent": 0.8,
+        "A": 209.99,
+        "B": 105.11,
+        "C": 210.02,
+        "D": 105.11
+      }
+    },
+    "2606005B22-CTB_3/turnover/13_23": {
+      "range15_25": {
+        "percent": 0.75,
+        "start_percent": 0.7,
+        "end_percent": 0.8,
+        "A": 209.99,
+        "B": 105.11,
+        "C": 210.02,
+        "D": 105.11
+      },
+      "range45_55": {
+        "percent": 0.5,
+        "start_percent": 0.45,
+        "end_percent": 0.55,
+        "A": 209.99,
+        "B": 105.12,
+        "C": 210.02,
+        "D": 105.11
+      },
+      "range70_80": {
+        "percent": 0.2,
+        "start_percent": 0.15,
+        "end_percent": 0.25,
+        "A": 209.99,
+        "B": 105.11,
+        "C": 210.03,
+        "D": 105.11
+      }
+    },
+    "2606005B22-CTB_3/turnover/13_26": {
+      "range15_25": {
+        "percent": 0.75,
+        "start_percent": 0.7,
+        "end_percent": 0.8,
+        "A": 209.99,
+        "B": 105.11,
+        "C": 210.02,
+        "D": 105.11
+      },
+      "range45_55": {
+        "percent": 0.5,
+        "start_percent": 0.45,
+        "end_percent": 0.55,
+        "A": 209.99,
+        "B": 105.12,
+        "C": 210.02,
+        "D": 105.11
+      },
+      "range70_80": {
+        "percent": 0.2,
+        "start_percent": 0.15,
+        "end_percent": 0.25,
+        "A": 209.99,
+        "B": 105.11,
+        "C": 210.03,
+        "D": 105.11
+      }
+    },
+    "2606005B22-CTB_3/turnover/13_29": {
+      "range15_25": {
+        "percent": 0.75,
+        "start_percent": 0.7,
+        "end_percent": 0.8,
+        "A": 209.99,
+        "B": 105.11,
+        "C": 210.02,
+        "D": 105.11
+      },
+      "range45_55": {
+        "percent": 0.5,
+        "start_percent": 0.45,
+        "end_percent": 0.55,
+        "A": 209.99,
+        "B": 105.12,
+        "C": 210.02,
+        "D": 105.11
+      },
+      "range70_80": {
+        "percent": 0.2,
+        "start_percent": 0.15,
+        "end_percent": 0.25,
+        "A": 209.99,
+        "B": 105.11,
+        "C": 210.03,
+        "D": 105.11
+      }
+    }
+  },
+  "capture_metadata": {
+    "2606005B22-CTB_3/13_08": {
+      "bar_id": "2606005B22-CTB_3",
+      "orientation": "normal",
+      "repeat_count_for_bar": 6
+    },
+    "2606005B22-CTB_3/13_12": {
+      "bar_id": "2606005B22-CTB_3",
+      "orientation": "normal",
+      "repeat_count_for_bar": 6
+    },
+    "2606005B22-CTB_3/13_15": {
+      "bar_id": "2606005B22-CTB_3",
+      "orientation": "normal",
+      "repeat_count_for_bar": 6
+    },
+    "2606005B22-CTB_3/turnover/13_23": {
+      "bar_id": "2606005B22-CTB_3",
+      "orientation": "turnover",
+      "repeat_count_for_bar": 6
+    },
+    "2606005B22-CTB_3/turnover/13_26": {
+      "bar_id": "2606005B22-CTB_3",
+      "orientation": "turnover",
+      "repeat_count_for_bar": 6
+    },
+    "2606005B22-CTB_3/turnover/13_29": {
+      "bar_id": "2606005B22-CTB_3",
+      "orientation": "turnover",
+      "repeat_count_for_bar": 6
+    }
+  },
+  "captured_bar_ids": [
+    "2606005B22-CTB_3"
+  ],
+  "unused_truth_bar_ids": [],
+  "bar_weighting": "equal_per_bar_then_equal_per_repeat_and_position",
+  "transforms": {
+    "1": {
+      "matrix": [
+        [
+          0.7119981857182053,
+          0.7021813038909422
+        ],
+        [
+          -0.702181303890942,
+          0.7119981857182054
+        ]
+      ],
+      "translation": [
+        193.54068745503784,
+        116.66013688258501
+      ],
+      "direction_error_mean": 0.0002551249204028661
+    },
+    "2": {
+      "matrix": [
+        [
+          0.679113326038313,
+          -0.7340334395633352
+        ],
+        [
+          -0.7340334395633353,
+          -0.679113326038313
+        ]
+      ],
+      "translation": [
+        -16.484851940335073,
+        18.791438876740987
+      ],
+      "direction_error_mean": 0.002043276462074391
+    },
+    "3": {
+      "matrix": [
+        [
+          0.7125944213409275,
+          -0.7015762187202389
+        ],
+        [
+          0.701576218720239,
+          0.7125944213409279
+        ]
+      ],
+      "translation": [
+        -15.742476040710319,
+        88.41569751230404
+      ],
+      "direction_error_mean": 0.0003835911954088208
+    },
+    "4": {
+      "matrix": [
+        [
+          0.7077347165068658,
+          0.7064782877420549
+        ],
+        [
+          0.7064782877420549,
+          -0.7077347165068659
+        ]
+      ],
+      "translation": [
+        193.51990884989712,
+        -9.074453776178837
+      ],
+      "direction_error_mean": 0.0011624328177067427
+    }
+  },
+  "corner_biases": {
+    "P1": [
+      0.0015842900007562053,
+      -0.0009243439543714267
+    ],
+    "P2": [
+      -0.00956684425209528,
+      -0.011583033523720157
+    ],
+    "P3": [
+      -0.00260864615662389,
+      0.0017071643768657755
+    ],
+    "P4": [
+      0.002380022575844503,
+      -0.004641161876433732
+    ]
+  },
+  "orientation_models": {
+    "normal": {
+      "version": 6,
+      "model": "camera_oriented_transform_with_corner_bias",
+      "note": "Calibration fixes camera-to-global orientation/translation and per-corner residual bias from standard-bar captures. Default measurement is free four-corner geometry: A/C and B/D are not forced or range-limited.",
+      "mapping": {
+        "1": "P1/top",
+        "3": "P3/left",
+        "2": "P2/down",
+        "4": "P4/right"
+      },
+      "common_ranges": {
+        "2606005B22-CTB_3/13_08": [
+          1350,
+          18256
+        ],
+        "2606005B22-CTB_3/13_12": [
+          1351,
+          18256
+        ],
+        "2606005B22-CTB_3/13_15": [
+          1351,
+          18256
+        ]
+      },
+      "calibration_rows": {
+        "2606005B22-CTB_3/13_08": {
+          "range15_25": {
+            "start_row": 3886,
+            "end_row": 5576,
+            "source_range": "range15_25",
+            "truth_range": "range15_25",
+            "representative_rows": {
+              "1": 4731,
+              "2": 4731,
+              "3": 4731,
+              "4": 4520
+            }
+          },
+          "range45_55": {
+            "start_row": 8958,
+            "end_row": 10648,
+            "source_range": "range45_55",
+            "truth_range": "range45_55",
+            "representative_rows": {
+              "1": 9803,
+              "2": 9803,
+              "3": 9803,
+              "4": 9803
+            }
+          },
+          "range70_80": {
+            "start_row": 13184,
+            "end_row": 14875,
+            "source_range": "range70_80",
+            "truth_range": "range70_80",
+            "representative_rows": {
+              "1": 14030,
+              "2": 14030,
+              "3": 14241,
+              "4": 14030
+            }
+          }
+        },
+        "2606005B22-CTB_3/13_12": {
+          "range15_25": {
+            "start_row": 3887,
+            "end_row": 5577,
+            "source_range": "range15_25",
+            "truth_range": "range15_25",
+            "representative_rows": {
+              "1": 4943,
+              "2": 4732,
+              "3": 4732,
+              "4": 4521
+            }
+          },
+          "range45_55": {
+            "start_row": 8958,
+            "end_row": 10649,
+            "source_range": "range45_55",
+            "truth_range": "range45_55",
+            "representative_rows": {
+              "1": 9804,
+              "2": 9804,
+              "3": 9804,
+              "4": 9804
+            }
+          },
+          "range70_80": {
+            "start_row": 13184,
+            "end_row": 14875,
+            "source_range": "range70_80",
+            "truth_range": "range70_80",
+            "representative_rows": {
+              "1": 14030,
+              "2": 14030,
+              "3": 14241,
+              "4": 14241
+            }
+          }
+        },
+        "2606005B22-CTB_3/13_15": {
+          "range15_25": {
+            "start_row": 3887,
+            "end_row": 5577,
+            "source_range": "range15_25",
+            "truth_range": "range15_25",
+            "representative_rows": {
+              "1": 4732,
+              "2": 4732,
+              "3": 4732,
+              "4": 4521
+            }
+          },
+          "range45_55": {
+            "start_row": 8958,
+            "end_row": 10649,
+            "source_range": "range45_55",
+            "truth_range": "range45_55",
+            "representative_rows": {
+              "1": 9804,
+              "2": 9804,
+              "3": 9804,
+              "4": 9804
+            }
+          },
+          "range70_80": {
+            "start_row": 13184,
+            "end_row": 14875,
+            "source_range": "range70_80",
+            "truth_range": "range70_80",
+            "representative_rows": {
+              "1": 14030,
+              "2": 14030,
+              "3": 14030,
+              "4": 14241
+            }
+          }
+        }
+      },
+      "standard": {
+        "range15_25": {
+          "percent": 0.2,
+          "start_percent": 0.15,
+          "end_percent": 0.25,
+          "A": 209.99,
+          "B": 105.11,
+          "C": 210.03,
+          "D": 105.11
+        },
+        "range45_55": {
+          "percent": 0.5,
+          "start_percent": 0.45,
+          "end_percent": 0.55,
+          "A": 209.99,
+          "B": 105.12,
+          "C": 210.02,
+          "D": 105.11
+        },
+        "range70_80": {
+          "percent": 0.75,
+          "start_percent": 0.7,
+          "end_percent": 0.8,
+          "A": 209.99,
+          "B": 105.11,
+          "C": 210.02,
+          "D": 105.11
+        }
+      },
+      "standards_by_capture": {
+        "2606005B22-CTB_3/13_08": {
+          "range15_25": {
+            "percent": 0.2,
+            "start_percent": 0.15,
+            "end_percent": 0.25,
+            "A": 209.99,
+            "B": 105.11,
+            "C": 210.03,
+            "D": 105.11
+          },
+          "range45_55": {
+            "percent": 0.5,
+            "start_percent": 0.45,
+            "end_percent": 0.55,
+            "A": 209.99,
+            "B": 105.12,
+            "C": 210.02,
+            "D": 105.11
+          },
+          "range70_80": {
+            "percent": 0.75,
+            "start_percent": 0.7,
+            "end_percent": 0.8,
+            "A": 209.99,
+            "B": 105.11,
+            "C": 210.02,
+            "D": 105.11
+          }
+        },
+        "2606005B22-CTB_3/13_12": {
+          "range15_25": {
+            "percent": 0.2,
+            "start_percent": 0.15,
+            "end_percent": 0.25,
+            "A": 209.99,
+            "B": 105.11,
+            "C": 210.03,
+            "D": 105.11
+          },
+          "range45_55": {
+            "percent": 0.5,
+            "start_percent": 0.45,
+            "end_percent": 0.55,
+            "A": 209.99,
+            "B": 105.12,
+            "C": 210.02,
+            "D": 105.11
+          },
+          "range70_80": {
+            "percent": 0.75,
+            "start_percent": 0.7,
+            "end_percent": 0.8,
+            "A": 209.99,
+            "B": 105.11,
+            "C": 210.02,
+            "D": 105.11
+          }
+        },
+        "2606005B22-CTB_3/13_15": {
+          "range15_25": {
+            "percent": 0.2,
+            "start_percent": 0.15,
+            "end_percent": 0.25,
+            "A": 209.99,
+            "B": 105.11,
+            "C": 210.03,
+            "D": 105.11
+          },
+          "range45_55": {
+            "percent": 0.5,
+            "start_percent": 0.45,
+            "end_percent": 0.55,
+            "A": 209.99,
+            "B": 105.12,
+            "C": 210.02,
+            "D": 105.11
+          },
+          "range70_80": {
+            "percent": 0.75,
+            "start_percent": 0.7,
+            "end_percent": 0.8,
+            "A": 209.99,
+            "B": 105.11,
+            "C": 210.02,
+            "D": 105.11
+          }
+        }
+      },
+      "capture_metadata": {
+        "2606005B22-CTB_3/13_08": {
+          "bar_id": "2606005B22-CTB_3",
+          "orientation": "normal",
+          "repeat_count_for_bar": 3
+        },
+        "2606005B22-CTB_3/13_12": {
+          "bar_id": "2606005B22-CTB_3",
+          "orientation": "normal",
+          "repeat_count_for_bar": 3
+        },
+        "2606005B22-CTB_3/13_15": {
+          "bar_id": "2606005B22-CTB_3",
+          "orientation": "normal",
+          "repeat_count_for_bar": 3
+        }
+      },
+      "captured_bar_ids": [
+        "2606005B22-CTB_3"
+      ],
+      "unused_truth_bar_ids": [],
+      "bar_weighting": "equal_per_bar_then_equal_per_repeat_and_position",
+      "transforms": {
+        "1": {
+          "matrix": [
+            [
+              0.7119981857182053,
+              0.7021813038909422
+            ],
+            [
+              -0.702181303890942,
+              0.7119981857182054
+            ]
+          ],
+          "translation": [
+            193.54068745503784,
+            116.66013688258501
+          ],
+          "direction_error_mean": 0.0002551249204028661
+        },
+        "2": {
+          "matrix": [
+            [
+              0.679113326038313,
+              -0.7340334395633352
+            ],
+            [
+              -0.7340334395633353,
+              -0.679113326038313
+            ]
+          ],
+          "translation": [
+            -16.484851940335073,
+            18.791438876740987
+          ],
+          "direction_error_mean": 0.002043276462074391
+        },
+        "3": {
+          "matrix": [
+            [
+              0.7125944213409275,
+              -0.7015762187202389
+            ],
+            [
+              0.701576218720239,
+              0.7125944213409279
+            ]
+          ],
+          "translation": [
+            -15.742476040710319,
+            88.41569751230404
+          ],
+          "direction_error_mean": 0.0003835911954088208
+        },
+        "4": {
+          "matrix": [
+            [
+              0.7077347165068658,
+              0.7064782877420549
+            ],
+            [
+              0.7064782877420549,
+              -0.7077347165068659
+            ]
+          ],
+          "translation": [
+            193.51990884989712,
+            -9.074453776178837
+          ],
+          "direction_error_mean": 0.0011624328177067427
+        }
+      },
+      "corner_biases": {
+        "P1": [
+          0.0015842900007562053,
+          -0.0009243439543714267
+        ],
+        "P2": [
+          -0.00956684425209528,
+          -0.011583033523720157
+        ],
+        "P3": [
+          -0.00260864615662389,
+          0.0017071643768657755
+        ],
+        "P4": [
+          0.002380022575844503,
+          -0.004641161876433732
+        ]
+      }
+    },
+    "turnover": {
+      "version": 6,
+      "model": "camera_oriented_transform_with_corner_bias",
+      "note": "Calibration fixes camera-to-global orientation/translation and per-corner residual bias from standard-bar captures. Default measurement is free four-corner geometry: A/C and B/D are not forced or range-limited.",
+      "mapping": {
+        "1": "P1/top",
+        "3": "P3/left",
+        "2": "P2/down",
+        "4": "P4/right"
+      },
+      "common_ranges": {
+        "2606005B22-CTB_3/turnover/13_23": [
+          1352,
+          18254
+        ],
+        "2606005B22-CTB_3/turnover/13_26": [
+          1350,
+          18252
+        ],
+        "2606005B22-CTB_3/turnover/13_29": [
+          1347,
+          18248
+        ]
+      },
+      "calibration_rows": {
+        "2606005B22-CTB_3/turnover/13_23": {
+          "range15_25": {
+            "start_row": 3887,
+            "end_row": 5578,
+            "source_range": "range15_25",
+            "truth_range": "range70_80",
+            "representative_rows": {
+              "1": 4732,
+              "2": 4732,
+              "3": 4944,
+              "4": 4521
+            }
+          },
+          "range45_55": {
+            "start_row": 8958,
+            "end_row": 10648,
+            "source_range": "range45_55",
+            "truth_range": "range45_55",
+            "representative_rows": {
+              "1": 9803,
+              "2": 9803,
+              "3": 9803,
+              "4": 9803
+            }
+          },
+          "range70_80": {
+            "start_row": 13183,
+            "end_row": 14874,
+            "source_range": "range70_80",
+            "truth_range": "range15_25",
+            "representative_rows": {
+              "1": 14028,
+              "2": 14028,
+              "3": 14240,
+              "4": 14451
+            }
+          }
+        },
+        "2606005B22-CTB_3/turnover/13_26": {
+          "range15_25": {
+            "start_row": 3885,
+            "end_row": 5576,
+            "source_range": "range15_25",
+            "truth_range": "range70_80",
+            "representative_rows": {
+              "1": 4942,
+              "2": 4730,
+              "3": 4942,
+              "4": 5153
+            }
+          },
+          "range45_55": {
+            "start_row": 8956,
+            "end_row": 10646,
+            "source_range": "range45_55",
+            "truth_range": "range45_55",
+            "representative_rows": {
+              "1": 9801,
+              "2": 9801,
+              "3": 9801,
+              "4": 9801
+            }
+          },
+          "range70_80": {
+            "start_row": 13181,
+            "end_row": 14872,
+            "source_range": "range70_80",
+            "truth_range": "range15_25",
+            "representative_rows": {
+              "1": 14026,
+              "2": 14026,
+              "3": 14238,
+              "4": 14026
+            }
+          }
+        },
+        "2606005B22-CTB_3/turnover/13_29": {
+          "range15_25": {
+            "start_row": 3882,
+            "end_row": 5572,
+            "source_range": "range15_25",
+            "truth_range": "range70_80",
+            "representative_rows": {
+              "1": 4727,
+              "2": 4938,
+              "3": 4938,
+              "4": 4727
+            }
+          },
+          "range45_55": {
+            "start_row": 8952,
+            "end_row": 10643,
+            "source_range": "range45_55",
+            "truth_range": "range45_55",
+            "representative_rows": {
+              "1": 9586,
+              "2": 9798,
+              "3": 9798,
+              "4": 9798
+            }
+          },
+          "range70_80": {
+            "start_row": 13178,
+            "end_row": 14868,
+            "source_range": "range70_80",
+            "truth_range": "range15_25",
+            "representative_rows": {
+              "1": 14023,
+              "2": 14023,
+              "3": 14023,
+              "4": 14234
+            }
+          }
+        }
+      },
+      "standard": {
+        "range15_25": {
+          "percent": 0.2,
+          "start_percent": 0.15,
+          "end_percent": 0.25,
+          "A": 209.99,
+          "B": 105.11,
+          "C": 210.03,
+          "D": 105.11
+        },
+        "range45_55": {
+          "percent": 0.5,
+          "start_percent": 0.45,
+          "end_percent": 0.55,
+          "A": 209.99,
+          "B": 105.12,
+          "C": 210.02,
+          "D": 105.11
+        },
+        "range70_80": {
+          "percent": 0.75,
+          "start_percent": 0.7,
+          "end_percent": 0.8,
+          "A": 209.99,
+          "B": 105.11,
+          "C": 210.02,
+          "D": 105.11
+        }
+      },
+      "standards_by_capture": {
+        "2606005B22-CTB_3/turnover/13_23": {
+          "range15_25": {
+            "percent": 0.75,
+            "start_percent": 0.7,
+            "end_percent": 0.8,
+            "A": 209.99,
+            "B": 105.11,
+            "C": 210.02,
+            "D": 105.11
+          },
+          "range45_55": {
+            "percent": 0.5,
+            "start_percent": 0.45,
+            "end_percent": 0.55,
+            "A": 209.99,
+            "B": 105.12,
+            "C": 210.02,
+            "D": 105.11
+          },
+          "range70_80": {
+            "percent": 0.2,
+            "start_percent": 0.15,
+            "end_percent": 0.25,
+            "A": 209.99,
+            "B": 105.11,
+            "C": 210.03,
+            "D": 105.11
+          }
+        },
+        "2606005B22-CTB_3/turnover/13_26": {
+          "range15_25": {
+            "percent": 0.75,
+            "start_percent": 0.7,
+            "end_percent": 0.8,
+            "A": 209.99,
+            "B": 105.11,
+            "C": 210.02,
+            "D": 105.11
+          },
+          "range45_55": {
+            "percent": 0.5,
+            "start_percent": 0.45,
+            "end_percent": 0.55,
+            "A": 209.99,
+            "B": 105.12,
+            "C": 210.02,
+            "D": 105.11
+          },
+          "range70_80": {
+            "percent": 0.2,
+            "start_percent": 0.15,
+            "end_percent": 0.25,
+            "A": 209.99,
+            "B": 105.11,
+            "C": 210.03,
+            "D": 105.11
+          }
+        },
+        "2606005B22-CTB_3/turnover/13_29": {
+          "range15_25": {
+            "percent": 0.75,
+            "start_percent": 0.7,
+            "end_percent": 0.8,
+            "A": 209.99,
+            "B": 105.11,
+            "C": 210.02,
+            "D": 105.11
+          },
+          "range45_55": {
+            "percent": 0.5,
+            "start_percent": 0.45,
+            "end_percent": 0.55,
+            "A": 209.99,
+            "B": 105.12,
+            "C": 210.02,
+            "D": 105.11
+          },
+          "range70_80": {
+            "percent": 0.2,
+            "start_percent": 0.15,
+            "end_percent": 0.25,
+            "A": 209.99,
+            "B": 105.11,
+            "C": 210.03,
+            "D": 105.11
+          }
+        }
+      },
+      "capture_metadata": {
+        "2606005B22-CTB_3/turnover/13_23": {
+          "bar_id": "2606005B22-CTB_3",
+          "orientation": "turnover",
+          "repeat_count_for_bar": 3
+        },
+        "2606005B22-CTB_3/turnover/13_26": {
+          "bar_id": "2606005B22-CTB_3",
+          "orientation": "turnover",
+          "repeat_count_for_bar": 3
+        },
+        "2606005B22-CTB_3/turnover/13_29": {
+          "bar_id": "2606005B22-CTB_3",
+          "orientation": "turnover",
+          "repeat_count_for_bar": 3
+        }
+      },
+      "captured_bar_ids": [
+        "2606005B22-CTB_3"
+      ],
+      "unused_truth_bar_ids": [],
+      "bar_weighting": "equal_per_bar_then_equal_per_repeat_and_position",
+      "transforms": {
+        "1": {
+          "matrix": [
+            [
+              -0.702112037792431,
+              0.7120664901446774
+            ],
+            [
+              0.7120664901446773,
+              0.7021120377924309
+            ]
+          ],
+          "translation": [
+            221.56250243006525,
+            88.65863564537159
+          ],
+          "direction_error_mean": 0.0005554073613936043
+        },
+        "2": {
+          "matrix": [
+            [
+              -0.734166356089694,
+              -0.6789696323002816
+            ],
+            [
+              0.6789696323002817,
+              -0.7341663560896944
+            ]
+          ],
+          "translation": [
+            18.78823323181274,
+            -16.472435639674984
+          ],
+          "direction_error_mean": 0.0022174261575444
+        },
+        "3": {
+          "matrix": [
+            [
+              0.7128260387355196,
+              -0.7013408860893735
+            ],
+            [
+              0.7013408860893735,
+              0.7128260387355194
+            ]
+          ],
+          "translation": [
+            -15.735613623871718,
+            88.43845660749034
+          ],
+          "direction_error_mean": 0.00022972342315183793
+        },
+        "4": {
+          "matrix": [
+            [
+              0.7079233198289003,
+              0.7062892985472939
+            ],
+            [
+              0.7062892985472939,
+              -0.7079233198289004
+            ]
+          ],
+          "translation": [
+            193.49428053789114,
+            -9.073319213672066
+          ],
+          "direction_error_mean": 0.0010053154360911466
+        }
+      },
+      "corner_biases": {
+        "P1": [
+          0.0005271190285264394,
+          -0.0027872705011304792
+        ],
+        "P2": [
+          -0.010381124685684787,
+          -0.012656541164947278
+        ],
+        "P3": [
+          -0.0014931741257466578,
+          0.00023746359249956746
+        ],
+        "P4": [
+          0.0011448091614485924,
+          -0.0045245670985746955
+        ]
+      }
+    }
+  },
+  "single_bar_metadata": {
+    "scope": "single_bar_only",
+    "specification": "210_105",
+    "physical_bar_id": "2606005B22-CTB_3",
+    "included_capture_count": 6,
+    "included_captures": [
+      "2606005B22-CTB_3/13_08",
+      "2606005B22-CTB_3/13_12",
+      "2606005B22-CTB_3/13_15",
+      "2606005B22-CTB_3/turnover/13_23",
+      "2606005B22-CTB_3/turnover/13_26",
+      "2606005B22-CTB_3/turnover/13_29"
+    ],
+    "included_orientations": {
+      "normal": 3,
+      "turnover": 3
+    },
+    "truth_csv": "tools/calibration/truth/210_105.csv"
+  }
+}

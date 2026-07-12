@@ -41,6 +41,11 @@ image/script/*_results*.csv
 offline_measurement_package/
 offline_measurement_package.zip
 
+# Locally built offline distribution and dashboard runtime state
+build/
+release/
+tools/dashboard_continuous_seen.local.json
+
 # Local logs and temporary files
 *.log
 *.tmp

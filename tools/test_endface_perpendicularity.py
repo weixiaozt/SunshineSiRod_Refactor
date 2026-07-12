@@ -17,6 +17,9 @@ from tools.measure_square_rod_edges import (
     build_endface_face_angle_calibration_model,
     build_balanced_endface_angle_calibration_model,
     calibration_hobjs_from_folder,
+    is_turnover_capture,
+    oriented_endface_truth,
+    oriented_standard_pairs,
     face_to_endface_angles,
     fit_endfaces_from_source,
     load_standard_truth_csv,
@@ -64,6 +67,38 @@ class EndFacePerpendicularityTests(unittest.TestCase):
         self.assertEqual([item[1] for item in discovered].count("BAR_B_3"), 2)
         self.assertIn("BAR_A/one", [item[2] for item in discovered])
         self.assertIn("BAR_B_3/one", [item[2] for item in discovered])
+
+    def test_turnover_folder_keeps_physical_bar_id_and_is_detected(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "BAR_A diaotou_3" / "one.hobj"
+            path.parent.mkdir()
+            path.touch()
+            discovered = calibration_hobjs_from_folder(str(Path(folder)))
+        self.assertEqual(discovered[0][1], "BAR_A_3")
+        self.assertEqual(discovered[0][2], "BAR_A_3/turnover/one")
+        self.assertTrue(is_turnover_capture(discovered[0][0]))
+
+    def test_turnover_pairs_reverse_longitudinal_truth_windows(self) -> None:
+        standard = {
+            "range15_25": {"percent": 0.20, "A": 1.0, "B": 2.0, "C": 3.0, "D": 4.0},
+            "range45_55": {"percent": 0.50, "A": 5.0, "B": 6.0, "C": 7.0, "D": 8.0},
+            "range70_80": {"percent": 0.75, "A": 9.0, "B": 10.0, "C": 11.0, "D": 12.0},
+        }
+        pairs = oriented_standard_pairs(standard, "turnover")
+        self.assertEqual([(source, truth) for source, _, truth, _ in pairs], [
+            ("range15_25", "range70_80"),
+            ("range45_55", "range45_55"),
+            ("range70_80", "range15_25"),
+        ])
+
+    def test_turnover_endface_truth_swaps_ends_and_bd_only(self) -> None:
+        truth = {
+            "head": {"A": 1.0, "B": 2.0, "C": 3.0, "D": 4.0},
+            "tail": {"A": 5.0, "B": 6.0, "C": 7.0, "D": 8.0},
+        }
+        mapped = oriented_endface_truth(truth, "turnover")
+        self.assertEqual(mapped["head"], {"A": 5.0, "B": 8.0, "C": 7.0, "D": 6.0})
+        self.assertEqual(mapped["tail"], {"A": 1.0, "B": 4.0, "C": 3.0, "D": 2.0})
 
     def test_endface_offsets_weight_each_bar_equally(self) -> None:
         source = SyntheticHeightSource()

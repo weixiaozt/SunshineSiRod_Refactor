@@ -67,7 +67,9 @@ class CornerResult:
     angle_deg: float = math.nan
     chamfer_mm: float = math.nan
     projection_x_mm: float = math.nan
-    projection_z_mm: float = math.nan
+    projection_y_mm: float = math.nan
+    chamfer_face1_setback_mm: float = math.nan
+    chamfer_face2_setback_mm: float = math.nan
     chamfer_mid_x: float = math.nan
     chamfer_mid_z: float = math.nan
     line1_m: float = math.nan
@@ -254,7 +256,9 @@ def extract_corner_from_row(row_values: np.ndarray, x_scale: float = X_SCALE_MM)
     idx = np.where(transition)[0]
     chamfer = math.nan
     projection_x = math.nan
-    projection_z = math.nan
+    projection_y = math.nan
+    chamfer_face1_setback = math.nan
+    chamfer_face2_setback = math.nan
     chamfer_mid_x = math.nan
     chamfer_mid_z = math.nan
     if idx.size > 1:
@@ -262,11 +266,37 @@ def extract_corner_from_row(row_values: np.ndarray, x_scale: float = X_SCALE_MM)
         groups.sort(key=lambda g: abs(float(np.mean(x[g])) - vx))
         g = groups[0]
         t1, t2 = int(g[0]), int(g[-1])
-        chamfer = float(math.hypot(x[t2] - x[t1], zs[t2] - zs[t1]))
-        projection_x = float(abs(x[t2] - x[t1]))
-        projection_z = float(abs(zs[t2] - zs[t1]))
-        chamfer_mid_x = float((x[t1] + x[t2]) * 0.5)
-        chamfer_mid_z = float((zs[t1] + zs[t2]) * 0.5)
+        t1x, t1z = float(x[t1]), float(zs[t1])
+        t2x, t2z = float(x[t2]), float(zs[t2])
+
+        # The transition mask deliberately excludes samples close to either
+        # main face, so its first/last raw samples are not the physical
+        # chamfer endpoints.  Fit the chamfer line and intersect it with both
+        # main-face fits instead.  This removes threshold-dependent length
+        # bias while retaining the raw endpoints as a safe fallback.
+        if g.size >= 6:
+            mc, bc, _ = robust_line_fit(x[g], zs[g])
+            denom1 = m1 - mc
+            denom2 = m2 - mc
+            if abs(denom1) > 1e-9 and abs(denom2) > 1e-9:
+                candidate1_x = (bc - b1) / denom1
+                candidate2_x = (bc - b2) / denom2
+                candidate1_z = m1 * candidate1_x + b1
+                candidate2_z = m2 * candidate2_x + b2
+                values = (candidate1_x, candidate1_z, candidate2_x, candidate2_z)
+                if all(math.isfinite(value) for value in values):
+                    t1x, t1z = float(candidate1_x), float(candidate1_z)
+                    t2x, t2z = float(candidate2_x), float(candidate2_z)
+
+        chamfer_face1_setback = float(math.hypot(t1x - vx, t1z - vz))
+        chamfer_face2_setback = float(math.hypot(t2x - vx, t2z - vz))
+        chamfer = float(math.hypot(t2x - t1x, t2z - t1z))
+        # Physical chamfer projections use the two main faces as the local
+        # triangle axes: X runs from P to T2 along L2, Y from P to T1 along L1.
+        projection_x = chamfer_face2_setback
+        projection_y = chamfer_face1_setback
+        chamfer_mid_x = float((t1x + t2x) * 0.5)
+        chamfer_mid_z = float((t1z + t2z) * 0.5)
 
     return CornerResult(
         True,
@@ -275,7 +305,9 @@ def extract_corner_from_row(row_values: np.ndarray, x_scale: float = X_SCALE_MM)
         angle_deg=float(angle),
         chamfer_mm=chamfer,
         projection_x_mm=projection_x,
-        projection_z_mm=projection_z,
+        projection_y_mm=projection_y,
+        chamfer_face1_setback_mm=chamfer_face1_setback,
+        chamfer_face2_setback_mm=chamfer_face2_setback,
         chamfer_mid_x=chamfer_mid_x,
         chamfer_mid_z=chamfer_mid_z,
         line1_m=m1,
@@ -366,9 +398,29 @@ def target_points_from_edges(edges: Dict[str, float]) -> Dict[str, Tuple[float, 
 
 def orientation_edges(edges: Dict[str, float], orientation: str) -> Dict[str, float]:
     out = dict(edges)
-    if orientation == "swap_bd":
+    if orientation in {"swap_bd", "turnover"}:
         out["B"], out["D"] = out["D"], out["B"]
     return out
+
+
+def oriented_standard_pairs(
+    standard: Dict[str, Dict[str, float]],
+    orientation: str,
+) -> List[Tuple[str, Dict[str, float], str, Dict[str, float]]]:
+    """Pair current capture windows with physical truth windows.
+
+    A turnover reverses the rod's longitudinal direction.  The first current
+    window therefore represents the last physical truth window, while the
+    middle window remains the middle one.  The returned tuple is
+    ``(source_name, source_window, truth_name, truth_values)``.
+    """
+
+    ordered = sorted(standard.items(), key=lambda item: float(item[1]["percent"]))
+    truth_ordered = list(reversed(ordered)) if orientation in {"swap_bd", "turnover"} else ordered
+    return [
+        (source_name, source_item, truth_name, truth_item)
+        for (source_name, source_item), (truth_name, truth_item) in zip(ordered, truth_ordered)
+    ]
 
 
 def source_valid_ranges(source: HeightSource) -> Dict[int, Tuple[int, int]]:
@@ -397,6 +449,17 @@ def normalize_bar_id(value: str) -> str:
     return text
 
 
+def strip_turnover_marker(value: str) -> str:
+    """Return the physical bar ID from a normal or turnover folder name."""
+
+    text = str(value).strip()
+    # Operators label reversal folders with either the Chinese term or its
+    # pinyin. Keep the remaining suffix (for example ``_3``) intact.
+    text = re.sub(r"(?i)(调头|diaotou)", "", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return normalize_bar_id(text)
+
+
 def bar_id_key(value: str) -> str:
     return normalize_bar_id(value).casefold()
 
@@ -422,9 +485,10 @@ def calibration_hobjs_from_folder(folder: str) -> List[Tuple[str, str, str]]:
             path = os.path.join(current, name)
             relative_parent = os.path.relpath(current, root)
             raw_bar_id = os.path.splitext(name)[0] if relative_parent == "." else os.path.basename(current)
-            bar_id = normalize_bar_id(raw_bar_id)
+            turnover = is_turnover_capture(path)
+            bar_id = strip_turnover_marker(raw_bar_id) if turnover else normalize_bar_id(raw_bar_id)
             capture_stem = os.path.splitext(name)[0]
-            capture_id = capture_stem if relative_parent == "." else f"{bar_id}/{capture_stem}"
+            capture_id = capture_stem if relative_parent == "." else f"{bar_id}/{'turnover/' if turnover else ''}{capture_stem}"
             found.append((path, bar_id, capture_id))
     if not found:
         raise ValueError(f"No .hobj files found in calibration folder: {folder}")
@@ -432,6 +496,12 @@ def calibration_hobjs_from_folder(folder: str) -> List[Tuple[str, str, str]]:
 
 
 def is_turnover_capture(path: str) -> bool:
+    # The marker is normally on the parent folder, not the HOBJ file name.
+    # Keep mojibake fallbacks because some legacy terminals display Chinese
+    # folder names using the wrong code page.
+    full_path = os.fspath(path).casefold()
+    if "调头" in full_path or "diaotou" in full_path or "璋冨ご" in full_path or "鐠嬪啫銇" in full_path:
+        return True
     name = os.path.basename(path).lower()
     # Keep the mojibake fallback because some terminals show the Chinese file
     # name with the wrong code page, while Python still sees the real Unicode.
@@ -678,7 +748,7 @@ def apply_corner_biases(
     return corrected
 
 
-def build_calibration_from_captures(
+def _build_calibration_core(
     captures: List[CalibrationCapture],
     standard: Dict[str, Dict[str, float]],
     standards_by_bar: Optional[Dict[str, Dict[str, Dict[str, float]]]] = None,
@@ -709,24 +779,34 @@ def build_calibration_from_captures(
                     f"No cross_section truth for calibration bar folder '{capture.bar_id}'. "
                     f"CSV bar_id must equal the folder name. Available: {available}"
                 ) from exc
-        used_standards[capture_name] = capture_standard
+        paired_standards = oriented_standard_pairs(capture_standard, orientation)
+        used_standards[capture_name] = {
+            source_name: truth_item
+            for source_name, _, _, truth_item in paired_standards
+        }
         capture_metadata[capture_name] = {
             "bar_id": capture.bar_id,
             "orientation": orientation,
             "repeat_count_for_bar": captures_per_bar[bar_key],
         }
-        sample_weight = 1.0 / (captures_per_bar[bar_key] * len(capture_standard))
+        sample_weight = 1.0 / (captures_per_bar[bar_key] * len(paired_standards))
         common_start, common_end = source_common_range(source)
         common_ranges[capture_name] = [common_start, common_end]
         calibration_rows[capture_name] = {}
-        for name, item in capture_standard.items():
-            start_percent = float(item.get("start_percent", item["percent"]))
-            end_percent = float(item.get("end_percent", item["percent"]))
+        for source_name, source_item, truth_name, truth_item in paired_standards:
+            start_percent = float(source_item.get("start_percent", source_item["percent"]))
+            end_percent = float(source_item.get("end_percent", source_item["percent"]))
             first_row = int(round(common_start + start_percent * (common_end - common_start)))
             last_row = int(round(common_start + end_percent * (common_end - common_start)))
-            row_info: Dict[str, object] = {"start_row": first_row, "end_row": last_row, "representative_rows": {}}
-            calibration_rows[capture_name][name] = row_info
-            points = target_points_from_edges(orientation_edges(item, orientation))
+            row_info: Dict[str, object] = {
+                "start_row": first_row,
+                "end_row": last_row,
+                "source_range": source_name,
+                "truth_range": truth_name,
+                "representative_rows": {},
+            }
+            calibration_rows[capture_name][source_name] = row_info
+            points = target_points_from_edges(orientation_edges(truth_item, orientation))
             record_corners: Dict[int, CornerResult] = {}
             for obj in [1, 2, 3, 4]:
                 corner, representative_row = representative_corner_from_row_range(source, obj, first_row, last_row)
@@ -805,6 +885,51 @@ def build_calibration_from_captures(
         "transforms": transforms,
         "corner_biases": corner_biases,
     }
+
+
+def build_calibration_from_captures(
+    captures: List[CalibrationCapture],
+    standard: Dict[str, Dict[str, float]],
+    standards_by_bar: Optional[Dict[str, Dict[str, Dict[str, float]]]] = None,
+) -> Dict:
+    """Build a calibration with optional normal/turnover submodels.
+
+    The default top-level transforms remain the normal-direction transforms so
+    existing production calls are backward compatible.  When reversal captures
+    are available, an explicit ``orientation_models`` map preserves the camera
+    geometry of each direction instead of averaging two reflected states.
+    """
+
+    base = _build_calibration_core(captures, standard, standards_by_bar)
+    by_orientation: Dict[str, List[CalibrationCapture]] = {}
+    for capture in captures:
+        key = "turnover" if capture.orientation in {"swap_bd", "turnover"} else "normal"
+        by_orientation.setdefault(key, []).append(capture)
+    if set(by_orientation) == {"normal", "turnover"}:
+        normal_model = _build_calibration_core(by_orientation["normal"], standard, standards_by_bar)
+        turnover_model = _build_calibration_core(by_orientation["turnover"], standard, standards_by_bar)
+        base.update({
+            "version": 7,
+            "model": "camera_oriented_transform_with_orientation_models",
+            "note": "Free four-corner measurement with separate normal and turnover camera transforms. Turnover reverses longitudinal truth windows and swaps B/D physical faces; A/C remain unchanged.",
+            "transforms": normal_model["transforms"],
+            "corner_biases": normal_model["corner_biases"],
+            "orientation_models": {
+                "normal": normal_model,
+                "turnover": turnover_model,
+            },
+        })
+    return base
+
+
+def calibration_for_orientation(calibration: Dict, orientation: str) -> Dict:
+    """Select the direction-specific calibration when the model provides it."""
+
+    models = calibration.get("orientation_models")
+    key = "turnover" if orientation in {"swap_bd", "turnover"} else "normal"
+    if isinstance(models, dict) and isinstance(models.get(key), dict):
+        return models[key]
+    return calibration
 
 
 def build_calibration(
@@ -1235,7 +1360,8 @@ def measure_endface_angles_for_capture(
     source = capture.source
     valid_ranges = source_valid_ranges(source)
     common_start, common_end = source_common_range(source, valid_ranges)
-    transforms = {int(key): value for key, value in calibration["transforms"].items()}
+    active_calibration = calibration_for_orientation(calibration, capture.orientation)
+    transforms = {int(key): value for key, value in active_calibration["transforms"].items()}
     rows: List[Dict[str, object]] = []
     for fraction in np.linspace(0.1, 0.9, 9):
         row_index = int(round(common_start + float(fraction) * (common_end - common_start)))
@@ -1247,7 +1373,7 @@ def measure_endface_angles_for_capture(
             for obj in [1, 2, 3, 4]
         }
         points = reconstruct_points_from_global_sides(corners, transforms, raw_points)
-        points = apply_corner_biases(points, calibration)
+        points = apply_corner_biases(points, active_calibration)
         record: Dict[str, object] = {
             "record": "slice",
             "valid": True,
@@ -1264,7 +1390,7 @@ def measure_endface_angles_for_capture(
         source,
         valid_ranges,
         transforms,
-        calibration,
+        active_calibration,
         common_start,
         rod_axis,
         x_scale,
@@ -1278,7 +1404,26 @@ def measure_endface_angles_for_capture(
     }
 
 
-def build_balanced_endface_angle_calibration_model(
+def oriented_endface_truth(
+    truth: Dict[str, Dict[str, float]],
+    orientation: str,
+) -> Dict[str, Dict[str, float]]:
+    """Express physical manual end-face truth in the current capture labels."""
+
+    if orientation not in {"swap_bd", "turnover"}:
+        return {end: dict(values) for end, values in truth.items()}
+    end_map = {"head": "tail", "tail": "head"}
+    face_map = {"A": "A", "B": "D", "C": "C", "D": "B"}
+    return {
+        end: {
+            face: truth[end_map[end]][face_map[face]]
+            for face in ["A", "B", "C", "D"]
+        }
+        for end in ["head", "tail"]
+    }
+
+
+def _build_balanced_endface_angle_calibration_core(
     captures: List[CalibrationCapture],
     calibration: Dict,
     truth_csv_path: str,
@@ -1300,7 +1445,10 @@ def build_balanced_endface_angle_calibration_model(
     bar_offsets: List[Dict[str, Dict[str, float]]] = []
     for bar_key, measurements in raw_by_bar.items():
         bar_id = display_bar_ids[bar_key]
-        truth = read_manual_endface_angle_truth(truth_csv_path, bar_id)
+        truth = oriented_endface_truth(
+            read_manual_endface_angle_truth(truth_csv_path, bar_id),
+            captures[0].orientation,
+        )
         if not truth:
             raise ValueError(f"No direct end-face angle truth was found for calibration bar {bar_id}")
         mean_raw: Dict[str, Dict[str, float]] = {"head": {}, "tail": {}}
@@ -1343,6 +1491,52 @@ def build_balanced_endface_angle_calibration_model(
         "angle_offsets_deg": combined,
         "per_bar": per_bar,
     }
+
+
+def build_balanced_endface_angle_calibration_model(
+    captures: List[CalibrationCapture],
+    calibration: Dict,
+    truth_csv_path: str,
+    x_scale: float,
+    y_scale: float,
+    window_mm: float,
+) -> Dict[str, object]:
+    """Build normal/turnover end-face offsets without mixing physical ends."""
+
+    by_orientation: Dict[str, List[CalibrationCapture]] = {}
+    for capture in captures:
+        key = "turnover" if capture.orientation in {"swap_bd", "turnover"} else "normal"
+        by_orientation.setdefault(key, []).append(capture)
+    if set(by_orientation) != {"normal", "turnover"}:
+        return _build_balanced_endface_angle_calibration_core(
+            captures, calibration, truth_csv_path, x_scale, y_scale, window_mm
+        )
+    normal_model = _build_balanced_endface_angle_calibration_core(
+        by_orientation["normal"], calibration, truth_csv_path, x_scale, y_scale, window_mm
+    )
+    turnover_model = _build_balanced_endface_angle_calibration_core(
+        by_orientation["turnover"], calibration, truth_csv_path, x_scale, y_scale, window_mm
+    )
+    normal_model.update({
+        "version": 4,
+        "model": "endface_face_angle_offset_by_orientation",
+        "note": "Separate normal and turnover end-face offsets. Turnover swaps head/tail and B/D; A/C remain unchanged.",
+        "orientation_models": {
+            "normal": normal_model.copy(),
+            "turnover": turnover_model,
+        },
+    })
+    return normal_model
+
+
+def endface_calibration_for_orientation(model: Optional[Dict[str, object]], orientation: str) -> Optional[Dict[str, object]]:
+    if not model:
+        return model
+    models = model.get("orientation_models")
+    key = "turnover" if orientation in {"swap_bd", "turnover"} else "normal"
+    if isinstance(models, dict) and isinstance(models.get(key), dict):
+        return models[key]
+    return model
 
 
 def manual_position_fraction(row: Dict[str, str], ordinal: int) -> float:
@@ -1760,13 +1954,21 @@ def write_csv(path: str, rows: List[Dict[str, object]]) -> None:
         "obj3_chamfer_mm",
         "obj4_chamfer_mm",
         "obj1_projection_x_mm",
-        "obj1_projection_z_mm",
+        "obj1_projection_y_mm",
+        "obj1_chamfer_face1_setback_mm",
+        "obj1_chamfer_face2_setback_mm",
         "obj2_projection_x_mm",
-        "obj2_projection_z_mm",
+        "obj2_projection_y_mm",
+        "obj2_chamfer_face1_setback_mm",
+        "obj2_chamfer_face2_setback_mm",
         "obj3_projection_x_mm",
-        "obj3_projection_z_mm",
+        "obj3_projection_y_mm",
+        "obj3_chamfer_face1_setback_mm",
+        "obj3_chamfer_face2_setback_mm",
         "obj4_projection_x_mm",
-        "obj4_projection_z_mm",
+        "obj4_projection_y_mm",
+        "obj4_chamfer_face1_setback_mm",
+        "obj4_chamfer_face2_setback_mm",
         "endface",
         "endface_fit_kind",
         "endface_slope_x",
@@ -1853,6 +2055,12 @@ def main() -> int:
     parser.add_argument("--overwrite", action="store_true", help="Allow overwriting an existing CSV")
     parser.add_argument("--calibration", help="Existing calibration JSON to reuse")
     parser.add_argument("--save-calibration", help="Save generated calibration JSON")
+    parser.add_argument(
+        "--orientation",
+        choices=["auto", "normal", "turnover"],
+        default="auto",
+        help="Rod direction for measurement. auto recognises a 调头/diaotou path marker; production paths without a marker default to normal.",
+    )
     parser.add_argument("--standard-json", help="Standard measurement JSON; defaults to the latest measured standard")
     parser.add_argument(
         "--calibration-truth-csv",
@@ -1877,6 +2085,10 @@ def main() -> int:
     parser.add_argument("--y-scale", type=float, default=Y_SCALE_MM)
     parser.add_argument("--hobj-offsets", help="Optional four byte offsets: obj1,obj2,obj3,obj4")
     args = parser.parse_args()
+
+    measurement_orientation = args.orientation
+    if measurement_orientation == "auto":
+        measurement_orientation = "turnover" if args.input and is_turnover_capture(args.input) else "normal"
 
     if not args.input and not args.tifs:
         parser.print_help()
@@ -1909,7 +2121,7 @@ def main() -> int:
                         source=HobjSource(path, args.width, args.height),
                         capture_id=capture_id,
                         bar_id=bar_id,
-                        orientation="swap_bd" if is_turnover_capture(path) else "normal",
+                        orientation="turnover" if is_turnover_capture(path) else "normal",
                     )
                 )
             source = calibration_captures[0].source
@@ -1932,7 +2144,7 @@ def main() -> int:
         if args.input and os.path.isdir(args.input):
             discovered = calibration_hobjs_from_folder(args.input)
             for path, bar_id, capture_id in discovered:
-                orientation = "swap_bd" if is_turnover_capture(path) else "normal"
+                orientation = "turnover" if is_turnover_capture(path) else "normal"
                 calibration_captures.append(
                     CalibrationCapture(
                         source=HobjSource(path, args.width, args.height),
@@ -1968,7 +2180,10 @@ def main() -> int:
             with open(args.save_calibration, "w", encoding="utf-8") as f:
                 json.dump(calibration, f, ensure_ascii=False, indent=2)
 
-    transforms = {int(k): v for k, v in calibration["transforms"].items()}
+    if calibration_captures:
+        measurement_orientation = calibration_captures[0].orientation
+    active_calibration = calibration_for_orientation(calibration, measurement_orientation)
+    transforms = {int(k): v for k, v in active_calibration["transforms"].items()}
     if source is None:
         raise RuntimeError("No measurement source was loaded")
     if not valid_ranges:
@@ -1997,7 +2212,7 @@ def main() -> int:
                 c = corners[obj]
                 points[point_name] = apply_transform(transforms[obj], c.vx, c.vz)
             points = reconstruct_points_from_global_sides(corners, transforms, points)
-            points = apply_corner_biases(points, calibration)
+            points = apply_corner_biases(points, active_calibration)
             free_points = points
             if args.geometry_mode == "rectangular":
                 points = fuse_rectangular_cross_section(points)
@@ -2041,10 +2256,12 @@ def main() -> int:
 
         for obj in [1, 2, 3, 4]:
             record[f"obj{obj}_angle_deg"] = round(corners[obj].angle_deg, 6) if corners[obj].valid else ""
-            record[f"obj{obj}_verticality_error_deg"] = round(abs(90.0 - corners[obj].angle_deg), 6) if corners[obj].valid else ""
+            record[f"obj{obj}_verticality_error_deg"] = round(corners[obj].angle_deg, 6) if corners[obj].valid else ""
             record[f"obj{obj}_chamfer_mm"] = round(corners[obj].chamfer_mm, 6) if corners[obj].valid and not math.isnan(corners[obj].chamfer_mm) else ""
             record[f"obj{obj}_projection_x_mm"] = round(corners[obj].projection_x_mm, 6) if corners[obj].valid and not math.isnan(corners[obj].projection_x_mm) else ""
-            record[f"obj{obj}_projection_z_mm"] = round(corners[obj].projection_z_mm, 6) if corners[obj].valid and not math.isnan(corners[obj].projection_z_mm) else ""
+            record[f"obj{obj}_projection_y_mm"] = round(corners[obj].projection_y_mm, 6) if corners[obj].valid and not math.isnan(corners[obj].projection_y_mm) else ""
+            record[f"obj{obj}_chamfer_face1_setback_mm"] = round(corners[obj].chamfer_face1_setback_mm, 6) if corners[obj].valid and not math.isnan(corners[obj].chamfer_face1_setback_mm) else ""
+            record[f"obj{obj}_chamfer_face2_setback_mm"] = round(corners[obj].chamfer_face2_setback_mm, 6) if corners[obj].valid and not math.isnan(corners[obj].chamfer_face2_setback_mm) else ""
         output_rows.append(record)
 
     rod_axis = fit_rod_axis(output_rows)
@@ -2052,7 +2269,7 @@ def main() -> int:
         source,
         valid_ranges,
         transforms,
-        calibration,
+        active_calibration,
         common_start,
         rod_axis,
         args.x_scale,
@@ -2064,9 +2281,9 @@ def main() -> int:
     if args.endface_calibration:
         with open(args.endface_calibration, "r", encoding="utf-8") as handle:
             loaded_model = json.load(handle)
-        if loaded_model.get("model") not in {"endface_plane_slope_offset", "endface_face_angle_offset"}:
+        if loaded_model.get("model") not in {"endface_plane_slope_offset", "endface_face_angle_offset", "endface_face_angle_offset_by_orientation"}:
             raise ValueError(f"Unsupported end-face calibration model: {loaded_model.get('model')}")
-        endface_model = loaded_model
+        endface_model = endface_calibration_for_orientation(loaded_model, measurement_orientation)
 
     section_points = mean_cross_section_points(output_rows)
     raw_face_angles = {

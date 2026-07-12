@@ -11,7 +11,7 @@
 .measurement-row .cross-section-detail .diagonal-line{transform-origin:left center!important}@media(min-width:761px){.geometry-section .measurement-row{grid-template-columns:minmax(360px,.72fr) minmax(540px,1.28fr)!important}}
 .geometry-section .measurement-row .cross-section-detail .d1{left:18px!important;top:calc(100% - 18px)!important;width:calc(100% + 16px)!important;transform:rotate(-33.4deg)!important;transform-origin:left center!important}.geometry-section .measurement-row .cross-section-detail .d2{left:18px!important;top:18px!important;width:calc(100% + 16px)!important;transform:rotate(33.4deg)!important;transform-origin:left center!important}
 .calibration-three-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(190px,.8fr);gap:18px}.manual-compensation-host{margin-top:4px}.manual-compensation{background:#f6fafb;border-left:3px solid var(--blue);padding:12px;border-radius:5px}.offset-inputs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0 12px}.offset-inputs label{display:grid;gap:3px;font-size:11px;font-weight:800;color:#49606c}.offset-inputs input{width:100%;min-width:0;padding:7px;border:1px solid #b9cbd2;border-radius:5px}.manual-compensation p:last-child{margin-top:10px;font-size:11px;color:#60727b}.mode-toggle{display:flex;gap:6px;margin:7px 0}.mode-toggle button{border:1px solid #b9cbd2;background:#fff;color:#526570;padding:5px 9px;border-radius:5px;font-size:11px;font-weight:800}.mode-toggle button.active{background:var(--blue);border-color:var(--blue);color:#fff}@media(max-width:950px){.calibration-three-grid{grid-template-columns:1fr}.offset-inputs{max-width:360px}}
-.manual-measure-button{display:none}
+.manual-measure-button{display:block}
 .manual-compensation .primary-button{margin-top:10px}
 .auto-active{background:#a94828!important}.auto-active:hover{background:#873719!important}
 @media (min-width:1200px) and (min-height:700px){
@@ -113,3 +113,14 @@
 .endface-offset-inputs label{display:grid;gap:2px;font-size:10px;font-weight:800;color:#49606c}
 .endface-offset-inputs input{width:100%;min-width:0;padding:6px 5px;border:1px solid #b9cbd2;border-radius:5px;font-size:12px}
 @media(max-width:760px){.endface-summary-grid{grid-template-columns:1fr}.endface-angle-groups{grid-template-columns:1fr}.endface-angle-grid{grid-template-columns:repeat(2,1fr)}}
+
+/* Cross-section clarity: colour each diagonal and its own D label together. */
+.geometry-section .cross-section-detail .d1 { background:#e05a1f !important; }
+.geometry-section .cross-section-detail .d2 { background:#246bb3 !important; }
+.geometry-section .cross-section-detail .diag-two,
+.geometry-section .cross-section-detail .diag-two b { color:#c64b16 !important; }
+.geometry-section .cross-section-detail .diag-one,
+.geometry-section .cross-section-detail .diag-one b { color:#175a9b !important; }
+
+/* C extends below the drawing; reserve room before the explanatory note. */
+.geometry-section .measurement-row .cross-section-detail { margin-bottom:52px !important; }

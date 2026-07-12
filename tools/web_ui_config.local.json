@@ -2,14 +2,19 @@
   "data_root": "D:\\Image_risen",
   "output_dir": "D:\\ProjectCode\\SunshineSiRod_Refactor\\tools\\results\\measurements",
   "script_path": "D:\\ProjectCode\\SunshineSiRod_Refactor\\tools\\measure_square_rod_edges.py",
-  "calibration_path": "D:\\ProjectCode\\SunshineSiRod_Refactor\\tools\\calibration\\models\\camera_calibration_model.json",
-  "truth_csv_path": "D:\\ProjectCode\\SunshineSiRod_Refactor\\tools\\calibration\\truth\\manual_calibration_truth.csv",
+  "calibration_path": "D:\\ProjectCode\\SunshineSiRod_Refactor\\tools\\calibration\\models\\camera_calibration_model_210_105.json",
+  "endface_calibration_path": "D:\\ProjectCode\\SunshineSiRod_Refactor\\tools\\calibration\\models\\endface_calibration_model_210_105.json",
+  "truth_csv_path": "D:\\ProjectCode\\SunshineSiRod_Refactor\\tools\\calibration\\truth\\210_105.csv",
   "step_mm": 10.0,
   "edge_offsets_mm": {
     "A": 0.0,
     "B": 0.0,
     "C": 0.0,
     "D": 0.0
+  },
+  "diagonal_offsets_mm": {
+    "diag1": 0.0,
+    "diag2": 0.0
   },
   "endface_angle_offsets_deg": {
     "head": {
@@ -25,7 +30,7 @@
       "D": 0.0
     }
   },
-  "auto_measure_enabled": false,
-  "auto_scan_seconds": 10,
+  "continuous_measure_enabled": true,
+  "continuous_scan_seconds": 10,
   "stable_file_seconds": 30
 }

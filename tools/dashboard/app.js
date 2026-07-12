@@ -1,8 +1,8 @@
 const state = { language: 'en', config: null, result: null, displayMode: 'raw' };
 
 const text = {
-  en: { eyebrow:'QUALITY INSPECTION', title:'Square Rod Measurement', settings:'Settings', dataDirectory:'Measurement data directory', measurementFile:'Measurement file', loading:'Loading files…', refresh:'Refresh', runMeasurement:'Run measurement', wholeRod:'WHOLE ROD', wholeRodResults:'Whole-rod results', awaitingResult:'Awaiting result', rodLength:'Rod length', diagonal1:'Diagonal 1', diagonal2:'Diagonal 2', diagonalDifference:'Diagonal difference', headEndFace:'Head end-face perpendicularity', tailEndFace:'Tail end-face perpendicularity', crossSection:'CROSS-SECTION', cornerGeometry:'Corner geometry', meanValues:'Final values = CSV mean', diagramNote:'C1–C4 follow the camera/corner mapping. Diagonals use chamfer midpoints.', edgeDimensions:'EDGE DIMENSIONS', edgeAndSymmetry:'Edge and symmetry values', calibration:'CALIBRATION', calibrationCheck:'Calibration and compensation check', pathSettings:'Paths and measurement settings', resultDirectory:'Result save directory', scriptPath:'Measurement script path', calibrationPath:'Calibration model path', truthPath:'Manual-truth CSV path', sliceSpacing:'Slice spacing (mm)', pathNote:'Paths are saved locally on this computer.', cancel:'Cancel', save:'Save settings', corner:'Corner', perpendicularity:'Perpendicularity', chamferLength:'Chamfer length', projectionX:'Horizontal projection (X)', projectionZ:'Height projection (Z)', camera:'Camera', model:'Model', bias:'Corner bias', manualTruth:'Manual truth check', truth:'Manual truth', measured:'Measured', difference:'Difference', noCalibration:'Calibration details are not available.', endFacePending:'Requires end-face calculation from the measurement script.' },
-  zh: { eyebrow:'质量检测', title:'方棒测量', settings:'设置', dataDirectory:'检测数据目录', measurementFile:'检测文件', loading:'正在读取文件…', refresh:'刷新', runMeasurement:'开始测量', wholeRod:'整棒数据', wholeRodResults:'整棒结果', awaitingResult:'等待测量结果', rodLength:'棒长', diagonal1:'对角线 1', diagonal2:'对角线 2', diagonalDifference:'对角线差', headEndFace:'头部端面垂直度', tailEndFace:'尾部端面垂直度', crossSection:'横截面', cornerGeometry:'四角几何数据', meanValues:'最终值 = CSV 平均值', diagramNote:'C1–C4 对应相机/角点编号；对角线按倒角中点计算。', edgeDimensions:'边长数据', edgeAndSymmetry:'边长和对称性', calibration:'标定', calibrationCheck:'标定与补偿核查', pathSettings:'路径和测量设置', resultDirectory:'结果保存目录', scriptPath:'测量脚本路径', calibrationPath:'标定模型路径', truthPath:'人工真值 CSV 路径', sliceSpacing:'切片间距（mm）', pathNote:'路径会保存于本机。', cancel:'取消', save:'保存设置', corner:'角', perpendicularity:'垂直度', chamferLength:'倒角长度', projectionX:'横向投影（X）', projectionZ:'高度投影（Z）', camera:'相机', model:'模型', bias:'角点偏置', manualTruth:'人工真值核查', truth:'人工真值', measured:'当前测量', difference:'偏差', noCalibration:'当前无法读取标定信息。', endFacePending:'需要由测量脚本提供端面垂直度计算。' }
+  en: { eyebrow:'QUALITY INSPECTION', title:'Square Rod Measurement', settings:'Settings', dataDirectory:'Measurement data directory', measurementFile:'Measurement file', loading:'Loading files…', refresh:'Refresh', runMeasurement:'Run measurement', wholeRod:'WHOLE ROD', wholeRodResults:'Whole-rod results', awaitingResult:'Awaiting result', rodLength:'Rod length', diagonal1:'Diagonal 1', diagonal2:'Diagonal 2', diagonalDifference:'Diagonal difference', headEndFace:'Head end-face perpendicularity', tailEndFace:'Tail end-face perpendicularity', crossSection:'CROSS-SECTION', cornerGeometry:'Corner geometry', meanValues:'Final values = CSV mean', diagramNote:'C1–C4 follow the camera/corner mapping. Diagonals use chamfer midpoints.', edgeDimensions:'EDGE DIMENSIONS', edgeAndSymmetry:'Edge and symmetry values', calibration:'CALIBRATION', calibrationCheck:'Calibration and compensation check', pathSettings:'Paths and measurement settings', resultDirectory:'Result save directory', scriptPath:'Measurement script path', calibrationPath:'Cross-section calibration model path', endfaceCalibrationPath:'End-face calibration model path', truthPath:'Manual-truth CSV path', sliceSpacing:'Slice spacing (mm)', pathNote:'Paths are saved locally on this computer.', cancel:'Cancel', save:'Save settings', corner:'Corner', perpendicularity:'Perpendicularity', chamferLength:'Chamfer length', projectionX:'Horizontal projection (X)', projectionZ:'Height projection (Z)', camera:'Camera', model:'Model', bias:'Corner bias', manualTruth:'Manual truth check', truth:'Manual truth', measured:'Measured', difference:'Difference', noCalibration:'Calibration details are not available.', endFacePending:'Requires end-face calculation from the measurement script.' },
+  zh: { eyebrow:'质量检测', title:'方棒测量', settings:'设置', dataDirectory:'检测数据目录', measurementFile:'检测文件', loading:'正在读取文件…', refresh:'刷新', runMeasurement:'开始测量', wholeRod:'整棒数据', wholeRodResults:'整棒结果', awaitingResult:'等待测量结果', rodLength:'棒长', diagonal1:'对角线 1', diagonal2:'对角线 2', diagonalDifference:'对角线差', headEndFace:'头部端面垂直度', tailEndFace:'尾部端面垂直度', crossSection:'横截面', cornerGeometry:'四角几何数据', meanValues:'最终值 = CSV 平均值', diagramNote:'C1–C4 对应相机/角点编号；对角线按倒角中点计算。', edgeDimensions:'边长数据', edgeAndSymmetry:'边长和对称性', calibration:'标定', calibrationCheck:'标定与补偿核查', pathSettings:'路径和测量设置', resultDirectory:'结果保存目录', scriptPath:'测量脚本路径', calibrationPath:'横截面标定模型路径', endfaceCalibrationPath:'端面标定模型路径', truthPath:'人工真值 CSV 路径', sliceSpacing:'切片间距（mm）', pathNote:'路径会保存于本机。', cancel:'取消', save:'保存设置', corner:'角', perpendicularity:'垂直度', chamferLength:'倒角长度', projectionX:'横向投影（X）', projectionZ:'高度投影（Z）', camera:'相机', model:'模型', bias:'角点偏置', manualTruth:'人工真值核查', truth:'人工真值', measured:'当前测量', difference:'偏差', noCalibration:'当前无法读取标定信息。', endFacePending:'需要由测量脚本提供端面垂直度计算。' }
 };
 Object.assign(text.en, {
   measurementVisuals: 'MEASUREMENT VISUALS', visualGuide: 'Measurement visual guide',
@@ -34,6 +34,18 @@ Object.assign(text.zh, {
   headFaceAngles: '\u5934\u90e8\uff1a\u56db\u9762\u4e0e\u7aef\u9762\u5939\u89d2',
   tailFaceAngles: '\u5c3e\u90e8\uff1a\u56db\u9762\u4e0e\u7aef\u9762\u5939\u89d2'
 });
+text.en.runMeasurement = 'Measure selected file';
+text.zh.runMeasurement = '测量选中文件';
+text.en.perpendicularity = 'Main-face angle';
+text.zh.perpendicularity = '主面夹角';
+text.en.projectionX = 'Physical X projection (L2)';
+text.zh.projectionX = '物理 X 投影（沿 L2）';
+text.en.projectionY = 'Physical Y projection (L1)';
+text.zh.projectionY = '物理 Y 投影（沿 L1）';
+text.en.chamferMap = 'Chamfer, main-face angle and projections';
+text.zh.chamferMap = '倒角、主面夹角与投影';
+text.en.chamferNote = 'The chamfer length is T1–T2. Physical X is P–T2 along L2; physical Y is P–T1 along L1.';
+text.zh.chamferNote = '倒角长度为 T1–T2；物理 X 为沿 L2 的 P–T2，物理 Y 为沿 L1 的 P–T1。';
 const t = key => text[state.language][key] || key;
 const $ = selector => document.querySelector(selector);
 const currentSummary = () => state.result?.[state.displayMode === 'corrected' ? 'corrected_summary' : 'raw_summary'] || state.result?.summary || {};
@@ -50,12 +62,12 @@ function renderLanguage() {
   document.documentElement.lang = state.language === 'en' ? 'en' : 'zh-CN';
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   $('#languageButton').textContent = state.language === 'en' ? '中文' : 'EN';
-  renderCorners(); renderResult(); renderCalibrationV2(); updateAutoButton();
+  renderCorners(); renderResult(); renderCalibrationV2(); updateContinuousButton();
 }
 function renderCorners() {
   const mapping = [{obj:3,point:'P3',edge:'A / D'}, {obj:1,point:'P1',edge:'A / B'}, {obj:2,point:'P2',edge:'C / D'}, {obj:4,point:'P4',edge:'B / C'}];
   const summary = currentSummary();
-  $('#cornerGrid').innerHTML = mapping.map((item, index) => `<article class="corner-card"><div class="corner-title"><strong>${t('corner')} ${index + 1}</strong><span>${item.point} · ${t('camera')} ${item.obj}</span></div><ul class="corner-list"><li><span>${t('perpendicularity')}</span><strong>${format(summary[`obj${item.obj}_verticality_error_deg`])} °</strong></li><li><span>${t('chamferLength')}</span><strong>${format(summary[`obj${item.obj}_chamfer_mm`])} mm</strong></li><li><span>${t('projectionX')}</span><strong>${format(summary[`obj${item.obj}_projection_x_mm`])} mm</strong></li><li><span>${t('projectionZ')}</span><strong>${format(summary[`obj${item.obj}_projection_z_mm`])} mm</strong></li></ul></article>`).join('');
+  $('#cornerGrid').innerHTML = mapping.map((item, index) => `<article class="corner-card"><div class="corner-title"><strong>${t('corner')} ${index + 1}</strong><span>${item.point} · ${t('camera')} ${item.obj}</span></div><ul class="corner-list"><li><span>${t('perpendicularity')}</span><strong>${format(summary[`obj${item.obj}_verticality_error_deg`])} °</strong></li><li><span>${t('chamferLength')}</span><strong>${format(summary[`obj${item.obj}_chamfer_mm`])} mm</strong></li><li><span>${t('projectionX')}</span><strong>${format(summary[`obj${item.obj}_projection_x_mm`])} mm</strong></li><li><span>${t('projectionY')}</span><strong>${format(summary[`obj${item.obj}_projection_y_mm`])} mm</strong></li></ul></article>`).join('');
 }
 function derived(summary, key) {
   const values = { diagonalDifference:['diag1_M1_M2_mm','diag2_M3_M4_mm'], aMinusC:['A_mm','C_mm'], bMinusD:['B_mm','D_mm'] }[key];
@@ -94,7 +106,12 @@ function renderCalibrationV2() {
   const calibrationSlices = standardEntries.length;
   const biasRows = Object.entries(cal.corner_biases || {}).map(([point, value]) => `<tr><td>${point}</td><td>${format(value[0])}</td><td>${format(value[1])}</td></tr>`).join('') || '<tr><td colspan="3">—</td></tr>';
   const offsets = state.config?.edge_offsets_mm || cal.manual_edge_offsets_mm || {};
-  const offsetInputs = ['A','B','C','D'].map(edge => `<label>${edge}<input name="offset_${edge}" type="number" step="any" value="${Number(offsets[edge] || 0)}"></label>`).join('');
+  const diagonalOffsets = state.config?.diagonal_offsets_mm || {diag1:0, diag2:0};
+  const offsetInputs = [
+    ...['A','B','C','D'].map(edge => ({label:edge, name:`offset_${edge}`, value:offsets[edge]})),
+    {label:'D1', name:'offset_diag1', value:diagonalOffsets.diag1},
+    {label:'D2', name:'offset_diag2', value:diagonalOffsets.diag2}
+  ].map(item => `<label>${item.label}<input name="${item.name}" type="number" step="any" value="${Number(item.value || 0)}"></label>`).join('');
   const endfaceOffsets = state.config?.endface_angle_offsets_deg || cal.manual_endface_angle_offsets_deg || {head:{},tail:{}};
   const endfaceInputs = ['head','tail'].map(end => `<div class="endface-offset-block"><strong>${end === 'head' ? (cn ? '\u5934\u90e8' : 'Head') : (cn ? '\u5c3e\u90e8' : 'Tail')}</strong><div class="endface-offset-inputs">${['A','B','C','D'].map(face => `<label>${face}<input name="endface_${end}_${face}" type="number" step="any" value="${Number(endfaceOffsets[end]?.[face] || 0)}"></label>`).join('')}</div></div>`).join('');
   const mode = state.displayMode;
@@ -102,24 +119,30 @@ function renderCalibrationV2() {
   const compensationHost = $('#manualCompensationHost');
   const compensationPanel = container.querySelector('.manual-compensation');
   compensationHost.replaceChildren(compensationPanel);
+  compensationHost.querySelector('.offset-section-title').textContent = cn ? '边长与对角线补偿 (mm)' : 'EDGE AND DIAGONAL OFFSETS (mm)';
   compensationHost.querySelectorAll('[data-summary-mode]').forEach(button => button.addEventListener('click', () => { state.displayMode = button.dataset.summaryMode; renderLanguage(); }));
   $('#manualCompensationForm').addEventListener('submit', async event => {
     event.preventDefault();
     const form = event.currentTarget;
     const edge_offsets_mm = {};
+    const diagonal_offsets_mm = {};
     const endface_angle_offsets_deg = {head:{}, tail:{}};
     ['A','B','C','D'].forEach(edge => edge_offsets_mm[edge] = Number(form.elements[`offset_${edge}`].value || 0));
+    ['diag1','diag2'].forEach(diagonal => diagonal_offsets_mm[diagonal] = Number(form.elements[`offset_${diagonal}`].value || 0));
     ['head','tail'].forEach(end => ['A','B','C','D'].forEach(face => {
       endface_angle_offsets_deg[end][face] = Number(form.elements[`endface_${end}_${face}`].value || 0);
     }));
     try {
-      state.config = await api('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({edge_offsets_mm, endface_angle_offsets_deg})});
+      state.config = await api('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({edge_offsets_mm, diagonal_offsets_mm, endface_angle_offsets_deg})});
       if (state.result?.raw_summary) {
         const raw = state.result.raw_summary;
         const corrected = {...raw};
         ['A','B','C','D'].forEach(edge => {
           const key = `${edge}_mm`;
           if (raw[key] !== '' && raw[key] !== undefined) corrected[key] = (Number(raw[key]) + edge_offsets_mm[edge]).toFixed(6);
+        });
+        [['diag1','diag1_M1_M2_mm'], ['diag2','diag2_M3_M4_mm']].forEach(([diagonal, key]) => {
+          if (raw[key] !== '' && raw[key] !== undefined) corrected[key] = (Number(raw[key]) + diagonal_offsets_mm[diagonal]).toFixed(6);
         });
         ['head','tail'].forEach(end => {
           const angles = [];
@@ -144,26 +167,27 @@ function renderCalibrationV2() {
   });
 }
 
-function updateAutoButton() {
-  const button = $('#autoDetectButton');
-  if (!button || !state.config) return;
-  const enabled = Boolean(state.config.auto_measure_enabled);
-  button.textContent = enabled ? (state.language === 'zh' ? '停止自动检测' : 'Stop auto detection') : (state.language === 'zh' ? '启动自动检测' : 'Start auto detection');
-  button.classList.toggle('auto-active', enabled);
-}
-
 async function loadInputs() {
   const data = await api('/api/inputs');
   const select = $('#fileSelect');
   select.innerHTML = data.files.length ? data.files.map(file => `<option value="${file.path}">[${file.kind.toUpperCase()}] ${file.relative} · ${file.modified.replace('T', ' ')}</option>`).join('') : `<option value="">${state.language === 'en' ? 'No HOBJ or TIFF sets found' : '未找到 HOBJ 或 TIFF 图组'}</option>`;
 }
-async function loadConfig() { state.config = await api('/api/config'); $('#dataRoot').textContent = state.config.data_root; const form = $('#settingsForm'); Object.keys(state.config).filter(key => form.elements[key]).forEach(key => form.elements[key].value = state.config[key]); updateAutoButton(); }
+function updateContinuousButton() {
+  const button = $('#continuousButton');
+  if (!button || !state.config) return;
+  const running = Boolean(state.config.continuous_measure_enabled);
+  button.textContent = running ? (state.language === 'zh' ? '停止连续测量' : 'Stop continuous measurement') : (state.language === 'zh' ? '开始连续测量' : 'Start continuous measurement');
+  button.classList.toggle('auto-active', running);
+}
+async function loadConfig() { state.config = await api('/api/config'); $('#dataRoot').textContent = state.config.data_root; const form = $('#settingsForm'); Object.keys(state.config).filter(key => form.elements[key]).forEach(key => form.elements[key].value = state.config[key]); updateContinuousButton(); }
 async function loadCalibration() { state.calibration = await api('/api/calibration'); renderCalibrationV2(); }
-async function initialize() { try { await loadConfig(); await Promise.all([loadInputs(), loadCalibration()]); renderLanguage(); } catch (error) { notice(error.message, 'error'); } }
+async function loadLatestResult() { try { const data = await api('/api/latest-result'); if (data.available && data.result?.csv_path && data.result.csv_path !== state.result?.csv_path) { state.result = data.result; renderLanguage(); notice(state.language === 'en' ? `Continuous measurement complete: ${data.result.csv_path}` : `连续测量完成：${data.result.csv_path}`, 'success'); } } catch (_) {} }
+async function initialize() { try { await loadConfig(); await Promise.all([loadInputs(), loadCalibration(), loadLatestResult()]); renderLanguage(); } catch (error) { notice(error.message, 'error'); } }
 $('#refreshButton').addEventListener('click', async () => { notice(t('loading')); try { await loadInputs(); notice(state.language === 'en' ? 'File list refreshed.' : '文件列表已刷新。', 'success'); } catch (error) { notice(error.message, 'error'); } });
-$('#autoDetectButton').addEventListener('click', async () => { const button = $('#autoDetectButton'); button.disabled = true; try { const enabled = !Boolean(state.config?.auto_measure_enabled); state.config = await api('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({auto_measure_enabled: enabled})}); updateAutoButton(); notice(enabled ? (state.language === 'zh' ? '自动检测已启动：将只处理新增或更新且文件稳定的 HOBJ。' : 'Automatic detection started. Only new or updated stable HOBJ files will be processed.') : (state.language === 'zh' ? '自动检测已停止。' : 'Automatic detection stopped.'), 'success'); } catch (error) { notice(error.message, 'error'); } finally { button.disabled = false; } });
-$('#measureButton').addEventListener('click', async () => { const input_path = $('#fileSelect').value; if (!input_path) { notice(state.language === 'en' ? 'Select a measurement file first.' : '请先选择检测文件。', 'error'); return; } const button = $('#measureButton'); button.disabled = true; button.textContent = state.language === 'en' ? 'Measuring…' : '正在测量…'; notice(state.language === 'en' ? 'The measurement is running. Large HOBJ files may take a moment.' : '正在运行检测，大型 HOBJ 文件可能需要一些时间。'); try { state.result = await api('/api/measure', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({input_path})}); renderLanguage(); notice(state.language === 'en' ? `Measurement complete. CSV saved to ${state.result.csv_path}` : `检测完成，CSV 已保存至 ${state.result.csv_path}`, 'success'); } catch (error) { notice(error.message, 'error'); } finally { button.disabled = false; button.textContent = t('runMeasurement'); } });
+$('#continuousButton').addEventListener('click', async () => { const button = $('#continuousButton'); button.disabled = true; try { const enabled = !Boolean(state.config?.continuous_measure_enabled); state.config = await api('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({continuous_measure_enabled: enabled})}); updateContinuousButton(); notice(enabled ? (state.language === 'en' ? 'Continuous measurement started. Existing unprocessed HOBJ files will run once; new or updated files will run when stable.' : '连续测量已开始：未处理的 HOBJ 会各运行一次；新增或更新文件稳定后会自动运行。') : (state.language === 'en' ? 'Continuous measurement stopped. The current file, if any, may finish; no further files will start.' : '连续测量已停止。当前正在测量的文件可能会完成，但不会再启动后续文件。'), 'success'); } catch (error) { notice(error.message, 'error'); } finally { button.disabled = false; } });
+$('#measureButton').addEventListener('click', async () => { const input_path = $('#fileSelect').value; if (!input_path) { notice(state.language === 'en' ? 'Select a measurement file first.' : '请先选择检测文件。', 'error'); return; } const button = $('#measureButton'); button.disabled = true; button.textContent = state.language === 'en' ? 'Measuring…' : '正在测量…'; notice(state.language === 'en' ? 'The measurement is running. Large HOBJ files may take a moment.' : '正在运行检测，大型 HOBJ 文件可能需要一些时间。'); try { state.result = await api('/api/measure', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({input_path})}); renderLanguage(); notice(state.language === 'en' ? `Measurement complete. Slice CSV: ${state.result.csv_path}; statistics CSV: ${state.result.statistics_csv_path}` : `检测完成。切片 CSV：${state.result.csv_path}；统计 CSV：${state.result.statistics_csv_path}`, 'success'); } catch (error) { notice(error.message, 'error'); } finally { button.disabled = false; button.textContent = t('runMeasurement'); } });
 $('#languageButton').addEventListener('click', () => { state.language = state.language === 'en' ? 'zh' : 'en'; renderLanguage(); });
 $('#settingsButton').addEventListener('click', () => $('#settingsDialog').showModal());
 $('#settingsForm').addEventListener('submit', async event => { event.preventDefault(); const form = event.currentTarget; const data = Object.fromEntries(new FormData(form)); const button = $('#saveSettingsButton'); button.disabled = true; try { state.config = await api('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)}); $('#settingsDialog').close(); await Promise.all([loadConfig(), loadInputs(), loadCalibration()]); renderLanguage(); notice(state.language === 'en' ? 'Settings saved.' : '设置已保存。', 'success'); } catch (error) { notice(error.message, 'error'); } finally { button.disabled = false; } });
 initialize();
+setInterval(loadLatestResult, 3000);
