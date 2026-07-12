@@ -256,14 +256,17 @@ def apply_manual_offsets(
             corrected[field] = f"{corrected_value:.6f}"
             corrected_angles.append(corrected_value)
         if len(corrected_angles) == 4:
-            corrected[f"{end}_endface_verticality_deg"] = f"{sum(abs(90.0 - value) for value in corrected_angles) / 4.0:.6f}"
+            corrected[f"{end}_endface_verticality_deg"] = f"{sum(corrected_angles) / 4.0:.6f}"
+        else:
+            corrected[f"{end}_endface_verticality_deg"] = ""
     return corrected
 
 
 STATISTICS_VALUE_FIELDS = [
     "measurement_valid", "drift_status", "drift_correction_applied", "drift_model_version",
     "drift_amplitude", "drift_confidence", "drift_fit_rmse_mm", "drift_correlation",
-    "drift_camera_amplitude_spread",
+    "drift_camera_amplitude_spread", "drift_alignment_shift_fraction", "drift_sample_station_count",
+    "drift_overlap_start_fraction", "drift_overlap_end_fraction", "drift_warning", "drift_reason",
     *[f"obj{obj}_{field}" for obj in (1, 2, 3, 4) for field in ("drift_x_mm", "drift_z_mm", "drift_amplitude")],
     "A_mm", "B_mm", "C_mm", "D_mm",
     "diag1_M1_M2_mm", "diag2_M3_M4_mm",
@@ -342,6 +345,7 @@ def _ensure_statistics_database(database: Path, csv_snapshot: Path, fields: list
             for field in fields:
                 if field not in existing:
                     connection.execute(f'ALTER TABLE measurement_statistics ADD COLUMN "{field}" TEXT')
+            _migrate_endface_summary_to_direct_average(connection)
             connection.commit()
         return
     columns = ", ".join(f'"{field}" TEXT' for field in fields)
@@ -360,7 +364,27 @@ def _ensure_statistics_database(database: Path, csv_snapshot: Path, fields: list
                     f"INSERT INTO measurement_statistics ({names}) VALUES ({placeholders})",
                     [[row.get(field, "") for field in fields] for row in existing_rows],
                 )
+        _migrate_endface_summary_to_direct_average(connection)
         connection.commit()
+
+
+def _migrate_endface_summary_to_direct_average(connection: sqlite3.Connection) -> None:
+    """Keep all statistics rows on the current four-face arithmetic-mean definition."""
+    for end in ("head", "tail"):
+        angle_fields = [f"{end}_{face}_endface_angle_deg" for face in ("A", "B", "C", "D")]
+        target = f"{end}_endface_verticality_deg"
+        existing = {row[1] for row in connection.execute("PRAGMA table_info(measurement_statistics)")}
+        if target not in existing or any(field not in existing for field in angle_fields):
+            continue
+        valid = " AND ".join(f'"{field}" IS NOT NULL AND "{field}" != \'\'' for field in angle_fields)
+        expression = " + ".join(f'CAST("{field}" AS REAL)' for field in angle_fields)
+        connection.execute(
+            f'UPDATE measurement_statistics SET "{target}" = printf(\'%.6f\', ({expression}) / 4.0) '
+            f'WHERE {valid}'
+        )
+        connection.execute(
+            f'UPDATE measurement_statistics SET "{target}" = \'\' WHERE NOT ({valid})'
+        )
 
 
 def refresh_statistics_csv(output_dir: Path) -> bool:
@@ -602,7 +626,9 @@ def run_measurement(config: dict[str, Any], input_path: Path) -> dict[str, Any]:
         for key in (
             "measurement_valid", "drift_status", "drift_detected", "drift_correction_applied",
             "drift_model_version", "drift_amplitude", "drift_confidence", "drift_fit_rmse_mm",
-            "drift_correlation", "drift_camera_amplitude_spread",
+            "drift_correlation", "drift_camera_amplitude_spread", "drift_alignment_shift_fraction",
+            "drift_sample_station_count", "drift_overlap_start_fraction", "drift_overlap_end_fraction",
+            "drift_warning", "drift_reason",
             *[f"obj{obj}_{field}" for obj in (1, 2, 3, 4) for field in ("drift_x_mm", "drift_z_mm", "drift_amplitude")],
         )
     }

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-四相机机械漂移的模型分层、识别阈值、raw/corrected 字段和重建命令见：`tools\calibration\mechanical_drift_principles.md`。机械漂移模型必须独立于正常相机标定；禁止把正常/异常 HOBJ 混合平均。
+四相机机械漂移的模型分层、识别阈值、raw/corrected 字段和重建命令见：`tools\calibration\mechanical_drift_principles.md`。机械漂移模型必须独立于正常相机标定；禁止把正常/异常 HOBJ 混合平均。V3 使用绝对设备扫描行参考曲线和整棒鲁棒摆放对齐，不得把不同长度/有效起点的棒各自拉伸到0%～100%；未命中已知漂移时使用 `unmatched_unadjusted`，继续保留未修正测量值并告警，禁止强制套用异常补偿。
 
 本文件给后续接手本项目的编码代理/工程师使用，记录当前测量定义、标定逻辑、运行方式和注意事项。
 
@@ -235,7 +235,7 @@ head/tail_[A-D]_endface_angle_deg
 head/tail_endface_verticality_deg
 ```
 
-其中 `head/tail_endface_verticality_deg` 是四个面与端面夹角相对 90 度的绝对误差平均值，更贴近用户用量规按四个面测端面的习惯。它与横截面角部的主面夹角字段是不同定义。
+其中 `head/tail_endface_verticality_deg` 是遗留兼容字段名，当前数值定义为端面与 A/B/C/D 四个物理面夹角的算术平均值：`mean(θA,θB,θC,θD)`，不再计算 `mean(abs(90-θ))`。Web 页面、切片 CSV、统计 CSV 和手工补偿预览必须使用同一定义。
 
 ## 常用命令
 

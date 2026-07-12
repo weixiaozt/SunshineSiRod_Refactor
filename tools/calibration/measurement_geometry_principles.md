@@ -145,12 +145,14 @@ head/tail_[A-D]_endface_angle_deg
 corrected_angle = raw_angle + calibrated_offset
 ```
 
-供量规习惯使用的端面垂直度为四面相对 90° 的平均绝对偏差：
+Web端和统计 CSV 使用端面与四个物理面的夹角算术平均值：
 
 ```text
 head/tail_endface_verticality_deg
-= mean(|90 - θ_A|, |90 - θ_B|, |90 - θ_C|, |90 - θ_D|)
+= mean(θ_A, θ_B, θ_C, θ_D)
 ```
+
+该遗留字段名继续保留以兼容已有 CSV 和 Web 读取逻辑，但数值不再计算 `abs(90-θ)`。例如四个夹角为 `89.90/90.02/89.95/90.01°`，保存值为 `89.97°`。
 
 它不要与 `head/tail_endface_plane_verticality_deg` 混用；后者是端面拟合平面法向量相对棒轴的夹角。
 

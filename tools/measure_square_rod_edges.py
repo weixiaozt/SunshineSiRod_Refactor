@@ -336,13 +336,18 @@ def sample_local_corner_profile(
     common_end: int,
     fractions: Iterable[float],
     x_scale: float = X_SCALE_MM,
+    reference_start_row: Optional[int] = None,
+    reference_end_row: Optional[int] = None,
 ) -> np.ndarray:
     """Sample the four raw local corner vertices used for drift classification."""
     stations = [float(value) for value in fractions]
     profile = np.empty((4, len(stations), 2), dtype=float)
     for object_index, obj in enumerate((1, 2, 3, 4)):
         for station_index, fraction in enumerate(stations):
-            row = int(round(common_start + fraction * (common_end - common_start)))
+            if reference_start_row is not None and reference_end_row is not None:
+                row = int(round(reference_start_row + fraction * (reference_end_row - reference_start_row)))
+            else:
+                row = int(round(common_start + fraction * (common_end - common_start)))
             corner = extract_corner_from_row(source.row(obj, row), x_scale)
             if not corner.valid:
                 raise RuntimeError(
@@ -350,6 +355,17 @@ def sample_local_corner_profile(
                 )
             profile[object_index, station_index] = [corner.vx, corner.vz]
     return profile
+
+
+def drift_fraction_for_row(
+    model: Dict[str, object], row: int, common_start: int, common_end: int
+) -> float:
+    """Map a measurement row into the drift model's longitudinal coordinate."""
+    reference_start = model.get("reference_common_start_row")
+    reference_end = model.get("reference_common_end_row")
+    if reference_start is not None and reference_end is not None and int(reference_end) > int(reference_start):
+        return (float(row) - float(reference_start)) / (float(reference_end) - float(reference_start))
+    return (float(row) - float(common_start)) / (float(common_end) - float(common_start))
 
 
 def subtract_local_drift(corner: CornerResult, shift_x: float, shift_z: float) -> CornerResult:
@@ -1292,6 +1308,7 @@ def endface_boundary_points_for_camera(
     common_end: Optional[int] = None,
     drift_model: Optional[Dict[str, object]] = None,
     drift_amplitude: float = 0.0,
+    drift_alignment_shift_fraction: float = 0.0,
 ) -> np.ndarray:
     """Extract the first/last continuous material boundary for one camera."""
 
@@ -1342,8 +1359,10 @@ def endface_boundary_points_for_camera(
         local_z = float(np.median(z_values))
         absolute_row = block_start + local_row
         if drift_model is not None and common_end is not None and common_end > common_start:
-            fraction = (absolute_row - common_start) / (common_end - common_start)
-            shift_x, shift_z = mechanical_drift_local_shift(drift_model, obj, fraction, drift_amplitude)
+            fraction = drift_fraction_for_row(drift_model, absolute_row, common_start, common_end)
+            shift_x, shift_z = mechanical_drift_local_shift(
+                drift_model, obj, fraction + drift_alignment_shift_fraction, drift_amplitude
+            )
             local_x -= shift_x
             local_z -= shift_z
         global_x, global_z = apply_transform(transform, local_x, local_z)
@@ -1367,6 +1386,7 @@ def fit_endfaces_from_source(
     common_end: Optional[int] = None,
     drift_model: Optional[Dict[str, object]] = None,
     drift_amplitude: float = 0.0,
+    drift_alignment_shift_fraction: float = 0.0,
 ) -> Dict[str, EndFaceFit]:
     results: Dict[str, EndFaceFit] = {}
     for end in ["head", "tail"]:
@@ -1385,6 +1405,7 @@ def fit_endfaces_from_source(
                 common_end=common_end,
                 drift_model=drift_model,
                 drift_amplitude=drift_amplitude,
+                drift_alignment_shift_fraction=drift_alignment_shift_fraction,
             )
             for obj in [1, 2, 3, 4]
         ]
@@ -1448,8 +1469,9 @@ def face_to_endface_angles(
     return angles
 
 
-def mean_face_verticality_error(face_angles: Dict[str, float]) -> float:
-    values = [abs(90.0 - face_angles[face]) for face in ["A", "B", "C", "D"] if face in face_angles]
+def mean_face_endface_angle(face_angles: Dict[str, float]) -> float:
+    """Return the arithmetic mean of the four face-to-end-face angles."""
+    values = [face_angles[face] for face in ["A", "B", "C", "D"] if face in face_angles]
     return float(np.mean(values)) if len(values) == 4 else math.nan
 
 
@@ -1991,6 +2013,12 @@ def write_csv(path: str, rows: List[Dict[str, object]]) -> None:
         "drift_fit_rmse_mm",
         "drift_correlation",
         "drift_camera_amplitude_spread",
+        "drift_alignment_shift_fraction",
+        "drift_sample_station_count",
+        "drift_overlap_start_fraction",
+        "drift_overlap_end_fraction",
+        "drift_warning",
+        "drift_reason",
         "drift_raw_A_mm",
         "drift_raw_B_mm",
         "drift_raw_C_mm",
@@ -2163,7 +2191,7 @@ def endface_fit_record(fit: EndFaceFit, fit_kind: str) -> Dict[str, object]:
                 "endface_rmse_mm": round(fit.rmse_mm, 6),
             }
         )
-        record[f"{fit.end}_endface_verticality_deg"] = round(fit.verticality_deg, 6)
+        record[f"{fit.end}_endface_plane_verticality_deg"] = round(fit.verticality_deg, 6)
     return record
 
 
@@ -2174,6 +2202,7 @@ def add_summary_rows(rows: List[Dict[str, object]]) -> None:
     metadata_columns = {
         "record", "row", "y_mm", "valid", "measurement_valid", "note",
         "drift_status", "drift_detected", "drift_correction_applied", "drift_model_version",
+        "drift_warning", "drift_reason",
     }
     numeric_columns: List[str] = []
     for key in valid_rows[0]:
@@ -2368,6 +2397,12 @@ def main() -> int:
         "normal_rmse_mm": 0.0,
         "correlation": 0.0,
         "camera_amplitude_spread": 0.0,
+        "alignment_shift_fraction": 0.0,
+        "sample_station_count": 0,
+        "overlap_start_fraction": 0.0,
+        "overlap_end_fraction": 0.0,
+        "warning": False,
+        "reason": "drift_model_not_configured",
         "per_camera_amplitude": {str(obj): 0.0 for obj in (1, 2, 3, 4)},
     }
     if args.drift_calibration:
@@ -2379,16 +2414,47 @@ def main() -> int:
         if model_orientation != measurement_orientation:
             drift_result["status"] = "not_applicable_orientation"
             drift_result["model_version"] = int(loaded_drift_model.get("version", 0))
+            drift_result["reason"] = "drift_model_orientation_not_applicable"
         else:
             drift_model = loaded_drift_model
-            profile = sample_local_corner_profile(
-                source,
-                common_start,
-                common_end,
-                drift_model["sample_fractions"],
-                args.x_scale,
-            )
-            drift_result = classify_mechanical_drift(drift_model, profile)
+            model_fractions = [float(value) for value in drift_model["sample_fractions"]]
+            reference_start = drift_model.get("reference_common_start_row")
+            reference_end = drift_model.get("reference_common_end_row")
+            if reference_start is not None and reference_end is not None and int(reference_end) > int(reference_start):
+                reference_start = int(reference_start)
+                reference_end = int(reference_end)
+                selected_fractions = [
+                    fraction
+                    for fraction in model_fractions
+                    if common_start <= reference_start + fraction * (reference_end - reference_start) <= common_end
+                ]
+            else:
+                reference_start = None
+                reference_end = None
+                selected_fractions = model_fractions
+            if len(selected_fractions) < 5:
+                drift_result.update({
+                    "status": "unmatched_unadjusted",
+                    "valid": True,
+                    "warning": True,
+                    "reason": "insufficient_absolute_scan_overlap",
+                    "model_version": int(drift_model.get("version", 0)),
+                    "sample_station_count": len(selected_fractions),
+                })
+            else:
+                profile = sample_local_corner_profile(
+                    source,
+                    common_start,
+                    common_end,
+                    selected_fractions,
+                    args.x_scale,
+                    reference_start,
+                    reference_end,
+                )
+                drift_result = classify_mechanical_drift(drift_model, profile, selected_fractions)
+                drift_result["sample_station_count"] = len(selected_fractions)
+                drift_result["overlap_start_fraction"] = selected_fractions[0]
+                drift_result["overlap_end_fraction"] = selected_fractions[-1]
             print(
                 "Mechanical drift: "
                 f"status={drift_result['status']}, amplitude={drift_result['amplitude']:.6f}, "
@@ -2406,11 +2472,16 @@ def main() -> int:
     raw_geometry_rows: List[Dict[str, object]] = []
     measurement_valid = bool(drift_result.get("valid", True))
     drift_amplitude = float(drift_result.get("amplitude", 0.0))
+    drift_alignment_shift = float(drift_result.get("alignment_shift_fraction", 0.0))
     apply_drift = bool(drift_result.get("correction_applied", False)) and drift_model is not None
     for row_index in range(first_row, last_row + 1, step_rows):
         raw_corners = {obj: extract_corner_from_row(source.row(obj, row_index), args.x_scale) for obj in [1, 2, 3, 4]}
         valid = all(c.valid for c in raw_corners.values())
-        fraction = (row_index - common_start) / (common_end - common_start)
+        fraction = (
+            drift_fraction_for_row(drift_model, row_index, common_start, common_end)
+            if drift_model is not None
+            else (row_index - common_start) / (common_end - common_start)
+        )
         record: Dict[str, object] = {
             "record": "slice",
             "row": row_index,
@@ -2427,6 +2498,12 @@ def main() -> int:
             "drift_fit_rmse_mm": round(float(drift_result.get("fit_rmse_mm", 0.0)), 6),
             "drift_correlation": round(float(drift_result.get("correlation", 0.0)), 6),
             "drift_camera_amplitude_spread": round(float(drift_result.get("camera_amplitude_spread", 0.0)), 6),
+            "drift_alignment_shift_fraction": round(drift_alignment_shift, 6),
+            "drift_sample_station_count": int(drift_result.get("sample_station_count", 0)),
+            "drift_overlap_start_fraction": round(float(drift_result.get("overlap_start_fraction", 0.0)), 6),
+            "drift_overlap_end_fraction": round(float(drift_result.get("overlap_end_fraction", 0.0)), 6),
+            "drift_warning": bool(drift_result.get("warning", False)),
+            "drift_reason": str(drift_result.get("reason", "")),
         }
         raw_geometry_record: Dict[str, object] = {
             "record": "slice",
@@ -2452,7 +2529,9 @@ def main() -> int:
             corrected_corners: Dict[int, CornerResult] = {}
             for obj, point_name in OBJECT_TO_POINT.items():
                 if drift_model is not None:
-                    shift_x, shift_z = mechanical_drift_local_shift(drift_model, obj, fraction, drift_amplitude)
+                    shift_x, shift_z = mechanical_drift_local_shift(
+                        drift_model, obj, fraction + drift_alignment_shift, drift_amplitude
+                    )
                 else:
                     shift_x, shift_z = 0.0, 0.0
                 record[f"obj{obj}_drift_x_mm"] = round(shift_x, 6)
@@ -2522,6 +2601,7 @@ def main() -> int:
         common_end=common_end,
         drift_model=drift_model if apply_drift else None,
         drift_amplitude=drift_amplitude,
+        drift_alignment_shift_fraction=drift_alignment_shift,
     )
 
     endface_model: Optional[Dict[str, object]] = None
@@ -2600,30 +2680,30 @@ def main() -> int:
             truth_fit = truth_endfaces.get(end)
             if pre_drift_fit.valid:
                 row[f"drift_raw_{end}_endface_plane_verticality_deg"] = round(pre_drift_fit.verticality_deg, 6)
-            pre_drift_error = mean_face_verticality_error(pre_drift_face_angles[end])
+            pre_drift_error = mean_face_endface_angle(pre_drift_face_angles[end])
             if math.isfinite(pre_drift_error):
                 row[f"drift_raw_{end}_endface_verticality_deg"] = round(pre_drift_error, 6)
             for face, angle in pre_drift_face_angles[end].items():
                 row[f"drift_raw_{end}_{face}_endface_angle_deg"] = round(angle, 6)
             if raw_fit.valid:
                 row[f"{end}_endface_plane_verticality_deg"] = round(raw_fit.verticality_deg, 6)
-            raw_error = mean_face_verticality_error(raw_face_angles[end])
+            raw_error = mean_face_endface_angle(raw_face_angles[end])
             if math.isfinite(raw_error):
                 row[f"{end}_endface_raw_verticality_deg"] = round(raw_error, 6)
             for face, angle in raw_face_angles[end].items():
                 row[f"{end}_{face}_endface_raw_angle_deg"] = round(angle, 6)
             if corrected_fit.valid and measurement_valid:
-                corrected_error = mean_face_verticality_error(corrected_face_angles[end])
+                corrected_error = mean_face_endface_angle(corrected_face_angles[end])
                 if math.isfinite(corrected_error):
                     row[f"{end}_endface_verticality_deg"] = round(corrected_error, 6)
             if measurement_valid:
                 for face, angle in corrected_face_angles[end].items():
                     row[f"{end}_{face}_endface_angle_deg"] = round(angle, 6)
             if end in truth_face_angles and measurement_valid:
-                truth_error = mean_face_verticality_error(truth_face_angles[end])
+                truth_error = mean_face_endface_angle(truth_face_angles[end])
                 if math.isfinite(truth_error):
                     row[f"{end}_endface_truth_deg"] = round(truth_error, 6)
-                    corrected_error = mean_face_verticality_error(corrected_face_angles[end])
+                    corrected_error = mean_face_endface_angle(corrected_face_angles[end])
                     if math.isfinite(corrected_error):
                         row[f"{end}_endface_difference_deg"] = round(corrected_error - truth_error, 6)
                 for face, truth_angle in truth_face_angles[end].items():
@@ -2661,7 +2741,7 @@ def main() -> int:
         raw_fit = raw_endfaces[end]
         if raw_fit.valid:
             print(
-                f"{end.capitalize()} end-face raw: {raw_fit.verticality_deg:.6f} deg, "
+                f"{end.capitalize()} end-face raw plane/axis deviation: {raw_fit.verticality_deg:.6f} deg, "
                 f"points={raw_fit.inlier_count}/{raw_fit.point_count}, rmse={raw_fit.rmse_mm:.6f} mm"
             )
         else:

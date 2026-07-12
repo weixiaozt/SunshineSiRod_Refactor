@@ -1,10 +1,13 @@
 {
-  "version": 1,
+  "version": 3,
   "model": "four_camera_longitudinal_local_drift",
   "bar_id": "2606005B22-CTB_3",
   "specification": "210_105",
   "orientation": "normal",
   "coordinate_stage": "local_xz_before_camera_calibration",
+  "longitudinal_coordinate": "absolute_scan_row",
+  "reference_common_start_row": 1351,
+  "reference_common_end_row": 18256,
   "anchor_fraction": 0.05,
   "sample_fractions": [
     0.05,
@@ -396,88 +399,185 @@
   },
   "thresholds": {
     "normal_amplitude_abs_max": 0.25,
-    "normal_rmse_max_mm": 0.1,
-    "abnormal_amplitude_min": 0.65,
-    "abnormal_amplitude_max": 1.35,
-    "abnormal_correlation_min": 0.98,
-    "abnormal_fit_rmse_max_mm": 0.03,
-    "camera_amplitude_spread_max": 0.15
+    "normal_rmse_max_mm": 0.15,
+    "abnormal_amplitude_min": 0.3,
+    "abnormal_amplitude_max": 2.0,
+    "abnormal_correlation_min": 0.95,
+    "abnormal_fit_rmse_max_mm": 0.08,
+    "camera_amplitude_spread_max": 0.3,
+    "alignment_phase_max_fraction": 0.0,
+    "alignment_phase_step_fraction": 0.001
   },
   "training_diagnostics": {
     "13_08.hobj": {
-      "amplitude": -0.0510358423037146,
-      "fit_rmse_mm": 0.003193616196889272,
-      "normal_rmse_mm": 0.01880621009449263,
-      "correlation": -0.9854755958823647,
+      "amplitude": -0.05237487222297575,
+      "fit_rmse_mm": 0.0055877691380346005,
+      "normal_rmse_mm": 0.011173324191479943,
+      "correlation": -0.8661634799488692,
       "per_camera_amplitude": {
-        "1": -0.04691637960852761,
-        "2": -0.05632791561560514,
-        "3": -0.05503525568358379,
-        "4": -0.04585677798658183
+        "1": -0.04992983550053701,
+        "2": -0.053571210468440204,
+        "3": -0.052681072817481536,
+        "4": -0.04897040898259969
       },
-      "camera_amplitude_spread": 0.010471137629023311,
+      "camera_amplitude_spread": 0.004600801485840515,
+      "alignment_shift_fraction": 0.0,
+      "placement_offsets_local_mm": {
+        "1": {
+          "x": 19.894429937920037,
+          "z": 3.196660821360437
+        },
+        "2": {
+          "x": 24.857067230214298,
+          "z": 0.5231055925303273
+        },
+        "3": {
+          "x": 22.77784380042388,
+          "z": 1.0058047443014606
+        },
+        "4": {
+          "x": 18.261001795423343,
+          "z": 5.353422612043187
+        }
+      },
       "class": "normal"
     },
     "13_12.hobj": {
-      "amplitude": 7.098206142331973e-06,
-      "fit_rmse_mm": 0.0002845555370157475,
-      "normal_rmse_mm": 0.0002845672114276348,
-      "correlation": 0.009058068910793493,
+      "amplitude": -2.366790507674772e-10,
+      "fit_rmse_mm": 0.0003102823547477966,
+      "normal_rmse_mm": 0.0003102823567617089,
+      "correlation": -0.04509173634022799,
       "per_camera_amplitude": {
-        "1": -9.332123504075378e-06,
+        "1": 0.0001265563402830815,
         "2": 0.0,
-        "3": 6.088200303999094e-05,
-        "4": -2.3232039844172548e-05
+        "3": -0.0006044399618820289,
+        "4": 0.00018167690926710052
       },
-      "camera_amplitude_spread": 8.41140428841635e-05,
+      "camera_amplitude_spread": 0.0007861168711491294,
+      "alignment_shift_fraction": 0.0,
+      "placement_offsets_local_mm": {
+        "1": {
+          "x": 19.899811862501036,
+          "z": 3.1922885910133467
+        },
+        "2": {
+          "x": 24.850481849088307,
+          "z": 0.5183779216082458
+        },
+        "3": {
+          "x": 22.772054370733226,
+          "z": 1.0117080161260081
+        },
+        "4": {
+          "x": 18.265678011602255,
+          "z": 5.358696208430543
+        }
+      },
       "class": "normal"
     },
     "13_15.hobj": {
-      "amplitude": 0.02012318737450023,
-      "fit_rmse_mm": 0.0015724164775033312,
-      "normal_rmse_mm": 0.007474757856180343,
-      "correlation": 0.9776232319327564,
+      "amplitude": 0.020638890559569457,
+      "fit_rmse_mm": 0.004053551073763755,
+      "normal_rmse_mm": 0.005605643047949903,
+      "correlation": 0.6907345367777553,
       "per_camera_amplitude": {
-        "1": 0.02202588245752175,
-        "2": 0.02187624401308573,
-        "3": 0.017036547328662846,
-        "4": 0.019532301294165142
+        "1": 0.021241986095021412,
+        "2": 0.020282008507953718,
+        "3": 0.018955302723587055,
+        "4": 0.021595369523100046
       },
-      "camera_amplitude_spread": 0.004989335128858904,
+      "camera_amplitude_spread": 0.0026400667995129905,
+      "alignment_shift_fraction": 0.0,
+      "placement_offsets_local_mm": {
+        "1": {
+          "x": 19.89927955518577,
+          "z": 3.1920783351689686
+        },
+        "2": {
+          "x": 24.851478677592876,
+          "z": 0.5178816814315077
+        },
+        "3": {
+          "x": 22.771788970734935,
+          "z": 1.0111046713509264
+        },
+        "4": {
+          "x": 18.265635286497677,
+          "z": 5.359448930319772
+        }
+      },
       "class": "normal"
     },
     "10_08.hobj": {
-      "amplitude": 0.9942986761110578,
-      "fit_rmse_mm": 0.0027254855867310515,
-      "normal_rmse_mm": 0.361078063137406,
-      "correlation": 0.9999715120130684,
+      "amplitude": 0.9968654364123252,
+      "fit_rmse_mm": 0.023313089591402145,
+      "normal_rmse_mm": 0.18924142722051981,
+      "correlation": 0.9923842008612688,
       "per_camera_amplitude": {
-        "1": 0.9892431853709319,
-        "2": 0.9941270916123904,
-        "3": 0.9941609601775614,
-        "4": 0.9997457054939829
+        "1": 0.9959113696339009,
+        "2": 0.9943985045723199,
+        "3": 0.9944869502575533,
+        "4": 0.996010039744593
       },
-      "camera_amplitude_spread": 0.010502520123050973,
+      "camera_amplitude_spread": 0.001611535172273082,
+      "alignment_shift_fraction": 0.0,
+      "placement_offsets_local_mm": {
+        "1": {
+          "x": 19.86621180315431,
+          "z": 3.2277473074673915
+        },
+        "2": {
+          "x": 24.879447895883203,
+          "z": 0.5594642744610876
+        },
+        "3": {
+          "x": 22.805346224931178,
+          "z": 0.9819816617575405
+        },
+        "4": {
+          "x": 18.22759134848043,
+          "z": 5.323150186701374
+        }
+      },
       "class": "abnormal"
     },
     "11_59.hobj": {
-      "amplitude": 1.0057013238889423,
-      "fit_rmse_mm": 0.0027254855867310515,
-      "normal_rmse_mm": 0.36521868287491355,
-      "correlation": 0.9999721543180389,
+      "amplitude": 1.0029521351023742,
+      "fit_rmse_mm": 0.02302426380331965,
+      "normal_rmse_mm": 0.19092994011623637,
+      "correlation": 0.9927034235385558,
       "per_camera_amplitude": {
-        "1": 1.0107568146290684,
-        "2": 1.0058729083876095,
-        "3": 1.0058390398224386,
-        "4": 1.000254294506017
+        "1": 1.004088630366099,
+        "2": 1.002612628404115,
+        "3": 1.0051526322372035,
+        "4": 1.0057663046172904
       },
-      "camera_amplitude_spread": 0.010502520123051307,
+      "camera_amplitude_spread": 0.003153676213175416,
+      "alignment_shift_fraction": 0.0,
+      "placement_offsets_local_mm": {
+        "1": {
+          "x": 19.87034793026062,
+          "z": 3.227306001766721
+        },
+        "2": {
+          "x": 24.886816708482353,
+          "z": 0.5489449777117029
+        },
+        "3": {
+          "x": 22.79655581884599,
+          "z": 0.9723743984301428
+        },
+        "4": {
+          "x": 18.22533406414593,
+          "z": 5.329969194541814
+        }
+      },
       "class": "abnormal"
     }
   },
   "rules": {
     "normal": "No drift correction is applied.",
     "abnormal": "Subtract the jointly-scaled per-camera local drift before camera calibration.",
-    "unknown": "Mark invalid and require reacquisition; never guess a correction."
+    "unmatched": "Keep the uncorrected measurement available and raise a warning; never guess a correction."
   }
 }

@@ -13,7 +13,7 @@ from mechanical_drift import build_model
 from measure_square_rod_edges import HobjSource, extract_corner_from_row, source_common_range
 
 
-def capture_profile(path: Path, fractions: list[float]) -> np.ndarray:
+def capture_profile_with_range(path: Path, fractions: list[float]) -> tuple[np.ndarray, tuple[int, int]]:
     source = HobjSource(str(path))
     common_start, common_end = source_common_range(source)
     profile = np.empty((4, len(fractions), 2), dtype=float)
@@ -24,19 +24,26 @@ def capture_profile(path: Path, fractions: list[float]) -> np.ndarray:
             if not corner.valid:
                 raise RuntimeError(f"{path}: obj{obj} at {fraction:.2%} is invalid: {corner.reason}")
             profile[object_index, station_index] = [corner.vx, corner.vz]
+    return profile, (common_start, common_end)
+
+
+def capture_profile(path: Path, fractions: list[float]) -> np.ndarray:
+    profile, _ = capture_profile_with_range(path, fractions)
     return profile
 
 
-def hobj_profiles(folder: Path, fractions: list[float]) -> dict[str, np.ndarray]:
+def hobj_profiles(folder: Path, fractions: list[float]) -> tuple[dict[str, np.ndarray], list[tuple[int, int]]]:
     paths = sorted(folder.rglob("*.hobj"), key=lambda value: str(value).casefold())
     if not paths:
         raise ValueError(f"No HOBJ files were found under {folder}")
     profiles: dict[str, np.ndarray] = {}
+    ranges: list[tuple[int, int]] = []
     for path in paths:
         capture_id = str(path.relative_to(folder)).replace("\\", "/")
-        profiles[capture_id] = capture_profile(path, fractions)
+        profiles[capture_id], valid_range = capture_profile_with_range(path, fractions)
+        ranges.append(valid_range)
         print(f"Profiled {capture_id}")
-    return profiles
+    return profiles, ranges
 
 
 def main() -> int:
@@ -50,8 +57,10 @@ def main() -> int:
     args = parser.parse_args()
 
     fractions = [round(value, 10) for value in np.linspace(0.05, 0.95, 19)]
-    normal_profiles = hobj_profiles(Path(args.normal_dir), fractions)
-    abnormal_profiles = hobj_profiles(Path(args.abnormal_dir), fractions)
+    normal_profiles, normal_ranges = hobj_profiles(Path(args.normal_dir), fractions)
+    abnormal_profiles, abnormal_ranges = hobj_profiles(Path(args.abnormal_dir), fractions)
+    reference_start = int(round(float(np.median([value[0] for value in normal_ranges]))))
+    reference_end = int(round(float(np.median([value[1] for value in normal_ranges]))))
     model = build_model(
         normal_profiles,
         abnormal_profiles,
@@ -59,6 +68,8 @@ def main() -> int:
         bar_id=args.bar_id,
         specification=args.specification,
         orientation=args.orientation,
+        reference_common_start_row=reference_start,
+        reference_common_end_row=reference_end,
     )
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)

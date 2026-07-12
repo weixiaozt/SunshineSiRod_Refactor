@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Square Rod Measurement Dashboard</title>
-  <link rel="stylesheet" href="styles.css?v=20260712-drift-and-length">
+  <link rel="stylesheet" href="styles.css?v=20260712-drift-v3">
 </head>
 <body>
   <header class="topbar">
@@ -48,12 +48,12 @@
       <div class="measurement-row">
         <article class="visual-card endface-card">
           <div class="visual-card-heading"><div><p class="eyebrow" data-i18n="endFaceVisual">END-FACE VIEW</p><h3 data-i18n="endFaceMap">Head and tail perpendicularity</h3></div><span data-i18n="sideView">Side view</span></div>
-          <div class="endface-visual" aria-label="Rod end-face perpendicularity diagram"><span class="end-plane head-plane"></span><span class="end-plane tail-plane"></span><span class="rod-body"></span><span class="rod-axis"></span><span class="right-angle head-angle">90&deg;</span><span class="right-angle tail-angle">90&deg;</span><span class="end-label label-head" data-i18n="head">Head</span><span class="end-label label-tail" data-i18n="tail">Tail</span><span class="axis-label" data-i18n="rodAxis">Rod axis</span></div>
+          <div class="endface-visual" aria-label="Rod end-face four-face average-angle diagram"><span class="end-plane head-plane"></span><span class="end-plane tail-plane"></span><span class="rod-body"></span><span class="rod-axis"></span><span class="right-angle head-angle">90&deg;</span><span class="right-angle tail-angle">90&deg;</span><span class="end-label label-head" data-i18n="head">Head</span><span class="end-label label-tail" data-i18n="tail">Tail</span><span class="axis-label" data-i18n="rodAxis">Rod axis</span></div>
           <p class="visual-note" data-i18n="endfaceNote">Values will appear here when the measurement script provides end-face results.</p>
         </article>
         <section class="data-panel endface-data-panel">
           <div class="data-panel-heading"><p class="eyebrow" data-i18n="wholeRod">WHOLE ROD</p><h3 data-i18n="endFaceMap">Head and tail perpendicularity</h3></div>
-          <div class="paired-metric-grid endface-summary-grid"><article class="metric-card"><span data-i18n="rodLength">Rod length</span><strong data-field="stick_length_mm">&mdash;</strong><small>mm</small></article><article class="metric-card pending"><span data-i18n="headEndFace">Head end-face perpendicularity</span><strong data-field="head_endface_verticality_deg">&mdash;</strong><small>&deg;</small></article><article class="metric-card pending"><span data-i18n="tailEndFace">Tail end-face perpendicularity</span><strong data-field="tail_endface_verticality_deg">&mdash;</strong><small>&deg;</small></article></div>
+          <div class="paired-metric-grid endface-summary-grid"><article class="metric-card"><span data-i18n="rodLength">Rod length</span><strong data-field="stick_length_mm">&mdash;</strong><small>mm</small></article><article class="metric-card pending"><span data-i18n="headEndFace">Head end-face average angle</span><strong data-field="head_endface_verticality_deg">&mdash;</strong><small>&deg;</small></article><article class="metric-card pending"><span data-i18n="tailEndFace">Tail end-face average angle</span><strong data-field="tail_endface_verticality_deg">&mdash;</strong><small>&deg;</small></article></div>
           <div class="endface-angle-groups">
             <section class="endface-angle-group"><h4 data-i18n="headFaceAngles">Head end-face angles</h4><div class="endface-angle-grid">
               <article><span>A</span><strong data-field="head_A_endface_angle_deg">&mdash;</strong><small>&deg;</small></article><article><span>B</span><strong data-field="head_B_endface_angle_deg">&mdash;</strong><small>&deg;</small></article><article><span>C</span><strong data-field="head_C_endface_angle_deg">&mdash;</strong><small>&deg;</small></article><article><span>D</span><strong data-field="head_D_endface_angle_deg">&mdash;</strong><small>&deg;</small></article>
@@ -78,6 +78,6 @@
   </main>
 
   <dialog id="settingsDialog"><form method="dialog" id="settingsForm"><div class="dialog-header"><div><p class="eyebrow" data-i18n="settings">SETTINGS</p><h2 data-i18n="pathSettings">Paths and measurement settings</h2></div><button class="close-button" value="cancel" aria-label="Close">&times;</button></div><label><span data-i18n="dataDirectory">Measurement data directory</span><input name="data_root" required></label><label><span data-i18n="resultDirectory">Result save directory</span><input name="output_dir" required></label><label><span data-i18n="scriptPath">Measurement script path</span><input name="script_path" required></label><label><span data-i18n="calibrationPath">Calibration model path</span><input name="calibration_path" required></label><label><span>Mechanical drift model path / 机械漂移模型路径</span><input name="drift_calibration_path" required></label><label><span data-i18n="endfaceCalibrationPath">End-face calibration model path</span><input name="endface_calibration_path" required></label><label><span data-i18n="truthPath">Manual-truth CSV path</span><input name="truth_csv_path" placeholder="Optional"></label><label><span data-i18n="sliceSpacing">Slice spacing (mm)</span><input name="step_mm" type="number" min="0.001" step="any" required></label><p class="dialog-note" data-i18n="pathNote">Paths are saved locally on this computer.</p><div class="dialog-actions"><button value="cancel" class="secondary-button" data-i18n="cancel">Cancel</button><button id="saveSettingsButton" value="default" class="primary-button" data-i18n="save">Save settings</button></div></form></dialog>
-  <script src="app.js?v=20260712-drift-and-length"></script>
+  <script src="app.js?v=20260712-endface-average-angle"></script>
 </body>
 </html>

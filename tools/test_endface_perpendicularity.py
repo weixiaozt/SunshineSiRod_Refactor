@@ -21,8 +21,10 @@ from tools.measure_square_rod_edges import (
     oriented_endface_truth,
     oriented_standard_pairs,
     face_to_endface_angles,
+    endface_fit_record,
     fit_endfaces_from_source,
     load_standard_truth_csv,
+    mean_face_endface_angle,
     apply_endface_face_angle_calibration_model,
     read_manual_endface_angle_truth,
     read_manual_endface_truth,
@@ -159,6 +161,16 @@ class EndFacePerpendicularityTests(unittest.TestCase):
         self.assertEqual(set(angles), {"A", "B", "C", "D"})
         for angle in angles.values():
             self.assertAlmostEqual(angle, 90.0, places=9)
+
+    def test_endface_summary_is_direct_four_face_angle_average(self) -> None:
+        angles = {"A": 89.90, "B": 90.02, "C": 89.95, "D": 90.01}
+        self.assertAlmostEqual(mean_face_endface_angle(angles), 89.97, places=9)
+
+    def test_endface_fit_record_keeps_plane_metric_in_separate_column(self) -> None:
+        fit = EndFaceFit(end="head", valid=True, verticality_deg=0.125, point_count=20, inlier_count=18)
+        record = endface_fit_record(fit, "raw_visual")
+        self.assertEqual(record["head_endface_plane_verticality_deg"], 0.125)
+        self.assertNotIn("head_endface_verticality_deg", record)
 
     def test_reads_and_calibrates_24_direct_angles(self) -> None:
         with tempfile.TemporaryDirectory() as folder:
