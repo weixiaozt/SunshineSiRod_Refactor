@@ -23,13 +23,16 @@ import numpy as np
 
 try:
     from .measure_square_rod_edges import (
+        FACE_OUTWARD_NORMALS,
         HobjSource,
         OBJECT_TO_POINT,
+        SAME_FACE_CAMERA_PAIRS,
         X_SCALE_MM,
         Y_SCALE_MM,
         calibration_for_orientation,
         cross_section_geometry,
         extract_corner_from_row,
+        global_face_line_observations,
         source_common_range,
         source_valid_ranges,
         subtract_local_drift,
@@ -37,13 +40,16 @@ try:
 except ImportError:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from measure_square_rod_edges import (
+        FACE_OUTWARD_NORMALS,
         HobjSource,
         OBJECT_TO_POINT,
+        SAME_FACE_CAMERA_PAIRS,
         X_SCALE_MM,
         Y_SCALE_MM,
         calibration_for_orientation,
         cross_section_geometry,
         extract_corner_from_row,
+        global_face_line_observations,
         source_common_range,
         source_valid_ranges,
         subtract_local_drift,
@@ -161,6 +167,52 @@ def ideal_fit_residuals(
     vector_norms = np.asarray([np.linalg.norm(residuals[point]) for point in POINT_ORDER], dtype=float)
     rms = float(np.sqrt(np.mean(vector_norms * vector_norms)))
     return residuals, {point: fitted[index] for index, point in enumerate(POINT_ORDER)}, rms, rotation, translation
+
+
+def thickness_from_face_observations(
+    corners: Dict[int, object],
+    transforms: Dict[int, object],
+    calibration: Dict[str, object],
+) -> Dict[str, float]:
+    """Return opposite-face thicknesses from same-face dual-camera observations.
+
+    This diagnostic deliberately avoids intersecting adjacent side lines into
+    corners.  It uses the two camera observations of each physical face, takes
+    their observed line anchor points as a face centre estimate, then measures
+    A-to-C and B-to-D separation along the nominal outward axes.
+    """
+
+    observations = global_face_line_observations(corners, transforms, calibration)
+    centres: Dict[str, np.ndarray] = {}
+    pair_angles: Dict[str, float] = {}
+    for face, objects in SAME_FACE_CAMERA_PAIRS.items():
+        points = []
+        directions = []
+        for obj in objects:
+            observation = observations.get((obj, face))
+            if observation is None:
+                continue
+            point, direction = observation
+            points.append(np.asarray(point, dtype=float))
+            directions.append(np.asarray(direction, dtype=float))
+        if len(points) != 2:
+            continue
+        if float(directions[0] @ directions[1]) < 0.0:
+            directions[1] = -directions[1]
+        cosine = float(np.clip(directions[0] @ directions[1], -1.0, 1.0))
+        pair_angles[face] = math.degrees(math.acos(cosine))
+        centres[face] = np.mean(np.vstack(points), axis=0)
+
+    result: Dict[str, float] = {}
+    if "A" in centres and "C" in centres:
+        axis = FACE_OUTWARD_NORMALS["A"] / float(np.linalg.norm(FACE_OUTWARD_NORMALS["A"]))
+        result["thickness_ac_mm"] = float((centres["A"] - centres["C"]) @ axis)
+    if "B" in centres and "D" in centres:
+        axis = FACE_OUTWARD_NORMALS["B"] / float(np.linalg.norm(FACE_OUTWARD_NORMALS["B"]))
+        result["thickness_bd_mm"] = float((centres["B"] - centres["D"]) @ axis)
+    for face, angle in pair_angles.items():
+        result[f"same_face_{face}_pair_angle_deg"] = float(angle)
+    return result
 
 
 def raw_shift_samples(
@@ -338,6 +390,10 @@ def evaluate_capture(
     corrected_vectors: list[float] = []
     raw_fit_rms: list[float] = []
     corrected_fit_rms: list[float] = []
+    raw_thickness_errors: list[float] = []
+    corrected_thickness_errors: list[float] = []
+    long_edge_mm = float(reference["P1"][0] - reference["P3"][0])
+    short_edge_mm = float(reference["P3"][1] - reference["P2"][1])
     invalid_count = 0
     for row in rows:
         corners, raw_points, reason = extract_points_for_row(source, row, transforms, active)
@@ -345,6 +401,7 @@ def evaluate_capture(
             invalid_count += 1
             continue
         raw_residuals, _, raw_rms, _, _ = ideal_fit_residuals(raw_points, reference)
+        raw_thickness = thickness_from_face_observations(corners, transforms, active)
         corrected_corners = {}
         missing_shift = False
         for obj, corner in corners.items():
@@ -359,8 +416,14 @@ def evaluate_capture(
             continue
         corrected_points, _, _ = cross_section_geometry(corrected_corners, transforms, active, "free")
         corrected_residuals, _, corrected_rms, _, _ = ideal_fit_residuals(corrected_points, reference)
+        corrected_thickness = thickness_from_face_observations(corrected_corners, transforms, active)
         raw_fit_rms.append(raw_rms)
         corrected_fit_rms.append(corrected_rms)
+        for key, nominal in (("thickness_ac_mm", short_edge_mm), ("thickness_bd_mm", long_edge_mm)):
+            if key in raw_thickness and math.isfinite(float(raw_thickness[key])):
+                raw_thickness_errors.append(float(raw_thickness[key]) - nominal)
+            if key in corrected_thickness and math.isfinite(float(corrected_thickness[key])):
+                corrected_thickness_errors.append(float(corrected_thickness[key]) - nominal)
         for point in POINT_ORDER:
             raw_vector = float(np.linalg.norm(raw_residuals[point]))
             corrected_vector = float(np.linalg.norm(corrected_residuals[point]))
@@ -380,6 +443,30 @@ def evaluate_capture(
                 "corrected_residual_x_mm": float(corrected_residuals[point][0]),
                 "corrected_residual_z_mm": float(corrected_residuals[point][1]),
                 "corrected_residual_vector_mm": corrected_vector,
+                "raw_thickness_ac_mm": raw_thickness.get("thickness_ac_mm", ""),
+                "raw_thickness_bd_mm": raw_thickness.get("thickness_bd_mm", ""),
+                "raw_thickness_ac_error_mm": (
+                    float(raw_thickness["thickness_ac_mm"]) - short_edge_mm
+                    if "thickness_ac_mm" in raw_thickness
+                    else ""
+                ),
+                "raw_thickness_bd_error_mm": (
+                    float(raw_thickness["thickness_bd_mm"]) - long_edge_mm
+                    if "thickness_bd_mm" in raw_thickness
+                    else ""
+                ),
+                "corrected_thickness_ac_mm": corrected_thickness.get("thickness_ac_mm", ""),
+                "corrected_thickness_bd_mm": corrected_thickness.get("thickness_bd_mm", ""),
+                "corrected_thickness_ac_error_mm": (
+                    float(corrected_thickness["thickness_ac_mm"]) - short_edge_mm
+                    if "thickness_ac_mm" in corrected_thickness
+                    else ""
+                ),
+                "corrected_thickness_bd_error_mm": (
+                    float(corrected_thickness["thickness_bd_mm"]) - long_edge_mm
+                    if "thickness_bd_mm" in corrected_thickness
+                    else ""
+                ),
             })
 
     if not detail:
@@ -393,6 +480,8 @@ def evaluate_capture(
         }
     raw_arr = np.asarray(raw_vectors, dtype=float)
     corrected_arr = np.asarray(corrected_vectors, dtype=float)
+    raw_thickness_arr = np.asarray(raw_thickness_errors, dtype=float)
+    corrected_thickness_arr = np.asarray(corrected_thickness_errors, dtype=float)
     summary = {
         "capture": path.name,
         "path": str(path),
@@ -411,6 +500,19 @@ def evaluate_capture(
         "corrected_slice_fit_rms_mean_mm": float(np.mean(corrected_fit_rms)),
         "improvement_rms_mm": float(np.sqrt(np.mean(raw_arr * raw_arr)) - np.sqrt(np.mean(corrected_arr * corrected_arr))),
     }
+    if len(raw_thickness_arr) and len(corrected_thickness_arr):
+        summary.update({
+            "raw_thickness_error_rms_mm": float(np.sqrt(np.mean(raw_thickness_arr * raw_thickness_arr))),
+            "raw_thickness_error_p95_abs_mm": float(np.quantile(np.abs(raw_thickness_arr), 0.95)),
+            "raw_thickness_error_max_abs_mm": float(np.max(np.abs(raw_thickness_arr))),
+            "corrected_thickness_error_rms_mm": float(np.sqrt(np.mean(corrected_thickness_arr * corrected_thickness_arr))),
+            "corrected_thickness_error_p95_abs_mm": float(np.quantile(np.abs(corrected_thickness_arr), 0.95)),
+            "corrected_thickness_error_max_abs_mm": float(np.max(np.abs(corrected_thickness_arr))),
+            "thickness_improvement_rms_mm": (
+                float(np.sqrt(np.mean(raw_thickness_arr * raw_thickness_arr)))
+                - float(np.sqrt(np.mean(corrected_thickness_arr * corrected_thickness_arr)))
+            ),
+        })
     return detail, summary
 
 

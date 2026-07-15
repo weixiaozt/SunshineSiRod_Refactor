@@ -1,12 +1,74 @@
 # AGENTS.md
 
+## 最高铁律：禁止背答案（2026-07-14）
+
+**任何标定、测量和展示链路都不得把最终 A/B/C/D 端面夹角或头尾平均值用独立精准偏移拉向机构真值。** 禁止保存或应用 `head/tail x A/B/C/D` 八通道最终角度补偿，禁止裁剪到规格窗口，禁止用机构真值、文件夹名或标准棒几何指纹给生产HOBJ选择一套“更接近答案”的结果。
+
+**2026-07-15用户进一步确认：端面算法不再加载或相信任何机构/人工端面角真值，即使声称只拟合低层参数也不允许用于当前端面生产候选。** 当前v15固定按M0/M1/M2分层：M0为Raw；M1只含一个从HOBJ端面点到面残差可独立识别的非平面相机Y同步模态，是唯一可能放行的修正；M2的两个仿射模态会与真实端面倾斜混淆，只允许诊断且运行时必须拒绝。现有20图中M1只改善约0.44%，固定应用到CTB且不重新拟合后反而恶化，因此当前Web默认且正式使用`raw_audit`/M0，不加载机械漂移模型、端面修正模型或端面真值。机构端面参考值不得在端面Web展示。证据见`tools/results/endface_v15_nested_image_audit`和`tools/results/ctb_external_m1_v15`。
+
+**2026-07-15 M0 Raw现场试运行收口：** CSV/Web新增`endface_raw_quality_*`质量门禁；任一端面Raw边界平面RMSE超过`0.50 mm`为`rejected`，同面双相机P05-P95拼接变化`<=0.60 mm`为`pass`、`0.60~0.80 mm`为`uncertain`、`>=0.80 mm`为`warning`。告警和拒测都必须保留全部Raw审计值，不得借质量门禁裁剪角度。40张既有HOBJ按五个物理单棒组回归：专业棒19告警+已知磕碰`14_16`拒测，CTB六图全通过，待测A61/CTT各3通过+1告警；禁止把不同物理棒混在一起算调头自洽。试运行包由`tools/build_endface_raw_trial_package.py`构建为`release/SunshineSiRod_Endface_M0_Raw_Trial.zip`，专用入口硬拒绝漂移模型、端面模型、端面真值和标定生成参数，并锁定`orientation=normal`。该ZIP是Raw现场试运行包，不是绝对精度正式放行包，严禁用它绕过正式M1放行门。
+
+机构真值只能用于拟合和验证有明确物理含义的设备参数，例如相机局部坐标到公共空间的变换、相机扫描行同步偏差、编码器比例和独立机械漂移模型。最终结果必须从当前HOBJ的四相机端面边界点云、四个纵向侧平面及这些设备参数重新计算；必须保留未标定raw结果和物理参数修正后的结果。无法把机械漂移与真实弯曲、锥度、扭转或端面倾斜可靠区分时，只能告警/拒测，不得为了出数强制修正。
+
+物理调头后的端面数据必须由图像几何自然反向；不得靠方向分类器切换头尾补偿。当前现场HOBJ经图像轨迹审计确认按固定设备空间行序保存，因此 `head/tail` 固定表示HOBJ设备空间最小行/最大行，不是电机运动起点/终点，也不能声称自动识别任意棒的物理R/L。真实调头在固定设备有向角约定下必须自然满足 `head↔tail、机构B↔C、A/D不变、θ_after=180°-θ_before`。四个有向侧面夹角的算术平均因相对面法向近似相反而天然接近90°，只能作为显示字段，严禁作为端面质量或标定准确度的主要证据。
+
+20张专业标定HOBJ的120100字节对象头已逐字节比较，除拍摄时间字节19～23外完全相同，文件内没有扫描方向、物理R/L或调头标志。没有外部标记、编码器方向或人工确认时，只能按设备最小行端/最大行端输出实测值；禁止从机构真值或标准棒细微形状反推物理端点身份。
+
+**现场视频已在2026-07-14确认：当前20张标定图的两组不是相机正扫/反扫，而是同一根标准棒物理调头。** `head_to_tail`为未调头姿态，设备最小行端对应物理R；`tail_to_head`为同一根棒绕机构A/D轴180°调头后的姿态。HOBJ行号在两组中仍是固定设备坐标，不能用“行号同序”否定物理调头。第二组机构真值必须按 `head↔tail、B↔C、A/D不变、θ_after=180°-θ_before` 映射；此前“棒不动、相机往返”的判断永久作废，禁止恢复。
+
+端面Y坐标必须与X/Z同属一套三维几何：公共Y步距来自设备行距并用机构棒长独立审计，四相机固定Y同步偏移必须同时作用于端面边界点和A/B/C/D纵向侧面点。只修端面、不修侧面会比较两个不同坐标系中的平面，禁止。整根棒的真实刚体倾斜同时旋转端面和侧面且不改变二者夹角，这是正确的不变量；不得把刚体姿态当垂直度误差。更高阶Y非正交/每列剪切没有独立三维靶或编码器证据时不可辨识，禁止用8个机构角度过拟合。
+
+新算法至少必须通过：标定图留出盲测、正向/调头等变性、非标定棒验证、合成端面倾斜单调响应、机械漂移不覆盖真实形变、运行时不读取专业真值。仅证明重复性或“输出接近机构值”不算准确度验证。
+
 四相机机械漂移的模型分层、识别阈值、raw/corrected 字段和重建命令见：`tools\calibration\mechanical_drift_principles.md`。机械漂移模型必须独立于正常相机标定；禁止把正常/异常 HOBJ 混合平均。V3 使用绝对设备扫描行参考曲线和整棒鲁棒摆放对齐，不得把不同长度/有效起点的棒各自拉伸到0%～100%；未命中已知漂移时使用 `unmatched_unadjusted`，继续保留未修正测量值并告警，禁止强制套用异常补偿。
+
+V3的纵向参考曲线只对同一物理标准棒有效，跨棒审计已证明它会把棒材形状与设备漂移混淆；专业新标准棒20图全部无法命中旧CTB模型。跨棒通用修正必须有同一专业标准棒正常/异常机械状态配对图，或固定基准靶/编码器。相邻相机同面拼接诊断已接入CSV/Web，只允许告警且必须记录 `relative_camera_geometry_correction_applied=false`，不得直接反算补偿。
 
 本文件给后续接手本项目的编码代理/工程师使用，记录当前测量定义、标定逻辑、运行方式和注意事项。
 
 详细的几何计算、字段定义与连续测量保存规则见：`tools\calibration\measurement_geometry_principles.md`。
 
-## 双向标定（正向 / 调头）
+## 端面专用离线包（2026-07-13）
+
+> **历史方案已作废：** 本节中关于 v8、8通道最终角度偏移、HOBJ方向分类器和
+> “当前离线包已验证通过”的描述仅用于追溯事故，全部被文件开头的2026-07-14
+> 最高铁律覆盖。`release/SunshineSiRod_Endface*` 旧产物不得交付或继续检测。
+> 当前端面运行时只接受不含最终角度偏移/方向分类器的物理 v12+ 模型。v10曾将
+> 四相机Y偏移分解为1个图像共面模态和2个机构真值约束的共享倾斜模态，但没有验证
+> 当前相机机械状态是否仍与标定时一致，已被v11取代。v11新增纯图像同面双相机状态
+> 门禁；v12在此基础上纠正物理调头真值映射，并把每相机Y同步同时用于侧面和端面。
+> 现有20张专业棒图除图像QC排除的`14_16`外，最大拼接变化约1.22～1.74 mm，
+> 全部无法证明机械状态稳定，因此标定已被拒绝，`valid=false`、
+> `release_readiness.ready=false`，仍无可交付新包。
+> 完整证据见 `tools/calibration/endface_no_answer_audit.md`。
+
+`head_to_tail / tail_to_head` 在当前20图中分别表示标准棒未调头/物理调头姿态。两组
+HOBJ都按固定设备空间行序保存不与该事实矛盾；行序审计只能在各自物理姿态组内建立
+参考，不能跨组用同序轨迹推断棒子没动。`14_16.hobj` 因相对同组参考行序反向和端面
+平面残差超限被图像QC排除。
+
+端面专用包与下文历史完整测量程序分开。构建入口为 `tools\build_endface_offline_package.py`，现场标定入口为编译后的 `EndfaceCalibrator.exe`。该包只输出：
+
+```text
+head/tail_[A-D]_endface_angle_deg
+head/tail_endface_verticality_deg
+```
+
+其中平均字段为四个直接夹角的算术平均，不减90°。Web 左侧显示实测10值，右侧显示模型内的专业机构标准10值；不得用右侧真值匹配待测棒方向。
+
+当前没有已放行的端面离线包。旧v8包和模型已退役；构建脚本必须在PyInstaller之前检查模型，只允许 `version>=12`、`model=endface_camera_geometry_calibration`、`strategy=physical_decomposed_camera_scan_row_synchronization`、`valid=true`、`release_readiness.ready=true`、`calibration_state_reference.all_captures_stable=true`、`y_coordinate_correction.apply_to=all_longitudinal_side_points_and_end_boundary_points` 且不含 `angle_offsets_deg/orientation_models/orientation_detector` 的物理模型。任一条件不满足必须立即失败。
+
+现场补采不依赖网络的独立工具包由 `tools/build_endface_calibration_toolkit.py` 构建，产物为 `release/SunshineSiRod_Endface_CalibrationToolkit.zip`。它只含编译后的 `EndfaceCalibrator.exe`、相机坐标模型、按规格机构真值、未调头/物理调头两组空采集目录和诊断输出目录；禁止包含 `MeasureSquareRod.exe`、`MeasurementDashboard.exe`、HOBJ或任何端面终值模型。标定器不得提供自动修改/激活Web配置的命令行旁路。该工具包生成的JSON仍必须通过 `release_readiness.ready=true`，否则只能保留作拒绝审计，不能进入正式测量包。
+
+工具包必须同时提供 `先检查相机机械状态.bat`。该入口可对1张或若干HOBJ运行 `--camera-state-only`，只读取图像与相机坐标模型，CSV固定记录 `correction_applied=false`、`uses_professional_truth=false`，不读取机构真值、不拟合端面模型。实图基准：普通样本`20_14.hobj`最大拼接变化`0.345425 mm`、退出码0；当前专业标定样本`13_20.hobj`为`1.570266 mm`、退出码4。现场应先用1～3张试拍预检，稳定后再正式采20张。
+
+现场标定按同一根标准棒 `head_to_tail` 未调头10张、`tail_to_head` 绕A/D轴物理调头10张组织，默认前8+8张拟合、后2+2张盲测与真实调头等变验证。机构报告端点固定为 **R=物理头、L=物理尾**；机构面号固定为 A=上、D=下、C=左、B=右。HOBJ必须在各自物理姿态组内通过设备空间行序审计。模型只允许拟合共享的低层相机/扫描物理参数，禁止最终8通道角度偏移和生产HOBJ方向分类器。
+
+端面专用统计 CSV 固定为5个追溯字段加10个端面字段；每图切片 CSV 同样必须使用 `--endface-only`，不得暴露横截面、倒角、对角线、棒长或机械漂移结果。内部允许加载相机几何模型以识别四个侧面，但这不改变“产品只检测端面”的输出边界。
+
+端面专用离线包固定监听 `127.0.0.1:8767`，不得与旧完整离线包的 `8766` 共用端口。页面标题必须显示 `End-face Perpendicularity Dashboard`，便于现场一眼识别是否启动了正确版本。
+
+## 历史完整测量链路的双向标定（不适用于端面专用包）
 
 当前默认模型只允许用于 `2606005B22-CTB_3` 单棒：
 
@@ -52,11 +114,13 @@ objN_chamfer_face2_setback_mm
 ## 工作原则
 
 1. 不要强制 `A=C` 或 `B=D`，也不要把结果强行拉回规格值。
-2. 所有测量都要保留 `raw` 和 `corrected` 两套概念；原始 CSV 不得被补偿值覆盖。
-3. 补偿必须来自标准棒人工真值，并且要能追溯到真值 CSV、标定模型和版本。
+2. 所有测量都要保留 `raw` 和 `corrected` 两套概念；原始 CSV 不得被补偿值覆盖。Web所有模式永久禁止8个端面最终角度手工补偿，旧配置键 `endface_angle_offsets_deg` 必须丢弃或拒绝；只允许保留边长、对角线和棒长的透明显示补偿。
+3. 横截面等允许的补偿必须来自标准棒真值，并能追溯到真值 CSV、标定模型和版本；端面最终八角严禁补偿，机构端面真值只能拟合/验证低层物理设备参数。
 4. 不要用业务假设硬编码补偿值，不要用规格窗口过滤真实偏差。
 5. `.hobj`、现场图像、本地 UI 配置、运行日志和生成 CSV 不提交 Git。
 6. 修改算法后至少运行语法检查、端面单元测试，并用 `tools\calibration\hobj` 做一次 sanity check。
+7. 端面专业机构面号固定为 `A上、B右、C左、D下`，是Web和CSV唯一对外面号。内部历史软件坐标自动按 `A=A,B=B,C=D,D=C` 转换，禁止再让现场人员输入面号映射。
+8. 端面专业机构物理模型v12+使用四个独立纵向侧平面与当前HOBJ端面点云计算 `0..180°` 有向夹角，并把同一四相机Y同步修正同时施加到纵向侧面点与端面边界点。不得恢复 `abs(normal dot normal)`，不得用共同棒轴强制相对面平行，不得添加最终角度偏移、方向分类器或Web/CSV硬交换。只有当前同面双相机图像状态命中标定状态包络时才允许应用扫描行同步；未命中必须输出 `state_unmatched_unadjusted`、保留raw并告警。无效、旧策略、错规格、物理参数不稳定、未通过真实物理调头HOBJ放行门或端面8角不完整必须拒绝；raw与物理修正结果及不确定度必须可追溯。
 
 ## 当前核心文件
 
@@ -67,7 +131,10 @@ tools\measurement_dashboard.py
 tools\calibration\hobj\
 tools\calibration\truth\manual_calibration_truth.csv
 tools\calibration\models\camera_calibration_model.json
-tools\calibration\models\endface_calibration_model.json
+tools\calibration\models\endface_calibration_model_210_105.json  # 当前仍为退役v8，运行时会拒绝
+tools\results\endface_v12_physical_turnover_y_audit_rejected.json  # 当前20图的拒绝审计产物
+tools\endface_calibrator.py
+tools\build_endface_offline_package.py
 tools\web_ui_config.example.json
 tools\start_measurement_dashboard.bat
 ```
@@ -201,29 +268,29 @@ model = camera_oriented_transform_with_corner_bias
 
 该模型负责相机局部坐标到全局横截面坐标的方向、平移和角点残差修正。它不是业务规格补偿模型。
 
-端面模型：
+历史端面模型（已退役，仅用于事故追溯）：
 
 ```text
-tools\calibration\models\endface_calibration_model.json
-version = 4
+tools\calibration\models\endface_calibration_model_210_105.json
+version = 8
 model = endface_face_angle_offset
 ```
 
-端面模型逻辑：
+旧逻辑为每个最终端面角保存固定偏移并用方向分类器切换结果。该方法会把不同棒子的结果拉向标准棒，已经违反“禁止背答案”铁律，运行时和打包器必须拒绝。
 
-1. 每张 HOBJ 先测出 `head/tail x A/B/C/D` 8 个 raw 夹角。
-2. 只保留一个明确 `bar_id` 的多次有效拍摄；同一方向的重复拍摄先求平均。
-3. 以该棒的 `人工真值均值 - raw 均值` 计算该方向的偏移。
-4. 正向与调头分别拟合、分别保存；禁止多棒平均、跨棒加权或跨棒残差合并。
-
-模型 JSON 会记录：
+允许的新端面模型必须满足：
 
 ```text
-single_bar_metadata.scope = single_bar_only
-single_bar_metadata.physical_bar_id
-orientation_models.normal
-orientation_models.turnover
+version >= 12
+model = endface_camera_geometry_calibration
+strategy = physical_decomposed_camera_scan_row_synchronization
+runtime_orientation_detection = none
+release_readiness.ready = true
+calibration_state_reference.all_captures_stable = true
+禁止 angle_offsets_deg / orientation_models / orientation_detector
 ```
+
+它只能保存四相机扫描行同步等低层物理参数，最终八角必须对每张当前 HOBJ 重新拟合。现场视频已经为当前两组提供真实物理调头证据；v12重算仍因同面双相机拼接变化超过稳定门限、留出最大误差及调头等变误差超限而拒绝出模。
 
 ## 端面垂直度输出
 
@@ -235,33 +302,29 @@ head/tail_[A-D]_endface_angle_deg
 head/tail_endface_verticality_deg
 ```
 
-其中 `head/tail_endface_verticality_deg` 是遗留兼容字段名，当前数值定义为端面与 A/B/C/D 四个物理面夹角的算术平均值：`mean(θA,θB,θC,θD)`，不再计算 `mean(abs(90-θ))`。Web 页面、切片 CSV、统计 CSV 和手工补偿预览必须使用同一定义。
+其中 `head/tail_endface_verticality_deg` 是遗留兼容字段名，当前数值定义为端面与 A/B/C/D 四个物理面夹角的算术平均值：`mean(θA,θB,θC,θD)`，不再计算 `mean(abs(90-θ))`。该平均因相对面近似互补而天然接近90°，只能显示，不能证明准确度；端面专用 Web、切片 CSV 和统计 CSV 必须使用同一定义且不得叠加手工八角补偿。
 
 ## 常用命令
 
 语法和单元测试：
 
 ```powershell
-python -m py_compile tools\measure_square_rod_edges.py tools\measurement_dashboard.py
-python -m unittest tools.test_endface_perpendicularity -v
+python -m py_compile tools\measure_square_rod_edges.py tools\endface_calibrator.py tools\measurement_dashboard.py tools\build_endface_offline_package.py
+python -m unittest discover -s tools -p "test_*.py" -v
 ```
 
-仅重建端面补偿模型：
+生成端面物理模型（仅在全部物理稳定性和盲测门限通过时才会写出有效模型）：
 
 ```powershell
-python tools\measure_square_rod_edges.py --input "D:\ProjectCode\SunshineSiRod_Refactor\tools\calibration\hobj\2606005B22-CTB_3" --calibration "D:\ProjectCode\SunshineSiRod_Refactor\tools\calibration\models\camera_calibration_model.json" --calibration-truth-csv "D:\ProjectCode\SunshineSiRod_Refactor\tools\calibration\truth\manual_calibration_truth.csv" --save-endface-calibration "D:\ProjectCode\SunshineSiRod_Refactor\tools\calibration\models\endface_calibration_model.json" --output "D:\ProjectCode\SunshineSiRod_Refactor\tools\results\calibration\endface_sanity_ctb_3_single_bar.csv" --overwrite --step-mm 10
+python tools\endface_calibrator.py --input "<包含未调头head_to_tail和物理调头tail_to_head各10图的目录>" --truth-csv "tools\calibration\truth\210_105_institution_report.csv" --camera-calibration "tools\calibration\models\camera_calibration_model_210_105.json" --output-model "tools\calibration\models\endface_calibration_model_210_105.json" --diagnostics-csv "tools\results\endface_physical_diagnostics.csv" --sample-id "<标准棒编号>" --head-label R --expected-captures-per-direction 10
 ```
 
-同时重建横截面相机模型和端面模型：
-
-```powershell
-python tools\measure_square_rod_edges.py --input "D:\ProjectCode\SunshineSiRod_Refactor\tools\calibration\hobj\2606005B22-CTB_3" --calibration-truth-csv "D:\ProjectCode\SunshineSiRod_Refactor\tools\calibration\truth\manual_calibration_truth.csv" --save-calibration "D:\ProjectCode\SunshineSiRod_Refactor\tools\calibration\models\camera_calibration_model.json" --save-endface-calibration "D:\ProjectCode\SunshineSiRod_Refactor\tools\calibration\models\endface_calibration_model.json" --output "D:\ProjectCode\SunshineSiRod_Refactor\tools\results\calibration\calibration_sanity_ctb_3_single_bar.csv" --overwrite --step-mm 10
-```
+`measure_square_rod_edges.py --save-endface-calibration` 是旧最终角度补偿入口，现已硬性报错，禁止恢复。
 
 测量单个 HOBJ：
 
 ```powershell
-python tools\measure_square_rod_edges.py --input "<input.hobj>" --calibration "D:\ProjectCode\SunshineSiRod_Refactor\tools\calibration\models\camera_calibration_model.json" --endface-calibration "D:\ProjectCode\SunshineSiRod_Refactor\tools\calibration\models\endface_calibration_model.json" --output "<output.csv>" --overwrite --step-mm 10
+python tools\measure_square_rod_edges.py --input "<input.hobj>" --calibration "tools\calibration\models\camera_calibration_model_210_105.json" --endface-calibration "<release_readiness.ready=true的v12+物理模型.json>" --drift-calibration "tools\calibration\models\mechanical_drift_model_210_105.json" --output "<output.csv>" --overwrite --step-mm 10 --endface-only
 ```
 
 ## Web 仪表盘
@@ -286,7 +349,7 @@ http://127.0.0.1:8765
 
 生产 HOBJ 根目录为 `D:\Image_risen`，文件列表会递归扫描所有子文件夹。仪表盘启动时只读取配置和文件列表，不会自动测量；用户点击“开始连续测量”后，才会依次运行所有未处理的稳定 HOBJ。再次点击同一按钮会停止后续扫描；已成功测量且未变更的 HOBJ 不会重复运行，只有新增或更新后的文件才会再次测量。Web 测量必须同时加载横截面与端面模型；对应路径由 `calibration_path` 和 `endface_calibration_path` 配置。
 
-每张图的切片明细保留为独立的 `*_measure.csv`。统计数据先写入输出目录的 `measurement_statistics.sqlite`，再刷新唯一的 `measurement_statistics.csv` 快照。统计表只保留页面可见的最终汇总值、必要识别列和切片 CSV 路径，不写入 raw/corrected/manual 补偿等内部明细。若 CSV 正被 WPS/Excel 锁定，测量和去重仍会成功，关闭文件后连续监控会自动刷新 CSV 快照。仪表盘的手工边长、对角线和端面角补偿只影响页面最终值及后续统计，不改写切片 CSV，也不改写标定模型。
+每张图的切片明细保留为独立的 `*_measure.csv`。统计数据先写入输出目录的 `measurement_statistics.sqlite`，再刷新唯一的 `measurement_statistics.csv` 快照。统计表只保留页面可见的最终汇总值、必要识别列和切片 CSV 路径，不写入 raw/corrected/manual 补偿等内部明细。若 CSV 正被 WPS/Excel 锁定，测量和去重仍会成功，关闭文件后连续监控会自动刷新 CSV 快照。历史完整仪表盘的手工边长、对角线、棒长补偿是透明用户输入；所有模式均不得显示、保存或应用八个端面最终角手工补偿。
 
 `tools\web_ui_config.local.json` 含本机绝对路径，已按用户要求提交；换电脑后必须检查并修改。
 

@@ -2,9 +2,12 @@
   "data_root": "D:\\Image_risen",
   "output_dir": "D:\\ProjectCode\\SunshineSiRod_Refactor\\tools\\results\\measurements",
   "script_path": "D:\\ProjectCode\\SunshineSiRod_Refactor\\tools\\measure_square_rod_edges.py",
+  "delivery_abcd_script_path": "D:\\ProjectCode\\SunshineSiRod_Refactor\\tools\\delivery_abcd_measure.py",
+  "delivery_abcd_calibration_path": "D:\\Project\\方棒尺寸几何算法交接包_对角线弧长侧边夹角_20260715\\方棒尺寸几何算法交接包_对角线弧长侧边夹角_20260715\\calibration\\current_calibration.json",
   "calibration_path": "D:\\ProjectCode\\SunshineSiRod_Refactor\\tools\\calibration\\models\\camera_calibration_model_210_105.json",
   "drift_calibration_path": "D:\\ProjectCode\\SunshineSiRod_Refactor\\tools\\calibration\\models\\mechanical_drift_model_210_105.json",
   "endface_calibration_path": "D:\\ProjectCode\\SunshineSiRod_Refactor\\tools\\calibration\\models\\endface_calibration_model_210_105.json",
+  "endface_measurement_mode": "raw_audit",
   "truth_csv_path": "D:\\ProjectCode\\SunshineSiRod_Refactor\\tools\\calibration\\truth\\210_105.csv",
   "step_mm": 10.0,
   "edge_offsets_mm": {
@@ -18,20 +21,6 @@
     "diag2": 0.0
   },
   "length_offset_mm": 0.0,
-  "endface_angle_offsets_deg": {
-    "head": {
-      "A": 0.0,
-      "B": 0.0,
-      "C": 0.0,
-      "D": 0.0
-    },
-    "tail": {
-      "A": 0.0,
-      "B": 0.0,
-      "C": 0.0,
-      "D": 0.0
-    }
-  },
   "continuous_measure_enabled": false,
   "continuous_scan_seconds": 10,
   "stable_file_seconds": 30

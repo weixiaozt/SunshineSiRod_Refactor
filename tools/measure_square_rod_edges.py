@@ -32,6 +32,7 @@ import json
 import math
 import os
 import re
+import sys
 from dataclasses import dataclass, replace
 from typing import Dict, Iterable, List, Optional, Tuple
 
@@ -39,9 +40,19 @@ import numpy as np
 from PIL import Image
 
 try:
+    from .endface_wireframe_geometry import (
+        LOCAL_CHANNELS as WIREFRAME_LOCAL_CHANNELS,
+        has_valid_wireframe_release_evidence,
+        measure_wireframe_angles as reconstruct_wireframe_angles,
+    )
     from .mechanical_drift import classify as classify_mechanical_drift
     from .mechanical_drift import local_shift as mechanical_drift_local_shift
 except ImportError:  # Direct script / PyInstaller entry point.
+    from endface_wireframe_geometry import (
+        LOCAL_CHANNELS as WIREFRAME_LOCAL_CHANNELS,
+        has_valid_wireframe_release_evidence,
+        measure_wireframe_angles as reconstruct_wireframe_angles,
+    )
     from mechanical_drift import classify as classify_mechanical_drift
     from mechanical_drift import local_shift as mechanical_drift_local_shift
 
@@ -51,6 +62,9 @@ HEIGHT = 20000
 X_SCALE_MM = 0.015
 Y_SCALE_MM = 0.04891993841
 INVALID_Z = -9999.0
+END_FACE_MAX_RAW_PLANE_RMSE_MM = 0.50
+RELATIVE_CAMERA_STABLE_SEAM_SPAN_MM = 0.60
+RELATIVE_CAMERA_WARNING_SEAM_SPAN_MM = 0.80
 
 # HALCON object file layout seen in SunshineSiRod samples.
 HOBJ_FIRST_OFFSET = 120100
@@ -109,6 +123,73 @@ class EndFaceFit:
     inlier_count: int = 0
     rmse_mm: float = math.nan
     reason: str = ""
+
+
+def classify_raw_endface_quality(
+    endfaces: Dict[str, EndFaceFit],
+    relative_camera_diagnostic: Dict[str, object],
+) -> Dict[str, object]:
+    """Classify Raw end-face evidence without changing any measured value."""
+
+    reasons: List[str] = []
+    rejected = False
+    plane_rmse_mm: Dict[str, float] = {}
+    for end in ("head", "tail"):
+        fit = endfaces.get(end)
+        if fit is None or not fit.valid or not math.isfinite(float(fit.rmse_mm)):
+            rejected = True
+            reasons.append(f"{end} raw end-face plane fit is invalid")
+            plane_rmse_mm[end] = math.nan
+            continue
+        rmse = float(fit.rmse_mm)
+        plane_rmse_mm[end] = rmse
+        if rmse > END_FACE_MAX_RAW_PLANE_RMSE_MM:
+            rejected = True
+            reasons.append(
+                f"{end} raw end-face plane RMSE {rmse:.6f} mm exceeds "
+                f"{END_FACE_MAX_RAW_PLANE_RMSE_MM:.6f} mm"
+            )
+
+    try:
+        seam_span = float(
+            relative_camera_diagnostic.get(
+                "maximum_seam_span_p05_p95_mm", math.nan
+            )
+        )
+    except (TypeError, ValueError):
+        seam_span = math.nan
+    if not math.isfinite(seam_span):
+        camera_status = "warning"
+        reasons.append("same-face dual-camera evidence is incomplete")
+    elif seam_span >= RELATIVE_CAMERA_WARNING_SEAM_SPAN_MM:
+        camera_status = "warning"
+        reasons.append(
+            f"same-face seam span {seam_span:.6f} mm reaches warning limit "
+            f"{RELATIVE_CAMERA_WARNING_SEAM_SPAN_MM:.6f} mm"
+        )
+    elif seam_span > RELATIVE_CAMERA_STABLE_SEAM_SPAN_MM:
+        camera_status = "uncertain"
+        reasons.append(
+            f"same-face seam span {seam_span:.6f} mm exceeds stable limit "
+            f"{RELATIVE_CAMERA_STABLE_SEAM_SPAN_MM:.6f} mm"
+        )
+    else:
+        camera_status = "pass"
+
+    status = "rejected" if rejected else camera_status
+    return {
+        "status": status,
+        "accepted": not rejected,
+        "reason": "; ".join(reasons) if reasons else "Raw image geometry checks passed",
+        "head_plane_rmse_mm": plane_rmse_mm.get("head", math.nan),
+        "tail_plane_rmse_mm": plane_rmse_mm.get("tail", math.nan),
+        "maximum_seam_span_mm": seam_span,
+        "plane_rmse_limit_mm": END_FACE_MAX_RAW_PLANE_RMSE_MM,
+        "stable_seam_span_limit_mm": RELATIVE_CAMERA_STABLE_SEAM_SPAN_MM,
+        "warning_seam_span_limit_mm": RELATIVE_CAMERA_WARNING_SEAM_SPAN_MM,
+        "uses_professional_truth": False,
+        "correction_applied": False,
+    }
 
 
 class HeightSource:
@@ -574,6 +655,24 @@ def is_turnover_capture(path: str) -> bool:
     return "调头" in name or "diaotou" in name or "璋冨ご" in name
 
 
+def resolve_measurement_orientation(
+    requested: str,
+    input_path: Optional[str],
+    *,
+    endface_only: bool,
+) -> str:
+    """Resolve legacy camera geometry without manufacturing end-face swaps."""
+
+    if endface_only:
+        # Professional end-face output is always expressed in one fixed device
+        # coordinate.  A path marker must never select a second transform just
+        # because that would make a physical-turnover result look exchanged.
+        return "normal"
+    if requested == "auto":
+        return "turnover" if input_path and is_turnover_capture(input_path) else "normal"
+    return requested
+
+
 def solve_affine(local: np.ndarray, target: np.ndarray) -> np.ndarray:
     # [X, Z]^T = matrix(2x3) * [vx, vz, 1]^T
     design = np.column_stack([local[:, 0], local[:, 1], np.ones(len(local))])
@@ -756,6 +855,196 @@ def assign_corner_faces_to_sides(
             best_score = score
             best = candidate
     return {side: face_points[index] for side, index in best.items()}
+
+
+SAME_FACE_CAMERA_PAIRS = {
+    "A": (1, 3),
+    "B": (1, 4),
+    "C": (2, 4),
+    "D": (2, 3),
+}
+FACE_OUTWARD_NORMALS = {
+    "A": np.array([0.0, 1.0], dtype=float),
+    "B": np.array([1.0, 0.0], dtype=float),
+    "C": np.array([0.0, -1.0], dtype=float),
+    "D": np.array([-1.0, 0.0], dtype=float),
+}
+
+
+def global_face_line_observations(
+    corners: Dict[int, CornerResult],
+    transforms: Dict[int, object],
+    calibration: Dict[str, object],
+) -> Dict[Tuple[int, str], Tuple[np.ndarray, np.ndarray]]:
+    """Return each camera's two physical face lines in global X/Z coordinates."""
+
+    observations: Dict[Tuple[int, str], Tuple[np.ndarray, np.ndarray]] = {}
+    biases = calibration.get("corner_biases", {})
+    for obj, point_name in OBJECT_TO_POINT.items():
+        corner = corners[obj]
+        if not corner.valid:
+            continue
+        vertex = np.asarray(apply_transform(transforms[obj], corner.vx, corner.vz), dtype=float)
+        face_points = [
+            apply_transform(transforms[obj], corner.face1_mid_x, corner.face1_mid_z),
+            apply_transform(transforms[obj], corner.face2_mid_x, corner.face2_mid_z),
+        ]
+        assigned = assign_corner_faces_to_sides(obj, tuple(vertex), face_points)
+        bias = np.asarray(biases.get(point_name, [0.0, 0.0]), dtype=float)
+        vertex = vertex + bias
+        for face, face_point in assigned.items():
+            point = np.asarray(face_point, dtype=float) + bias
+            direction = point - vertex
+            norm = float(np.linalg.norm(direction))
+            if norm <= 1e-12:
+                continue
+            observations[(obj, face)] = (vertex, direction / norm)
+    return observations
+
+
+def same_face_line_pair_difference(
+    first: Tuple[np.ndarray, np.ndarray],
+    second: Tuple[np.ndarray, np.ndarray],
+    face: str,
+) -> Tuple[float, float]:
+    """Return signed perpendicular seam and orientation difference for one face."""
+
+    first_point, first_direction = first
+    second_point, second_direction = second
+    if float(first_direction @ second_direction) < 0.0:
+        second_direction = -second_direction
+    cosine = float(np.clip(first_direction @ second_direction, -1.0, 1.0))
+    angle_deg = math.degrees(math.acos(cosine))
+    mean_direction = first_direction + second_direction
+    norm = float(np.linalg.norm(mean_direction))
+    if norm <= 1e-12:
+        return math.nan, angle_deg
+    mean_direction /= norm
+    normal = np.array([-mean_direction[1], mean_direction[0]], dtype=float)
+    if float(normal @ FACE_OUTWARD_NORMALS[face]) < 0.0:
+        normal = -normal
+    separation_mm = float((second_point - first_point) @ normal)
+    return separation_mm, angle_deg
+
+
+def same_face_relative_camera_diagnostic(
+    source: HeightSource,
+    transforms: Dict[int, object],
+    calibration: Dict[str, object],
+    common_start: int,
+    common_end: int,
+    x_scale: float,
+    sample_count: int = 41,
+    maximum_pair_angle_deg: float = 0.50,
+    stable_span_limit_mm: float = 0.60,
+    warning_span_limit_mm: float = 0.80,
+    drift_model: Optional[Dict[str, object]] = None,
+    drift_amplitude: float = 0.0,
+    drift_alignment_shift_fraction: float = 0.0,
+    apply_drift: bool = False,
+) -> Dict[str, object]:
+    """Audit relative camera geometry without fitting or applying a correction.
+
+    Two adjacent cameras observe different portions of the same physical face.
+    A changing perpendicular seam is evidence of either relative camera motion,
+    a stale camera transform, or a genuinely non-planar face.  HOBJ alone cannot
+    distinguish those causes, so this diagnostic is intentionally warning-only.
+    """
+
+    samples: Dict[str, List[Tuple[float, float]]] = {face: [] for face in "ABCD"}
+    rows = sorted(
+        set(
+            int(round(value))
+            for value in np.linspace(common_start, common_end, num=max(5, sample_count))
+        )
+    )
+    for row in rows:
+        corners = {
+            obj: extract_corner_from_row(source.row(obj, row), x_scale)
+            for obj in (1, 2, 3, 4)
+        }
+        if not all(corner.valid for corner in corners.values()):
+            continue
+        if apply_drift and drift_model is not None:
+            fraction = drift_fraction_for_row(
+                drift_model, row, common_start, common_end
+            ) + drift_alignment_shift_fraction
+            corners = {
+                obj: subtract_local_drift(
+                    corner,
+                    *mechanical_drift_local_shift(
+                        drift_model, obj, fraction, drift_amplitude
+                    ),
+                )
+                for obj, corner in corners.items()
+            }
+        observations = global_face_line_observations(corners, transforms, calibration)
+        for face, (first_obj, second_obj) in SAME_FACE_CAMERA_PAIRS.items():
+            first = observations.get((first_obj, face))
+            second = observations.get((second_obj, face))
+            if first is None or second is None:
+                continue
+            separation, angle = same_face_line_pair_difference(first, second, face)
+            if math.isfinite(separation) and math.isfinite(angle) and angle <= maximum_pair_angle_deg:
+                samples[face].append((separation, angle))
+
+    per_face: Dict[str, Dict[str, object]] = {}
+    spans: List[float] = []
+    for face in "ABCD":
+        values = np.asarray([value for value, _ in samples[face]], dtype=float)
+        angles = np.asarray([angle for _, angle in samples[face]], dtype=float)
+        if len(values) < 5:
+            per_face[face] = {"valid": False, "sample_count": int(len(values))}
+            continue
+        median = float(np.median(values))
+        absolute_deviation = np.abs(values - median)
+        mad = float(np.median(absolute_deviation))
+        limit = max(0.20, 4.0 * 1.4826 * mad)
+        keep = absolute_deviation <= limit
+        filtered = values[keep]
+        filtered_angles = angles[keep]
+        if len(filtered) < 5:
+            per_face[face] = {"valid": False, "sample_count": int(len(filtered))}
+            continue
+        span = float(np.quantile(filtered, 0.95) - np.quantile(filtered, 0.05))
+        spans.append(span)
+        per_face[face] = {
+            "valid": True,
+            "sample_count": int(len(filtered)),
+            "seam_span_p05_p95_mm": span,
+            "seam_median_mm": float(np.median(filtered)),
+            "pair_angle_p90_deg": float(np.quantile(filtered_angles, 0.90)),
+        }
+
+    maximum_span = max(spans) if len(spans) == 4 else math.nan
+    if not math.isfinite(maximum_span):
+        status = "insufficient_same_face_evidence"
+    elif maximum_span <= stable_span_limit_mm:
+        status = "relative_geometry_stable"
+    elif maximum_span >= warning_span_limit_mm:
+        status = "relative_motion_or_face_nonplanarity_warning"
+    else:
+        status = "relative_geometry_indeterminate"
+    return {
+        "method": "same_physical_face_dual_camera_line_separation",
+        "status": status,
+        "warning": status == "relative_motion_or_face_nonplanarity_warning",
+        "correction_applied": False,
+        "input_geometry_state": (
+            "after_known_mechanical_drift_correction"
+            if apply_drift and drift_model is not None
+            else "raw_camera_geometry"
+        ),
+        "maximum_seam_span_p05_p95_mm": maximum_span,
+        "stable_span_limit_mm": stable_span_limit_mm,
+        "warning_span_limit_mm": warning_span_limit_mm,
+        "maximum_pair_angle_deg": maximum_pair_angle_deg,
+        "per_face": per_face,
+        "reason": (
+            "This image-only indicator cannot distinguish relative camera motion, stale transforms, "
+            "or true face non-planarity; it never changes coordinates or results."
+        ),
+    }
 
 
 def reconstruct_points_from_global_sides(
@@ -1387,11 +1676,27 @@ def fit_endfaces_from_source(
     drift_model: Optional[Dict[str, object]] = None,
     drift_amplitude: float = 0.0,
     drift_alignment_shift_fraction: float = 0.0,
+    camera_y_offsets_mm: Optional[Dict[int, float]] = None,
 ) -> Dict[str, EndFaceFit]:
+    """Fit both physical end planes from the current four-camera HOBJ.
+
+    ``camera_y_offsets_mm`` is a low-level scan-row synchronization correction.
+    It is applied to every point from a camera before plane fitting and never
+    consults a final face angle, end label, or institution truth.
+    """
+
+    y_offsets = {obj: 0.0 for obj in (1, 2, 3, 4)}
+    if camera_y_offsets_mm is not None:
+        for obj in y_offsets:
+            value = float(camera_y_offsets_mm.get(obj, 0.0))
+            if not math.isfinite(value):
+                raise ValueError(f"Non-finite camera {obj} scan-row synchronization offset")
+            y_offsets[obj] = value
     results: Dict[str, EndFaceFit] = {}
     for end in ["head", "tail"]:
-        clouds = [
-            endface_boundary_points_for_camera(
+        clouds: List[np.ndarray] = []
+        for obj in [1, 2, 3, 4]:
+            cloud = endface_boundary_points_for_camera(
                 source,
                 obj,
                 end,
@@ -1407,8 +1712,10 @@ def fit_endfaces_from_source(
                 drift_amplitude=drift_amplitude,
                 drift_alignment_shift_fraction=drift_alignment_shift_fraction,
             )
-            for obj in [1, 2, 3, 4]
-        ]
+            if len(cloud):
+                cloud = np.asarray(cloud, dtype=float).copy()
+                cloud[:, 1] += y_offsets[obj]
+            clouds.append(cloud)
         nonempty = [cloud for cloud in clouds if len(cloud)]
         if not nonempty:
             results[end] = EndFaceFit(end=end, valid=False, reason="no continuous end boundary was found")
@@ -1435,36 +1742,203 @@ def mean_cross_section_points(rows: List[Dict[str, object]]) -> Dict[str, Tuple[
     return points
 
 
-def face_to_endface_angles(
-    section_points: Dict[str, Tuple[float, float]],
-    endface_fit: EndFaceFit,
-    rod_axis: np.ndarray,
-) -> Dict[str, float]:
-    """Return the included angle between each actual side plane and one end plane."""
+def longitudinal_side_plane_normals(
+    rows: List[Dict[str, object]],
+    camera_y_offsets_mm: Optional[Dict[int, float]] = None,
+) -> Dict[str, np.ndarray]:
+    """Fit four independent longitudinal side planes from reconstructed corners.
 
-    if not endface_fit.valid:
-        return {}
-    face_ends = {
+    A shared rod axis forces opposite faces to be parallel and therefore cannot
+    reproduce the institution's four directed face-to-end angles.  Each plane
+    is fitted independently from its two corner traces and oriented outwards.
+
+    A scan-row synchronization correction belongs to the complete 3-D camera
+    coordinate, not only to the end boundary.  Therefore the same per-camera Y
+    offset used to rebuild the end plane is also applied to every longitudinal
+    corner trace contributed by that camera.  Omitting it here would compare a
+    corrected end plane with uncorrected side planes and can create a false
+    near-90-degree result through common-mode tilt cancellation.
+    """
+
+    point_to_camera = {"P1": 1, "P2": 2, "P3": 3, "P4": 4}
+    y_offsets = {obj: 0.0 for obj in (1, 2, 3, 4)}
+    if camera_y_offsets_mm is not None:
+        for obj in y_offsets:
+            value = float(camera_y_offsets_mm.get(obj, 0.0))
+            if not math.isfinite(value):
+                raise ValueError(f"Non-finite camera {obj} longitudinal Y offset")
+            y_offsets[obj] = value
+
+    face_points = {
         "A": ("P3", "P1"),
         "B": ("P1", "P4"),
         "C": ("P2", "P4"),
         "D": ("P3", "P2"),
     }
+    usable = [row for row in rows if row.get("record") == "slice" and row.get("valid") is True]
+    if len(usable) < 3:
+        raise ValueError("At least three valid slices are required to fit longitudinal side planes")
+
+    all_cross_section_points: List[Tuple[float, float]] = []
+    for row in usable:
+        for point_name in ("P1", "P2", "P3", "P4"):
+            try:
+                all_cross_section_points.append((float(row[f"{point_name}_x"]), float(row[f"{point_name}_z"])))
+            except (KeyError, TypeError, ValueError):
+                continue
+    if len(all_cross_section_points) < 12:
+        raise ValueError("Cannot determine the cross-section centre for side-plane orientation")
+    section_array = np.asarray(all_cross_section_points, dtype=float)
+    section_centre = np.median(section_array, axis=0)
+
+    normals: Dict[str, np.ndarray] = {}
+    for face, point_names in face_points.items():
+        points: List[Tuple[float, float, float]] = []
+        face_xz: List[Tuple[float, float]] = []
+        for row in usable:
+            try:
+                base_y = float(row["y_mm"])
+                for point_name in point_names:
+                    x = float(row[f"{point_name}_x"])
+                    z = float(row[f"{point_name}_z"])
+                    y = base_y + y_offsets[point_to_camera[point_name]]
+                    points.append((x, y, z))
+                    face_xz.append((x, z))
+            except (KeyError, TypeError, ValueError):
+                continue
+        if len(points) < 6:
+            raise ValueError(f"Cannot fit longitudinal side plane {face}: too few points")
+        array = np.asarray(points, dtype=float)
+
+        def fit_plane(values: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+            centre = np.mean(values, axis=0)
+            _, _, vh = np.linalg.svd(values - centre, full_matrices=False)
+            return normalized_axis(vh[-1]), centre
+
+        normal, centre = fit_plane(array)
+        residuals = np.abs((array - centre) @ normal)
+        median = float(np.median(residuals))
+        mad = float(np.median(np.abs(residuals - median)))
+        threshold = max(0.05, median + 4.0 * 1.4826 * mad)
+        inliers = residuals <= threshold
+        if int(np.sum(inliers)) >= 6 and not bool(np.all(inliers)):
+            normal, _ = fit_plane(array[inliers])
+
+        face_centre = np.median(np.asarray(face_xz, dtype=float), axis=0)
+        outward = np.array(
+            [face_centre[0] - section_centre[0], 0.0, face_centre[1] - section_centre[1]],
+            dtype=float,
+        )
+        if float(normal @ outward) < 0.0:
+            normal = -normal
+        normals[face] = normal
+    return normals
+
+
+def wireframe_endface_angles_from_source(
+    source: HeightSource,
+    valid_ranges: Dict[int, Tuple[int, int]],
+    transforms: Dict[int, object],
+    calibration: Dict[str, object],
+    common_start: int,
+    common_end: int,
+    geometry_rows: List[Dict[str, object]],
+    x_scale: float,
+    y_scale: float,
+    window_mm: float,
+    drift_model: Optional[Dict[str, object]] = None,
+    drift_amplitude: float = 0.0,
+    drift_alignment_shift_fraction: float = 0.0,
+    camera_y_offsets_mm: Optional[Dict[int, float]] = None,
+) -> Dict[str, object]:
+    """Measure 16 local end-face angles from four edges and four ridges.
+
+    The same camera-Y offsets are applied to every longitudinal side point and
+    every end-boundary point.  The function never reads end-face truth and
+    never accepts a final angle correction.
+    """
+
+    offset_map = {obj: 0.0 for obj in (1, 2, 3, 4)}
+    if camera_y_offsets_mm is not None:
+        for obj in offset_map:
+            value = float(camera_y_offsets_mm.get(obj, 0.0))
+            if not math.isfinite(value):
+                raise ValueError(f"Non-finite camera {obj} wireframe Y offset")
+            offset_map[obj] = value
+    section_points = mean_cross_section_points(geometry_rows)
+    side_normals = longitudinal_side_plane_normals(
+        geometry_rows,
+        camera_y_offsets_mm=offset_map,
+    )
+    boundary_points = {
+        end: {
+            obj: endface_boundary_points_for_camera(
+                source,
+                obj,
+                end,
+                valid_ranges[obj],
+                transforms[obj],
+                calibration,
+                common_start,
+                x_scale,
+                y_scale,
+                window_mm,
+                common_end=common_end,
+                drift_model=drift_model,
+                drift_amplitude=drift_amplitude,
+                drift_alignment_shift_fraction=drift_alignment_shift_fraction,
+            )
+            for obj in (1, 2, 3, 4)
+        }
+        for end in ("head", "tail")
+    }
+    return reconstruct_wireframe_angles(
+        geometry_rows,
+        section_points,
+        boundary_points,
+        side_normals,
+        offset_map,
+    )
+
+
+def face_to_endface_angles(
+    section_points: Dict[str, Tuple[float, float]],
+    endface_fit: EndFaceFit,
+    rod_axis: np.ndarray,
+    side_plane_normals: Optional[Dict[str, np.ndarray]] = None,
+) -> Dict[str, float]:
+    """Return directed 0..180 degree angles between side and end planes."""
+
+    if not endface_fit.valid:
+        return {}
+    face_ends = {"A": ("P3", "P1"), "B": ("P1", "P4"), "C": ("P2", "P4"), "D": ("P3", "P2")}
     axis = normalized_axis(rod_axis)
     end_normal = normalized_axis(
         np.array([endface_fit.normal_x, endface_fit.normal_y, endface_fit.normal_z], dtype=float)
     )
     angles: Dict[str, float] = {}
+    section_centre = np.mean(np.asarray(list(section_points.values()), dtype=float), axis=0)
     for face, (start_name, finish_name) in face_ends.items():
-        start = section_points[start_name]
-        finish = section_points[finish_name]
-        edge_direction = np.array([finish[0] - start[0], 0.0, finish[1] - start[1]], dtype=float)
-        side_normal = np.cross(edge_direction, axis)
-        norm = float(np.linalg.norm(side_normal))
-        if norm <= 1e-12:
-            continue
-        side_normal /= norm
-        cosine = float(np.clip(abs(side_normal @ end_normal), 0.0, 1.0))
+        if side_plane_normals and face in side_plane_normals:
+            side_normal = np.asarray(side_plane_normals[face], dtype=float)
+            norm = float(np.linalg.norm(side_normal))
+            if norm <= 1e-12:
+                continue
+            side_normal = side_normal / norm
+        else:
+            start = section_points[start_name]
+            finish = section_points[finish_name]
+            edge_direction = np.array([finish[0] - start[0], 0.0, finish[1] - start[1]], dtype=float)
+            side_normal = np.cross(edge_direction, axis)
+            norm = float(np.linalg.norm(side_normal))
+            if norm <= 1e-12:
+                continue
+            side_normal /= norm
+            midpoint = np.array([(start[0] + finish[0]) / 2.0, 0.0, (start[1] + finish[1]) / 2.0])
+            outward = midpoint - np.array([section_centre[0], 0.0, section_centre[1]])
+            if float(side_normal @ outward) < 0.0:
+                side_normal = -side_normal
+        cosine = float(np.clip(side_normal @ end_normal, -1.0, 1.0))
         angles[face] = math.degrees(math.acos(cosine))
     return angles
 
@@ -1475,32 +1949,58 @@ def mean_face_endface_angle(face_angles: Dict[str, float]) -> float:
     return float(np.mean(values)) if len(values) == 4 else math.nan
 
 
-def measure_endface_angles_for_capture(
-    capture: CalibrationCapture,
-    calibration: Dict,
+def institution_labeled_face_angles(
+    software_angles: Dict[str, Dict[str, float]],
+) -> Dict[str, Dict[str, float]]:
+    """Expose product results in the institution's fixed A/B/C/D labels.
+
+    Institution: A=top, B=right, C=left, D=bottom.
+    Measurement core: A=top, B=right, C=bottom, D=left.
+    """
+
+    institution_to_software = {"A": "A", "B": "B", "C": "D", "D": "C"}
+    return {
+        end: {
+            institution_face: values[software_face]
+            for institution_face, software_face in institution_to_software.items()
+            if software_face in values
+        }
+        for end, values in software_angles.items()
+    }
+
+
+def sampled_cross_section_rows_and_edges(
+    source: HeightSource,
+    calibration: Dict[str, object],
+    orientation: str,
     x_scale: float,
     y_scale: float,
-    window_mm: float,
-) -> Dict[str, Dict[str, float]]:
-    """Measure the eight raw face-to-end angles needed by end-face calibration."""
+    valid_ranges: Optional[Dict[int, Tuple[int, int]]] = None,
+) -> Tuple[List[Dict[str, object]], np.ndarray]:
+    """Reconstruct nine sections for one camera-orientation hypothesis.
 
-    source = capture.source
-    valid_ranges = source_valid_ranges(source)
+    The helper is deliberately independent of end-face truth.  The end-face
+    package uses it both for the normal measurement geometry and for an
+    alternate camera-geometry consistency check used by the HOBJ orientation
+    classifier.
+    """
+
+    if valid_ranges is None:
+        valid_ranges = source_valid_ranges(source)
     common_start, common_end = source_common_range(source, valid_ranges)
-    active_calibration = calibration_for_orientation(calibration, capture.orientation)
-    transforms = {int(key): value for key, value in active_calibration["transforms"].items()}
+    active = calibration_for_orientation(calibration, orientation)
+    transforms = {int(key): value for key, value in active["transforms"].items()}
     rows: List[Dict[str, object]] = []
+    edge_values: List[List[float]] = []
     for fraction in np.linspace(0.1, 0.9, 9):
         row_index = int(round(common_start + float(fraction) * (common_end - common_start)))
-        corners = {obj: extract_corner_from_row(source.row(obj, row_index), x_scale) for obj in [1, 2, 3, 4]}
-        if not all(corner.valid for corner in corners.values()):
-            continue
-        raw_points = {
-            OBJECT_TO_POINT[obj]: apply_transform(transforms[obj], corners[obj].vx, corners[obj].vz)
+        corners = {
+            obj: extract_corner_from_row(source.row(obj, row_index), x_scale)
             for obj in [1, 2, 3, 4]
         }
-        points = reconstruct_points_from_global_sides(corners, transforms, raw_points)
-        points = apply_corner_biases(points, active_calibration)
+        if not all(corner.valid for corner in corners.values()):
+            continue
+        points, _, lengths = cross_section_geometry(corners, transforms, active, "free")
         record: Dict[str, object] = {
             "record": "slice",
             "valid": True,
@@ -1510,25 +2010,10 @@ def measure_endface_angles_for_capture(
             record[f"{point_name}_x"] = x
             record[f"{point_name}_z"] = z
         rows.append(record)
+        edge_values.append([float(lengths[edge]) for edge in ["A", "B", "C", "D"]])
     if len(rows) < 3:
-        raise ValueError(f"Calibration capture {capture.capture_id} has fewer than three usable section rows")
-    rod_axis = fit_rod_axis(rows)
-    endfaces = fit_endfaces_from_source(
-        source,
-        valid_ranges,
-        transforms,
-        active_calibration,
-        common_start,
-        rod_axis,
-        x_scale,
-        y_scale,
-        window_mm,
-    )
-    section_points = mean_cross_section_points(rows)
-    return {
-        end: face_to_endface_angles(section_points, endfaces[end], rod_axis)
-        for end in ["head", "tail"]
-    }
+        raise ValueError("End-face capture has fewer than three usable section rows")
+    return rows, np.asarray(edge_values, dtype=float)
 
 
 def oriented_endface_truth(
@@ -1550,119 +2035,9 @@ def oriented_endface_truth(
     }
 
 
-def _build_balanced_endface_angle_calibration_core(
-    captures: List[CalibrationCapture],
-    calibration: Dict,
-    truth_csv_path: str,
-    x_scale: float,
-    y_scale: float,
-    window_mm: float,
-) -> Dict[str, object]:
-    """Fit eight offsets with equal bar weight and equal repeat weight within each bar."""
-
-    raw_by_bar: Dict[str, List[Tuple[str, Dict[str, Dict[str, float]]]]] = {}
-    display_bar_ids: Dict[str, str] = {}
-    for capture in captures:
-        bar_key = bar_id_key(capture.bar_id)
-        display_bar_ids[bar_key] = capture.bar_id
-        raw = measure_endface_angles_for_capture(capture, calibration, x_scale, y_scale, window_mm)
-        raw_by_bar.setdefault(bar_key, []).append((capture.capture_id, raw))
-
-    per_bar: Dict[str, Dict[str, object]] = {}
-    bar_offsets: List[Dict[str, Dict[str, float]]] = []
-    for bar_key, measurements in raw_by_bar.items():
-        bar_id = display_bar_ids[bar_key]
-        truth = oriented_endface_truth(
-            read_manual_endface_angle_truth(truth_csv_path, bar_id),
-            captures[0].orientation,
-        )
-        if not truth:
-            raise ValueError(f"No direct end-face angle truth was found for calibration bar {bar_id}")
-        mean_raw: Dict[str, Dict[str, float]] = {"head": {}, "tail": {}}
-        offsets: Dict[str, Dict[str, float]] = {"head": {}, "tail": {}}
-        for end in ["head", "tail"]:
-            for face in ["A", "B", "C", "D"]:
-                values = [angles[end][face] for _, angles in measurements if face in angles.get(end, {})]
-                if len(values) != len(measurements):
-                    raise ValueError(f"Missing raw angle {end}-{face} in one or more captures for bar {bar_id}")
-                mean_raw[end][face] = float(np.mean(np.asarray(values, dtype=float)))
-                offsets[end][face] = truth[end][face] - mean_raw[end][face]
-        bar_offsets.append(offsets)
-        per_bar[bar_id] = {
-            "capture_ids": [capture_id for capture_id, _ in measurements],
-            "capture_count": len(measurements),
-            "mean_raw_angles_deg": mean_raw,
-            "manual_truth_angles_deg": truth,
-            "angle_offsets_deg": offsets,
-        }
-
-    combined: Dict[str, Dict[str, float]] = {"head": {}, "tail": {}}
-    for end in ["head", "tail"]:
-        for face in ["A", "B", "C", "D"]:
-            combined[end][face] = float(np.mean([offsets[end][face] for offsets in bar_offsets]))
-    captured_bar_ids = sorted({capture.bar_id for capture in captures}, key=str.casefold)
-    truth_bar_ids = read_manual_truth_bar_ids(truth_csv_path, "endface_angle")
-    captured_keys = {bar_id_key(bar_id) for bar_id in captured_bar_ids}
-    unused_truth_bar_ids = [
-        bar_id
-        for key, bar_id in sorted(truth_bar_ids.items(), key=lambda item: item[1].casefold())
-        if key not in captured_keys
-    ]
-    return {
-        "version": 3,
-        "model": "endface_face_angle_offset",
-        "note": "Each bar is weighted equally; repeat HOBJ captures are averaged within their parent bar folder first.",
-        "bar_weighting": "equal_per_bar_then_equal_per_repeat",
-        "captured_bar_ids": captured_bar_ids,
-        "unused_truth_bar_ids": unused_truth_bar_ids,
-        "angle_offsets_deg": combined,
-        "per_bar": per_bar,
-    }
-
-
-def build_balanced_endface_angle_calibration_model(
-    captures: List[CalibrationCapture],
-    calibration: Dict,
-    truth_csv_path: str,
-    x_scale: float,
-    y_scale: float,
-    window_mm: float,
-) -> Dict[str, object]:
-    """Build normal/turnover end-face offsets without mixing physical ends."""
-
-    by_orientation: Dict[str, List[CalibrationCapture]] = {}
-    for capture in captures:
-        key = "turnover" if capture.orientation in {"swap_bd", "turnover"} else "normal"
-        by_orientation.setdefault(key, []).append(capture)
-    if set(by_orientation) != {"normal", "turnover"}:
-        return _build_balanced_endface_angle_calibration_core(
-            captures, calibration, truth_csv_path, x_scale, y_scale, window_mm
-        )
-    normal_model = _build_balanced_endface_angle_calibration_core(
-        by_orientation["normal"], calibration, truth_csv_path, x_scale, y_scale, window_mm
-    )
-    turnover_model = _build_balanced_endface_angle_calibration_core(
-        by_orientation["turnover"], calibration, truth_csv_path, x_scale, y_scale, window_mm
-    )
-    normal_model.update({
-        "version": 4,
-        "model": "endface_face_angle_offset_by_orientation",
-        "note": "Separate normal and turnover end-face offsets. Turnover swaps head/tail and B/D; A/C remain unchanged.",
-        "orientation_models": {
-            "normal": normal_model.copy(),
-            "turnover": turnover_model,
-        },
-    })
-    return normal_model
-
-
 def endface_calibration_for_orientation(model: Optional[Dict[str, object]], orientation: str) -> Optional[Dict[str, object]]:
-    if not model:
-        return model
-    models = model.get("orientation_models")
-    key = "turnover" if orientation in {"swap_bd", "turnover"} else "normal"
-    if isinstance(models, dict) and isinstance(models.get(key), dict):
-        return models[key]
+    """Return one shared physical model; direction-specific answer models are forbidden."""
+
     return model
 
 
@@ -1837,45 +2212,273 @@ def read_manual_endface_angle_truth(path: str, bar_id: str) -> Dict[str, Dict[st
     return means
 
 
-def build_endface_face_angle_calibration_model(
-    raw_angles: Dict[str, Dict[str, float]],
-    truth_angles: Dict[str, Dict[str, float]],
-    source_name: str,
-) -> Dict[str, object]:
-    offsets: Dict[str, Dict[str, float]] = {"head": {}, "tail": {}}
-    for end in ["head", "tail"]:
-        for face in ["A", "B", "C", "D"]:
-            if face not in raw_angles.get(end, {}) or face not in truth_angles.get(end, {}):
-                raise ValueError(f"Cannot calibrate missing end-face angle {end}-{face}")
-            offsets[end][face] = truth_angles[end][face] - raw_angles[end][face]
-    return {
-        "version": 2,
-        "model": "endface_face_angle_offset",
-        "source": source_name,
-        "note": "Each offset equals the mean of three direct gauge angles minus the raw visual face-to-end angle.",
-        "angle_offsets_deg": offsets,
-        "manual_truth_angles_deg": truth_angles,
-    }
+def validate_professional_endface_model(model: Dict[str, object], calibration: Dict[str, object]) -> None:
+    """Reject every answer-offset model and accept only physical camera geometry."""
 
-
-def apply_endface_face_angle_calibration_model(
-    raw_angles: Dict[str, Dict[str, float]],
-    model: Optional[Dict[str, object]],
-) -> Dict[str, Dict[str, float]]:
-    corrected = {end: dict(values) for end, values in raw_angles.items()}
-    if not model or model.get("model") != "endface_face_angle_offset":
-        return corrected
-    offsets = model.get("angle_offsets_deg")
+    expected_strategy = "physical_decomposed_camera_scan_row_synchronization"
+    if model.get("model") != "endface_camera_geometry_calibration":
+        raise ValueError(
+            "End-face-only mode requires a physical camera-geometry model; final-angle offset models are forbidden"
+        )
+    if model.get("valid") is not True:
+        raise ValueError("End-face calibration model is not marked valid")
+    if model.get("strategy") != expected_strategy:
+        raise ValueError(
+            "End-face calibration model uses a prohibited or obsolete strategy; regenerate image-only v15"
+        )
+    if int(model.get("version", 0)) < 15:
+        raise ValueError(
+            "End-face physical camera model version must be 15 or newer and select only the image-identifiable M1 mode"
+        )
+    if not has_valid_wireframe_release_evidence(model):
+        raise ValueError(
+            "End-face model lacks passing truth-free shared-geometry 16-angle holdout evidence"
+        )
+    y_correction = model.get("y_coordinate_correction")
+    if (
+        not isinstance(y_correction, dict)
+        or y_correction.get("method")
+        != "per_camera_scan_row_offset"
+        or y_correction.get("apply_to")
+        != "all_longitudinal_side_points_and_end_boundary_points"
+    ):
+        raise ValueError(
+            "End-face physical model lacks the complete shared Y-coordinate correction"
+        )
+    expected_map = {"A": "A", "B": "B", "C": "D", "D": "C"}
+    if model.get("report_to_software_face_map") != expected_map:
+        raise ValueError("End-face calibration model does not use the fixed institution A/B/C/D mapping")
+    for prohibited in ("angle_offsets_deg", "orientation_models", "orientation_detector"):
+        if prohibited in model:
+            raise ValueError(f"End-face physical model contains prohibited field: {prohibited}")
+    offsets = model.get("camera_y_offsets_mm")
     if not isinstance(offsets, dict):
-        return corrected
-    for end in ["head", "tail"]:
-        end_offsets = offsets.get(end, {})
-        if not isinstance(end_offsets, dict):
+        raise ValueError("End-face physical model has no camera Y synchronization offsets")
+    values: list[float] = []
+    for obj in (1, 2, 3, 4):
+        try:
+            value = float(offsets[str(obj)])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError(f"End-face physical model is missing camera {obj} Y offset") from exc
+        if not math.isfinite(value) or abs(value) > 1.5:
+            raise ValueError(f"End-face camera {obj} Y offset is non-finite or exceeds 1.5 mm")
+        values.append(value)
+    if abs(sum(values)) > 1e-6:
+        raise ValueError("End-face camera Y offsets violate their zero-sum gauge constraint")
+    basis = model.get("physical_mode_basis")
+    if not isinstance(basis, dict):
+        raise ValueError("End-face physical model has no synchronization-mode basis")
+    try:
+        reference_x = np.asarray(basis["reference_camera_x_mm"], dtype=float)
+        reference_z = np.asarray(basis["reference_camera_z_mm"], dtype=float)
+        affine_x = np.asarray(basis["affine_x_mode"], dtype=float)
+        affine_z = np.asarray(basis["affine_z_mode"], dtype=float)
+        nonplanar = np.asarray(basis["nonplanar_mode"], dtype=float)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("End-face physical model has an incomplete mode basis") from exc
+    basis_vectors = (reference_x, reference_z, affine_x, affine_z, nonplanar)
+    if any(vector.shape != (4,) or not bool(np.all(np.isfinite(vector))) for vector in basis_vectors):
+        raise ValueError("End-face synchronization-mode basis must contain finite four-camera vectors")
+    if any(abs(float(np.sum(vector))) > 1e-6 for vector in (affine_x, affine_z, nonplanar)):
+        raise ValueError("End-face synchronization modes violate the zero-sum gauge")
+    scale = max(1.0, float(np.linalg.norm(reference_x)), float(np.linalg.norm(reference_z)))
+    if (
+        abs(float(nonplanar @ reference_x)) > 1e-6 * scale
+        or abs(float(nonplanar @ reference_z)) > 1e-6 * scale
+    ):
+        raise ValueError("End-face non-planar mode is not orthogonal to the affine camera layout")
+    fit_details = model.get("fit_details")
+    if not isinstance(fit_details, dict):
+        raise ValueError("End-face physical model lacks fit provenance")
+    selected_fit = fit_details.get("selected", {})
+    if (
+        not isinstance(selected_fit, dict)
+        or selected_fit.get("method")
+        != "single_nonplanar_camera_scan_row_synchronization"
+        or selected_fit.get("model_level") != "M1"
+    ):
+        raise ValueError("End-face physical model lacks selected M1 fit provenance")
+    nonplanar_fit = selected_fit.get("nonplanar_mode", {})
+    affine_fit = selected_fit.get("affine_modes", {})
+    if (
+        not isinstance(nonplanar_fit, dict)
+        or nonplanar_fit.get("fit_target")
+        != "image_point_to_end_plane_residual_only_no_institution_truth"
+        or not isinstance(affine_fit, dict)
+        or affine_fit.get("enabled") is not False
+    ):
+        raise ValueError("End-face M1 evidence is missing or enables prohibited affine modes")
+    if model.get("runtime_orientation_detection") != "none":
+        raise ValueError("Production end-face model must not infer R/L from standard truth or bar fingerprints")
+    endpoint_contract = model.get("runtime_endpoint_label_contract")
+    if (
+        not isinstance(endpoint_contract, dict)
+        or endpoint_contract.get("head") != "hobj_device_row_min"
+        or endpoint_contract.get("tail") != "hobj_device_row_max"
+        or endpoint_contract.get("physical_R_L_inferred") is not False
+    ):
+        raise ValueError(
+            "End-face model must declare fixed HOBJ device-row endpoints and must not infer physical R/L"
+        )
+    release_readiness = model.get("release_readiness")
+    if not isinstance(release_readiness, dict) or release_readiness.get("ready") is not True:
+        reason = (
+            str(release_readiness.get("reason", ""))
+            if isinstance(release_readiness, dict)
+            else "missing release-readiness audit"
+        )
+        raise ValueError(f"End-face physical model is engineering-only and not release-ready: {reason}")
+    state_reference = model.get("calibration_state_reference")
+    if (
+        not isinstance(state_reference, dict)
+        or state_reference.get("method")
+        != "same_physical_face_dual_camera_line_separation_no_truth"
+        or state_reference.get("fit_target")
+        != "image_geometry_applicability_only_no_correction"
+        or state_reference.get("all_captures_stable") is not True
+        or state_reference.get("complete") is not True
+    ):
+        raise ValueError(
+            "End-face model lacks a stable image-only calibration-state reference"
+        )
+    reference_faces = state_reference.get("faces")
+    if not isinstance(reference_faces, dict):
+        raise ValueError("End-face calibration-state reference has no face envelopes")
+    for face in "ABCD":
+        envelope = reference_faces.get(face)
+        if not isinstance(envelope, dict) or envelope.get("valid") is not True:
+            raise ValueError(
+                f"End-face calibration-state reference is incomplete for face {face}"
+            )
+        for field_name in (
+            "seam_median_min_mm",
+            "seam_median_max_mm",
+            "seam_span_max_mm",
+            "pair_angle_p90_max_deg",
+        ):
+            try:
+                value = float(envelope[field_name])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"End-face calibration-state envelope {face}-{field_name} is invalid"
+                ) from exc
+            if not math.isfinite(value):
+                raise ValueError(
+                    f"End-face calibration-state envelope {face}-{field_name} is non-finite"
+                )
+    camera_spec = str(calibration.get("single_bar_metadata", {}).get("specification", "")).strip()
+    model_spec = str(model.get("nominal_spec", "")).strip()
+    if camera_spec and model_spec != camera_spec:
+        raise ValueError(f"End-face model spec {model_spec or '<missing>'} does not match camera model spec {camera_spec}")
+
+
+def physical_camera_y_offsets(model: Optional[Dict[str, object]]) -> Dict[int, float]:
+    """Return validated low-level device offsets; never return final angle corrections."""
+
+    if not model or model.get("model") != "endface_camera_geometry_calibration":
+        return {obj: 0.0 for obj in (1, 2, 3, 4)}
+    raw = model.get("camera_y_offsets_mm", {})
+    return {obj: float(raw[str(obj)]) for obj in (1, 2, 3, 4)}
+
+
+def endface_calibration_applicability(
+    model: Optional[Dict[str, object]],
+    relative_camera_diagnostic: Dict[str, object],
+    drift_result: Dict[str, object],
+) -> Dict[str, object]:
+    """Decide whether a physical model may be applied to the current HOBJ.
+
+    This is a fail-closed image-geometry gate, not an estimator.  It never
+    changes coordinates.  When the camera state cannot be distinguished from
+    real bar form, the caller must keep the raw measurement and warn.
+    """
+
+    if not model:
+        return {
+            "status": "not_configured",
+            "applicable": False,
+            "correction_applied": False,
+            "reason": "No physical end-face camera model is configured.",
+            "per_face": {},
+        }
+    drift_status = str(drift_result.get("status", "not_configured"))
+    if drift_status == "unmatched_unadjusted" or not bool(
+        drift_result.get("valid", True)
+    ):
+        return {
+            "status": "mechanical_drift_unmatched_unadjusted",
+            "applicable": False,
+            "correction_applied": False,
+            "reason": (
+                "Current HOBJ does not match a verified mechanical state; physical camera "
+                "synchronization is withheld and raw geometry is retained."
+            ),
+            "per_face": {},
+        }
+    diagnostic_status = str(relative_camera_diagnostic.get("status", "missing"))
+    if diagnostic_status != "relative_geometry_stable":
+        return {
+            "status": "camera_state_unmatched_unadjusted",
+            "applicable": False,
+            "correction_applied": False,
+            "reason": (
+                "Same-face dual-camera geometry is not stable enough to prove that the current "
+                "camera state matches calibration; raw geometry is retained."
+            ),
+            "per_face": {},
+        }
+    reference = model.get("calibration_state_reference", {})
+    reference_faces = reference.get("faces", {}) if isinstance(reference, dict) else {}
+    observed_faces = relative_camera_diagnostic.get("per_face", {})
+    failures: list[str] = []
+    details: Dict[str, Dict[str, object]] = {}
+    for face in "ABCD":
+        envelope = reference_faces.get(face, {}) if isinstance(reference_faces, dict) else {}
+        observed = observed_faces.get(face, {}) if isinstance(observed_faces, dict) else {}
+        try:
+            median = float(observed["seam_median_mm"])
+            span = float(observed["seam_span_p05_p95_mm"])
+            angle = float(observed["pair_angle_p90_deg"])
+            lower = float(envelope["seam_median_min_mm"])
+            upper = float(envelope["seam_median_max_mm"])
+            span_limit = float(envelope["seam_span_max_mm"])
+            angle_limit = float(envelope["pair_angle_p90_max_deg"])
+        except (KeyError, TypeError, ValueError):
+            failures.append(f"{face}: incomplete applicability evidence")
             continue
-        for face in ["A", "B", "C", "D"]:
-            if face in corrected.get(end, {}):
-                corrected[end][face] += float(end_offsets.get(face, 0.0))
-    return corrected
+        passed = (
+            all(math.isfinite(value) for value in (median, span, angle, lower, upper, span_limit, angle_limit))
+            and lower <= median <= upper
+            and span <= span_limit
+            and angle <= angle_limit
+        )
+        details[face] = {
+            "passed": passed,
+            "seam_median_mm": median,
+            "seam_median_range_mm": [lower, upper],
+            "seam_span_mm": span,
+            "seam_span_limit_mm": span_limit,
+            "pair_angle_p90_deg": angle,
+            "pair_angle_p90_limit_deg": angle_limit,
+        }
+        if not passed:
+            failures.append(f"{face}: current same-face geometry is outside calibration envelope")
+    applicable = not failures and len(details) == 4
+    return {
+        "status": (
+            "camera_state_matched"
+            if applicable
+            else "camera_state_unmatched_unadjusted"
+        ),
+        "applicable": applicable,
+        "correction_applied": False,
+        "reason": (
+            "Current image-only same-face geometry is inside the calibration envelope."
+            if applicable
+            else "; ".join(failures)
+        ),
+        "per_face": details,
+    }
 
 
 def rod_axis_slopes(rod_axis: np.ndarray) -> Tuple[float, float]:
@@ -1883,76 +2486,6 @@ def rod_axis_slopes(rod_axis: np.ndarray) -> Tuple[float, float]:
     if abs(float(axis[1])) <= 1e-12:
         return 0.0, 0.0
     return float(axis[0] / axis[1]), float(axis[2] / axis[1])
-
-
-def build_endface_calibration_model(
-    raw_fits: Dict[str, EndFaceFit],
-    truth_fits: Dict[str, EndFaceFit],
-    rod_axis: np.ndarray,
-    source_name: str,
-) -> Dict[str, object]:
-    axis_x, axis_z = rod_axis_slopes(rod_axis)
-    ends: Dict[str, Dict[str, float]] = {}
-    for end in ["head", "tail"]:
-        raw = raw_fits[end]
-        truth = truth_fits[end]
-        if not raw.valid or not truth.valid:
-            raise ValueError(f"Cannot calibrate {end}: raw={raw.reason or 'ok'}, truth={truth.reason or 'ok'}")
-        raw_residual_x = raw.slope_x + axis_x
-        raw_residual_z = raw.slope_z + axis_z
-        ends[end] = {
-            "slope_offset_x": truth.slope_x - raw_residual_x,
-            "slope_offset_z": truth.slope_z - raw_residual_z,
-            "raw_residual_slope_x": raw_residual_x,
-            "raw_residual_slope_z": raw_residual_z,
-            "truth_slope_x": truth.slope_x,
-            "truth_slope_z": truth.slope_z,
-            "truth_verticality_deg": truth.verticality_deg,
-        }
-    return {
-        "version": 1,
-        "model": "endface_plane_slope_offset",
-        "source": source_name,
-        "note": "Offsets are fitted from signed 4-face x 3-position manual readings. Raw visual values remain in the measurement CSV.",
-        "ends": ends,
-    }
-
-
-def apply_endface_calibration_model(
-    raw_fit: EndFaceFit,
-    rod_axis: np.ndarray,
-    model: Optional[Dict[str, object]],
-) -> EndFaceFit:
-    if not raw_fit.valid or not model:
-        return raw_fit
-    ends = model.get("ends")
-    if not isinstance(ends, dict):
-        return raw_fit
-    end_model = ends.get(raw_fit.end)
-    if not isinstance(end_model, dict):
-        return raw_fit
-    axis_x, axis_z = rod_axis_slopes(rod_axis)
-    residual_x = raw_fit.slope_x + axis_x + float(end_model.get("slope_offset_x", 0.0))
-    residual_z = raw_fit.slope_z + axis_z + float(end_model.get("slope_offset_z", 0.0))
-    corrected_slope_x = residual_x - axis_x
-    corrected_slope_z = residual_z - axis_z
-    normal = normalized_axis(np.array([-corrected_slope_x, 1.0, -corrected_slope_z], dtype=float))
-    axis = normalized_axis(rod_axis)
-    cosine = float(np.clip(abs(normal @ axis), 0.0, 1.0))
-    return EndFaceFit(
-        end=raw_fit.end,
-        valid=True,
-        slope_x=corrected_slope_x,
-        slope_z=corrected_slope_z,
-        intercept_y=raw_fit.intercept_y,
-        normal_x=float(normal[0]),
-        normal_y=float(normal[1]),
-        normal_z=float(normal[2]),
-        verticality_deg=math.degrees(math.acos(cosine)),
-        point_count=raw_fit.point_count,
-        inlier_count=raw_fit.inlier_count,
-        rmse_mm=raw_fit.rmse_mm,
-    )
 
 
 def input_stem(args: argparse.Namespace) -> str:
@@ -1996,9 +2529,9 @@ def resolve_output_path(args: argparse.Namespace) -> str:
     return path if args.overwrite else unique_path(path)
 
 
-def write_csv(path: str, rows: List[Dict[str, object]]) -> None:
+def write_csv(path: str, rows: List[Dict[str, object]], endface_only: bool = False) -> None:
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    fieldnames = [
+    endface_fieldnames = [
         "record",
         "row",
         "y_mm",
@@ -2019,6 +2552,151 @@ def write_csv(path: str, rows: List[Dict[str, object]]) -> None:
         "drift_overlap_end_fraction",
         "drift_warning",
         "drift_reason",
+        "endpoint_label_basis",
+        "physical_R_L_inferred",
+        "relative_camera_geometry_status",
+        "relative_camera_geometry_warning",
+        "relative_camera_geometry_correction_applied",
+        "relative_camera_geometry_input_state",
+        "relative_camera_max_seam_span_mm",
+        "relative_camera_geometry_reason",
+        "relative_camera_A_seam_span_mm",
+        "relative_camera_B_seam_span_mm",
+        "relative_camera_C_seam_span_mm",
+        "relative_camera_D_seam_span_mm",
+        "relative_camera_A_pair_angle_p90_deg",
+        "relative_camera_B_pair_angle_p90_deg",
+        "relative_camera_C_pair_angle_p90_deg",
+        "relative_camera_D_pair_angle_p90_deg",
+        "obj1_drift_x_mm",
+        "obj1_drift_z_mm",
+        "obj1_drift_amplitude",
+        "obj2_drift_x_mm",
+        "obj2_drift_z_mm",
+        "obj2_drift_amplitude",
+        "obj3_drift_x_mm",
+        "obj3_drift_z_mm",
+        "obj3_drift_amplitude",
+        "obj4_drift_x_mm",
+        "obj4_drift_z_mm",
+        "obj4_drift_amplitude",
+        "endface_calibration_status",
+        "endface_calibration_applicability_status",
+        "endface_calibration_correction_applied",
+        "endface_calibration_applicability_reason",
+        "endface_calibration_model_version",
+        "endface_calibration_uncertainty_deg",
+        "endface_raw_quality_status",
+        "endface_raw_quality_accepted",
+        "endface_raw_quality_reason",
+        "endface_raw_quality_uses_professional_truth",
+        "endface_raw_quality_correction_applied",
+        "endface_raw_quality_plane_rmse_limit_mm",
+        "endface_raw_quality_stable_seam_span_limit_mm",
+        "endface_raw_quality_warning_seam_span_limit_mm",
+        "head_endface_raw_plane_rmse_mm",
+        "tail_endface_raw_plane_rmse_mm",
+        "head_A_endface_raw_angle_deg",
+        "head_B_endface_raw_angle_deg",
+        "head_C_endface_raw_angle_deg",
+        "head_D_endface_raw_angle_deg",
+        "tail_A_endface_raw_angle_deg",
+        "tail_B_endface_raw_angle_deg",
+        "tail_C_endface_raw_angle_deg",
+        "tail_D_endface_raw_angle_deg",
+        *[
+            f"{end}_{channel}_endface_raw_angle_deg"
+            for end in ("head", "tail")
+            for channel in WIREFRAME_LOCAL_CHANNELS
+        ],
+        "head_endface_raw_verticality_deg",
+        "tail_endface_raw_verticality_deg",
+        "head_endface_raw_representative_angle_deg",
+        "tail_endface_raw_representative_angle_deg",
+        "head_endface_raw_worst_local_channel",
+        "tail_endface_raw_worst_local_channel",
+        "head_endface_raw_wireframe_rms_error_deg",
+        "tail_endface_raw_wireframe_rms_error_deg",
+        "head_endface_raw_max_dual_camera_seam_mm",
+        "tail_endface_raw_max_dual_camera_seam_mm",
+        "raw_head_endface_plane_tilt_deg",
+        "raw_tail_endface_plane_tilt_deg",
+        "head_A_endface_angle_deg",
+        "head_B_endface_angle_deg",
+        "head_C_endface_angle_deg",
+        "head_D_endface_angle_deg",
+        "tail_A_endface_angle_deg",
+        "tail_B_endface_angle_deg",
+        "tail_C_endface_angle_deg",
+        "tail_D_endface_angle_deg",
+        *[
+            f"{end}_{channel}_endface_angle_deg"
+            for end in ("head", "tail")
+            for channel in WIREFRAME_LOCAL_CHANNELS
+        ],
+        "head_endface_verticality_deg",
+        "tail_endface_verticality_deg",
+        "head_endface_representative_angle_deg",
+        "tail_endface_representative_angle_deg",
+        "head_endface_worst_local_channel",
+        "tail_endface_worst_local_channel",
+        "head_endface_wireframe_rms_error_deg",
+        "tail_endface_wireframe_rms_error_deg",
+        "head_endface_wireframe_angle_span_deg",
+        "tail_endface_wireframe_angle_span_deg",
+        "head_endface_max_dual_camera_seam_mm",
+        "tail_endface_max_dual_camera_seam_mm",
+        "head_endface_max_corner_closure_gap_mm",
+        "tail_endface_max_corner_closure_gap_mm",
+        "head_endface_wireframe_diagonal_twist_mm",
+        "tail_endface_wireframe_diagonal_twist_mm",
+        "head_endface_plane_tilt_deg",
+        "tail_endface_plane_tilt_deg",
+        "note",
+    ]
+    full_fieldnames = [
+        "record",
+        "row",
+        "y_mm",
+        "valid",
+        "measurement_valid",
+        "drift_status",
+        "drift_detected",
+        "drift_correction_applied",
+        "drift_model_version",
+        "drift_amplitude",
+        "drift_confidence",
+        "drift_fit_rmse_mm",
+        "drift_correlation",
+        "drift_camera_amplitude_spread",
+        "drift_alignment_shift_fraction",
+        "drift_sample_station_count",
+        "drift_overlap_start_fraction",
+        "drift_overlap_end_fraction",
+        "drift_warning",
+        "drift_reason",
+        "endpoint_label_basis",
+        "physical_R_L_inferred",
+        "relative_camera_geometry_status",
+        "relative_camera_geometry_warning",
+        "relative_camera_geometry_correction_applied",
+        "relative_camera_geometry_input_state",
+        "relative_camera_max_seam_span_mm",
+        "relative_camera_geometry_reason",
+        "relative_camera_A_seam_span_mm",
+        "relative_camera_B_seam_span_mm",
+        "relative_camera_C_seam_span_mm",
+        "relative_camera_D_seam_span_mm",
+        "relative_camera_A_pair_angle_p90_deg",
+        "relative_camera_B_pair_angle_p90_deg",
+        "relative_camera_C_pair_angle_p90_deg",
+        "relative_camera_D_pair_angle_p90_deg",
+        "endface_calibration_status",
+        "endface_calibration_applicability_status",
+        "endface_calibration_correction_applied",
+        "endface_calibration_applicability_reason",
+        "endface_calibration_model_version",
+        "endface_calibration_uncertainty_deg",
         "drift_raw_A_mm",
         "drift_raw_B_mm",
         "drift_raw_C_mm",
@@ -2163,10 +2841,11 @@ def write_csv(path: str, rows: List[Dict[str, object]]) -> None:
         "endface_rmse_mm",
         "note",
     ]
+    fieldnames = endface_fieldnames if endface_only else full_fieldnames
     with open(path, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerows(rows)
+        writer.writerows({field: row.get(field, "") for field in fieldnames} for row in rows)
 
 
 def endface_fit_record(fit: EndFaceFit, fit_kind: str) -> Dict[str, object]:
@@ -2203,6 +2882,18 @@ def add_summary_rows(rows: List[Dict[str, object]]) -> None:
         "record", "row", "y_mm", "valid", "measurement_valid", "note",
         "drift_status", "drift_detected", "drift_correction_applied", "drift_model_version",
         "drift_warning", "drift_reason",
+        "endpoint_label_basis", "physical_R_L_inferred",
+        "relative_camera_geometry_status", "relative_camera_geometry_warning",
+        "relative_camera_geometry_correction_applied", "relative_camera_geometry_input_state",
+        "relative_camera_geometry_reason",
+        "endface_calibration_status", "endface_calibration_applicability_status",
+        "endface_calibration_correction_applied", "endface_calibration_applicability_reason",
+        "endface_calibration_model_version",
+        "endface_raw_quality_status", "endface_raw_quality_accepted",
+        "endface_raw_quality_reason", "endface_raw_quality_uses_professional_truth",
+        "endface_raw_quality_correction_applied",
+        "head_endface_raw_worst_local_channel", "tail_endface_raw_worst_local_channel",
+        "head_endface_worst_local_channel", "tail_endface_worst_local_channel",
     }
     numeric_columns: List[str] = []
     for key in valid_rows[0]:
@@ -2247,6 +2938,11 @@ def main() -> int:
     parser.add_argument("--tifs", nargs=4, help="Four TIFF files in object order: obj1 obj2 obj3 obj4")
     parser.add_argument("--output", help="Output CSV path or directory. Defaults to tools/results/measurements/<hobj_name>_measure.csv")
     parser.add_argument("--overwrite", action="store_true", help="Allow overwriting an existing CSV")
+    parser.add_argument(
+        "--endface-only",
+        action="store_true",
+        help="Write end-face raw/corrected 16 local wireframe angles, two representative angles, and legacy fields.",
+    )
     parser.add_argument("--calibration", help="Existing calibration JSON to reuse")
     parser.add_argument("--drift-calibration", help="Independent four-camera mechanical drift model JSON")
     parser.add_argument("--save-calibration", help="Save generated calibration JSON")
@@ -2262,8 +2958,14 @@ def main() -> int:
         help="Unified manual calibration CSV: cross_section A/B/C/D rows plus optional endface_angle rows",
     )
     parser.add_argument("--endface-truth-csv", help="Manual end-face truth CSV: direct angles or signed 24-point readings")
-    parser.add_argument("--endface-calibration", help="Existing end-face slope-offset calibration JSON")
-    parser.add_argument("--save-endface-calibration", help="Create an end-face calibration JSON from this input and manual truth CSV")
+    parser.add_argument(
+        "--endface-calibration",
+        help="Existing physical v15 M1 model with complete Y correction, shared 16-angle validation, and camera-state gate",
+    )
+    parser.add_argument(
+        "--save-endface-calibration",
+        help="Forbidden legacy option; use the separate EndfaceCalibrator physical-model tool",
+    )
     parser.add_argument("--endface-window-mm", type=float, default=15.0, help="Longitudinal window used to find each physical end boundary")
     parser.add_argument("--step-mm", type=float, default=10.0, help="Slice spacing in mm along rod length")
     parser.add_argument("--step-rows", type=int, help="Slice spacing in rows; overrides --step-mm")
@@ -2281,9 +2983,9 @@ def main() -> int:
     parser.add_argument("--hobj-offsets", help="Optional four byte offsets: obj1,obj2,obj3,obj4")
     args = parser.parse_args()
 
-    measurement_orientation = args.orientation
-    if measurement_orientation == "auto":
-        measurement_orientation = "turnover" if args.input and is_turnover_capture(args.input) else "normal"
+    measurement_orientation = resolve_measurement_orientation(
+        args.orientation, args.input, endface_only=args.endface_only
+    )
 
     if not args.input and not args.tifs:
         parser.print_help()
@@ -2295,8 +2997,11 @@ def main() -> int:
     if args.standard_json and args.calibration_truth_csv:
         raise ValueError("Use only one of --standard-json or --calibration-truth-csv")
     truth_csv_path = args.endface_truth_csv or args.calibration_truth_csv
-    if args.save_endface_calibration and not truth_csv_path:
-        raise ValueError("--save-endface-calibration requires --endface-truth-csv or --calibration-truth-csv")
+    if args.save_endface_calibration:
+        raise ValueError(
+            "--save-endface-calibration is retired because it created final-answer offsets. "
+            "Use EndfaceCalibrator to build a physical camera-geometry model."
+        )
     if args.endface_window_mm <= 0.0:
         raise ValueError("--endface-window-mm must be positive")
 
@@ -2309,19 +3014,7 @@ def main() -> int:
     if args.calibration:
         with open(args.calibration, "r", encoding="utf-8") as f:
             calibration = json.load(f)
-        if args.input and os.path.isdir(args.input) and args.save_endface_calibration:
-            for path, bar_id, capture_id in calibration_hobjs_from_folder(args.input):
-                calibration_captures.append(
-                    CalibrationCapture(
-                        source=HobjSource(path, args.width, args.height),
-                        capture_id=capture_id,
-                        bar_id=bar_id,
-                        orientation="turnover" if is_turnover_capture(path) else "normal",
-                    )
-                )
-            source = calibration_captures[0].source
-        else:
-            source = detect_input(args)
+        source = detect_input(args)
         valid_ranges = source_valid_ranges(source)
         common_start, common_end = source_common_range(source, valid_ranges)
         print(
@@ -2329,10 +3022,6 @@ def main() -> int:
             f"{args.calibration} "
             f"(version={calibration.get('version')}, model={calibration.get('model', 'unknown')})"
         )
-        if calibration_captures:
-            print("End-face calibration captures:")
-            for capture in calibration_captures:
-                print(f"  {capture.capture_id}: bar_id={capture.bar_id}")
     else:
         standards_by_bar = load_standard_truth_csv(args.calibration_truth_csv) if args.calibration_truth_csv else None
         standard = load_standard(args.standard_json)
@@ -2462,6 +3151,41 @@ def main() -> int:
                 f"fit_rmse={drift_result['fit_rmse_mm']:.6f} mm"
             )
 
+    drift_amplitude = float(drift_result.get("amplitude", 0.0))
+    drift_alignment_shift = float(drift_result.get("alignment_shift_fraction", 0.0))
+    apply_drift = bool(drift_result.get("correction_applied", False)) and drift_model is not None
+    try:
+        relative_camera_diagnostic = same_face_relative_camera_diagnostic(
+            source,
+            transforms,
+            active_calibration,
+            common_start,
+            common_end,
+            args.x_scale,
+            drift_model=drift_model,
+            drift_amplitude=drift_amplitude,
+            drift_alignment_shift_fraction=drift_alignment_shift,
+            apply_drift=apply_drift,
+        )
+    except Exception as exc:  # Diagnostic evidence must never manufacture a correction or hide raw data.
+        relative_camera_diagnostic = {
+            "method": "same_physical_face_dual_camera_line_separation",
+            "status": "diagnostic_failed",
+            "warning": True,
+            "correction_applied": False,
+            "maximum_seam_span_p05_p95_mm": math.nan,
+            "per_face": {},
+            "reason": str(exc),
+        }
+    seam_span = float(
+        relative_camera_diagnostic.get("maximum_seam_span_p05_p95_mm", math.nan)
+    )
+    print(
+        "Relative camera geometry: "
+        f"status={relative_camera_diagnostic['status']}, "
+        f"max_same_face_seam_span={seam_span:.6f} mm, correction_applied=false"
+    )
+
     margin = int(round(args.ignore_end_percent * (common_end - common_start)))
     first_row = common_start + margin
     last_row = common_end - margin
@@ -2471,9 +3195,6 @@ def main() -> int:
     output_rows: List[Dict[str, object]] = []
     raw_geometry_rows: List[Dict[str, object]] = []
     measurement_valid = bool(drift_result.get("valid", True))
-    drift_amplitude = float(drift_result.get("amplitude", 0.0))
-    drift_alignment_shift = float(drift_result.get("alignment_shift_fraction", 0.0))
-    apply_drift = bool(drift_result.get("correction_applied", False)) and drift_model is not None
     for row_index in range(first_row, last_row + 1, step_rows):
         raw_corners = {obj: extract_corner_from_row(source.row(obj, row_index), args.x_scale) for obj in [1, 2, 3, 4]}
         valid = all(c.valid for c in raw_corners.values())
@@ -2504,7 +3225,33 @@ def main() -> int:
             "drift_overlap_end_fraction": round(float(drift_result.get("overlap_end_fraction", 0.0)), 6),
             "drift_warning": bool(drift_result.get("warning", False)),
             "drift_reason": str(drift_result.get("reason", "")),
+            "endpoint_label_basis": "hobj_device_row_min_max",
+            "physical_R_L_inferred": False,
+            "relative_camera_geometry_status": relative_camera_diagnostic.get("status", ""),
+            "relative_camera_geometry_warning": bool(relative_camera_diagnostic.get("warning", False)),
+            "relative_camera_geometry_correction_applied": False,
+            "relative_camera_geometry_input_state": relative_camera_diagnostic.get(
+                "input_geometry_state", "raw_camera_geometry"
+            ),
+            "relative_camera_max_seam_span_mm": (
+                round(seam_span, 6) if math.isfinite(seam_span) else ""
+            ),
+            "relative_camera_geometry_reason": str(relative_camera_diagnostic.get("reason", "")),
         }
+        for face in "ABCD":
+            face_diagnostic = relative_camera_diagnostic.get("per_face", {}).get(face, {})
+            span_value = face_diagnostic.get("seam_span_p05_p95_mm")
+            angle_value = face_diagnostic.get("pair_angle_p90_deg")
+            record[f"relative_camera_{face}_seam_span_mm"] = (
+                round(float(span_value), 6)
+                if span_value is not None and math.isfinite(float(span_value))
+                else ""
+            )
+            record[f"relative_camera_{face}_pair_angle_p90_deg"] = (
+                round(float(angle_value), 6)
+                if angle_value is not None and math.isfinite(float(angle_value))
+                else ""
+            )
         raw_geometry_record: Dict[str, object] = {
             "record": "slice",
             "row": row_index,
@@ -2608,18 +3355,35 @@ def main() -> int:
     if args.endface_calibration:
         with open(args.endface_calibration, "r", encoding="utf-8") as handle:
             loaded_model = json.load(handle)
-        if loaded_model.get("model") not in {"endface_plane_slope_offset", "endface_face_angle_offset", "endface_face_angle_offset_by_orientation"}:
+        if loaded_model.get("model") != "endface_camera_geometry_calibration":
             raise ValueError(f"Unsupported end-face calibration model: {loaded_model.get('model')}")
         endface_model = endface_calibration_for_orientation(loaded_model, measurement_orientation)
+        if not isinstance(endface_model, dict):
+            raise ValueError("End-face calibration model is unavailable")
+        validate_professional_endface_model(endface_model, calibration)
+    endface_applicability = endface_calibration_applicability(
+        endface_model,
+        relative_camera_diagnostic,
+        drift_result,
+    )
+    apply_endface_physical_calibration = bool(
+        endface_model and endface_applicability.get("applicable", False)
+    )
+    endface_applicability["correction_applied"] = apply_endface_physical_calibration
 
     pre_drift_section_points = mean_cross_section_points(raw_geometry_rows)
+    use_independent_side_planes = bool(args.endface_only)
+    pre_drift_side_normals = longitudinal_side_plane_normals(raw_geometry_rows) if use_independent_side_planes else None
     pre_drift_face_angles = {
-        end: face_to_endface_angles(pre_drift_section_points, pre_drift_endfaces[end], raw_rod_axis)
+        end: face_to_endface_angles(
+            pre_drift_section_points, pre_drift_endfaces[end], raw_rod_axis, pre_drift_side_normals
+        )
         for end in ["head", "tail"]
     }
     section_points = mean_cross_section_points(output_rows) if measurement_valid else pre_drift_section_points
+    side_plane_normals = longitudinal_side_plane_normals(output_rows) if use_independent_side_planes else None
     raw_face_angles = {
-        end: face_to_endface_angles(section_points, raw_endfaces[end], rod_axis)
+        end: face_to_endface_angles(section_points, raw_endfaces[end], rod_axis, side_plane_normals)
         for end in ["head", "tail"]
     }
     truth_endfaces: Dict[str, EndFaceFit] = {}
@@ -2634,45 +3398,133 @@ def main() -> int:
         if not truth_face_angles:
             truth_endfaces = read_manual_endface_truth(truth_csv_path, section_points, truth_bar_id)
 
-    if args.save_endface_calibration:
-        if calibration_captures and truth_face_angles:
-            endface_model = build_balanced_endface_angle_calibration_model(
-                calibration_captures,
-                calibration,
-                truth_csv_path,
-                args.x_scale,
-                args.y_scale,
-                args.endface_window_mm,
+    endface_y_offsets = {obj: 0.0 for obj in (1, 2, 3, 4)}
+    if apply_endface_physical_calibration:
+        endface_y_offsets = physical_camera_y_offsets(endface_model)
+        corrected_endfaces = fit_endfaces_from_source(
+            source,
+            valid_ranges,
+            transforms,
+            active_calibration,
+            common_start,
+            rod_axis,
+            args.x_scale,
+            args.y_scale,
+            args.endface_window_mm,
+            common_end=common_end,
+            drift_model=drift_model if apply_drift else None,
+            drift_amplitude=drift_amplitude,
+            drift_alignment_shift_fraction=drift_alignment_shift,
+            camera_y_offsets_mm=endface_y_offsets,
+        )
+        corrected_side_plane_normals = (
+            longitudinal_side_plane_normals(
+                output_rows,
+                camera_y_offsets_mm=endface_y_offsets,
             )
-        elif truth_face_angles:
-            endface_model = build_endface_face_angle_calibration_model(
-                raw_face_angles,
-                truth_face_angles,
-                truth_bar_id,
-            )
-        else:
-            endface_model = build_endface_calibration_model(
-                raw_endfaces,
-                truth_endfaces,
-                rod_axis,
-                truth_bar_id,
-            )
-        os.makedirs(os.path.dirname(os.path.abspath(args.save_endface_calibration)), exist_ok=True)
-        with open(args.save_endface_calibration, "w", encoding="utf-8") as handle:
-            json.dump(endface_model, handle, ensure_ascii=False, indent=2)
-
-    corrected_endfaces = {
-        end: apply_endface_calibration_model(raw_endfaces[end], rod_axis, endface_model)
-        for end in ["head", "tail"]
-    }
+            if use_independent_side_planes
+            else None
+        )
+    else:
+        # No professional physical model means raw, unadjusted geometry.  It is
+        # forbidden to silently substitute a final-angle or final-slope answer.
+        corrected_endfaces = raw_endfaces
+        corrected_side_plane_normals = side_plane_normals
     corrected_face_angles = {
-        end: face_to_endface_angles(section_points, corrected_endfaces[end], rod_axis)
+        end: face_to_endface_angles(
+            section_points,
+            corrected_endfaces[end],
+            rod_axis,
+            corrected_side_plane_normals,
+        )
         for end in ["head", "tail"]
     }
-    corrected_face_angles = apply_endface_face_angle_calibration_model(corrected_face_angles, endface_model)
+    raw_wireframe: Optional[Dict[str, object]] = None
+    product_wireframe: Optional[Dict[str, object]] = None
+    if args.endface_only:
+        raw_wireframe = wireframe_endface_angles_from_source(
+            source,
+            valid_ranges,
+            transforms,
+            active_calibration,
+            common_start,
+            common_end,
+            raw_geometry_rows,
+            args.x_scale,
+            args.y_scale,
+            args.endface_window_mm,
+        )
+        product_wireframe = wireframe_endface_angles_from_source(
+            source,
+            valid_ranges,
+            transforms,
+            active_calibration,
+            common_start,
+            common_end,
+            output_rows if measurement_valid else raw_geometry_rows,
+            args.x_scale,
+            args.y_scale,
+            args.endface_window_mm,
+            drift_model=drift_model if apply_drift else None,
+            drift_amplitude=drift_amplitude,
+            drift_alignment_shift_fraction=drift_alignment_shift,
+            camera_y_offsets_mm=(
+                endface_y_offsets if apply_endface_physical_calibration else None
+            ),
+        )
+    product_face_angles = (
+        institution_labeled_face_angles(corrected_face_angles)
+        if args.endface_only
+        else corrected_face_angles
+    )
+    product_raw_face_angles = (
+        # In end-face-only audit output, raw means before both mechanical
+        # drift correction and professional camera-Y synchronization.
+        institution_labeled_face_angles(pre_drift_face_angles)
+        if args.endface_only
+        else raw_face_angles
+    )
+    if args.endface_only:
+        missing_or_invalid = []
+        for end in ("head", "tail"):
+            for face in ("A", "B", "C", "D"):
+                value = product_face_angles.get(end, {}).get(face)
+                if value is None or not math.isfinite(float(value)) or not 0.0 <= float(value) <= 180.0:
+                    missing_or_invalid.append(f"{end}-{face}")
+        if missing_or_invalid:
+            raise ValueError("Incomplete end-face result: " + ", ".join(missing_or_invalid))
+    raw_endface_quality = classify_raw_endface_quality(
+        pre_drift_endfaces,
+        relative_camera_diagnostic,
+    )
     for row in output_rows:
         if row.get("record") != "slice":
             continue
+        if args.endface_only:
+            row.update(
+                {
+                    "endface_raw_quality_status": raw_endface_quality["status"],
+                    "endface_raw_quality_accepted": raw_endface_quality["accepted"],
+                    "endface_raw_quality_reason": raw_endface_quality["reason"],
+                    "endface_raw_quality_uses_professional_truth": False,
+                    "endface_raw_quality_correction_applied": False,
+                    "endface_raw_quality_plane_rmse_limit_mm": (
+                        END_FACE_MAX_RAW_PLANE_RMSE_MM
+                    ),
+                    "endface_raw_quality_stable_seam_span_limit_mm": (
+                        RELATIVE_CAMERA_STABLE_SEAM_SPAN_MM
+                    ),
+                    "endface_raw_quality_warning_seam_span_limit_mm": (
+                        RELATIVE_CAMERA_WARNING_SEAM_SPAN_MM
+                    ),
+                    "head_endface_raw_plane_rmse_mm": raw_endface_quality[
+                        "head_plane_rmse_mm"
+                    ],
+                    "tail_endface_raw_plane_rmse_mm": raw_endface_quality[
+                        "tail_plane_rmse_mm"
+                    ],
+                }
+            )
         for end in ["head", "tail"]:
             pre_drift_fit = pre_drift_endfaces[end]
             raw_fit = raw_endfaces[end]
@@ -2685,20 +3537,85 @@ def main() -> int:
                 row[f"drift_raw_{end}_endface_verticality_deg"] = round(pre_drift_error, 6)
             for face, angle in pre_drift_face_angles[end].items():
                 row[f"drift_raw_{end}_{face}_endface_angle_deg"] = round(angle, 6)
-            if raw_fit.valid:
-                row[f"{end}_endface_plane_verticality_deg"] = round(raw_fit.verticality_deg, 6)
-            raw_error = mean_face_endface_angle(raw_face_angles[end])
+            audit_raw_fit = pre_drift_fit if args.endface_only else raw_fit
+            if audit_raw_fit.valid:
+                row[f"raw_{end}_endface_plane_tilt_deg"] = round(
+                    audit_raw_fit.verticality_deg,
+                    6,
+                )
+            raw_error = mean_face_endface_angle(product_raw_face_angles[end])
             if math.isfinite(raw_error):
                 row[f"{end}_endface_raw_verticality_deg"] = round(raw_error, 6)
-            for face, angle in raw_face_angles[end].items():
+            for face, angle in product_raw_face_angles[end].items():
                 row[f"{end}_{face}_endface_raw_angle_deg"] = round(angle, 6)
             if corrected_fit.valid and measurement_valid:
-                corrected_error = mean_face_endface_angle(corrected_face_angles[end])
+                row[f"{end}_endface_plane_tilt_deg"] = round(corrected_fit.verticality_deg, 6)
+                corrected_error = mean_face_endface_angle(product_face_angles[end])
                 if math.isfinite(corrected_error):
                     row[f"{end}_endface_verticality_deg"] = round(corrected_error, 6)
             if measurement_valid:
-                for face, angle in corrected_face_angles[end].items():
+                for face, angle in product_face_angles[end].items():
                     row[f"{end}_{face}_endface_angle_deg"] = round(angle, 6)
+            if raw_wireframe is not None and product_wireframe is not None:
+                raw_local_angles = raw_wireframe["angles"][end]
+                product_local_angles = product_wireframe["angles"][end]
+                raw_local_summary = raw_wireframe["summaries"][end]
+                product_local_summary = product_wireframe["summaries"][end]
+                raw_local_diagnostics = raw_wireframe["diagnostics"][end]
+                product_local_diagnostics = product_wireframe["diagnostics"][end]
+                for channel in WIREFRAME_LOCAL_CHANNELS:
+                    row[f"{end}_{channel}_endface_raw_angle_deg"] = round(
+                        float(raw_local_angles[channel]),
+                        6,
+                    )
+                    if measurement_valid:
+                        row[f"{end}_{channel}_endface_angle_deg"] = round(
+                            float(product_local_angles[channel]),
+                            6,
+                        )
+                row[f"{end}_endface_raw_representative_angle_deg"] = round(
+                    float(raw_local_summary["worst_local_angle_deg"]),
+                    6,
+                )
+                row[f"{end}_endface_raw_worst_local_channel"] = str(
+                    raw_local_summary["worst_local_channel"]
+                )
+                row[f"{end}_endface_raw_wireframe_rms_error_deg"] = round(
+                    float(raw_local_summary["rms_error_from_90_deg"]),
+                    6,
+                )
+                row[f"{end}_endface_raw_max_dual_camera_seam_mm"] = round(
+                    float(raw_local_diagnostics["max_dual_camera_seam_mid_mm"]),
+                    6,
+                )
+                if measurement_valid:
+                    row[f"{end}_endface_representative_angle_deg"] = round(
+                        float(product_local_summary["worst_local_angle_deg"]),
+                        6,
+                    )
+                    row[f"{end}_endface_worst_local_channel"] = str(
+                        product_local_summary["worst_local_channel"]
+                    )
+                    row[f"{end}_endface_wireframe_rms_error_deg"] = round(
+                        float(product_local_summary["rms_error_from_90_deg"]),
+                        6,
+                    )
+                    row[f"{end}_endface_wireframe_angle_span_deg"] = round(
+                        float(product_local_summary["angle_span_deg"]),
+                        6,
+                    )
+                    row[f"{end}_endface_max_dual_camera_seam_mm"] = round(
+                        float(product_local_diagnostics["max_dual_camera_seam_mid_mm"]),
+                        6,
+                    )
+                    row[f"{end}_endface_max_corner_closure_gap_mm"] = round(
+                        float(product_local_diagnostics["max_corner_closure_gap_mm"]),
+                        6,
+                    )
+                    row[f"{end}_endface_wireframe_diagonal_twist_mm"] = round(
+                        float(product_local_diagnostics["wireframe_diagonal_twist_mm"]),
+                        6,
+                    )
             if end in truth_face_angles and measurement_valid:
                 truth_error = mean_face_endface_angle(truth_face_angles[end])
                 if math.isfinite(truth_error):
@@ -2720,23 +3637,46 @@ def main() -> int:
                         corrected_fit.verticality_deg - truth_fit.verticality_deg,
                         6,
                     )
+        if args.endface_only or isinstance(endface_model, dict):
+            validation = endface_model.get("validation", {}) if isinstance(endface_model, dict) else {}
+            if not isinstance(validation, dict):
+                validation = {}
+            row["endface_calibration_status"] = (
+                "physical_camera_geometry_corrected"
+                if apply_endface_physical_calibration
+                else (
+                    "state_unmatched_unadjusted"
+                    if isinstance(endface_model, dict)
+                    else "not_configured_unadjusted"
+                )
+            )
+            row["endface_calibration_applicability_status"] = endface_applicability.get(
+                "status", "unknown"
+            )
+            row["endface_calibration_correction_applied"] = apply_endface_physical_calibration
+            row["endface_calibration_applicability_reason"] = endface_applicability.get(
+                "reason", ""
+            )
+            row["endface_calibration_model_version"] = (
+                endface_model.get("version", "") if isinstance(endface_model, dict) else ""
+            )
+            uncertainty = float(validation.get("calibration_uncertainty_rmse_deg", math.nan))
+            if math.isfinite(uncertainty):
+                row["endface_calibration_uncertainty_deg"] = round(uncertainty, 6)
 
     add_summary_rows(output_rows)
-    for end in ["head", "tail"]:
-        output_rows.append(endface_fit_record(raw_endfaces[end], "raw_visual"))
-        if endface_model and endface_model.get("model") == "endface_plane_slope_offset":
-            output_rows.append(endface_fit_record(corrected_endfaces[end], "corrected_visual"))
-        if end in truth_endfaces:
-            output_rows.append(endface_fit_record(truth_endfaces[end], "manual_truth"))
+    if not args.endface_only:
+        for end in ["head", "tail"]:
+            output_rows.append(endface_fit_record(raw_endfaces[end], "raw_visual"))
+            if end in truth_endfaces:
+                output_rows.append(endface_fit_record(truth_endfaces[end], "manual_truth"))
     output_path = resolve_output_path(args)
-    write_csv(output_path, output_rows)
+    write_csv(output_path, output_rows, endface_only=args.endface_only)
     print(f"CSV written: {output_path}")
     print(f"Common valid row range: {common_start}..{common_end}")
     print(f"Measured rows: {first_row}..{last_row}, step_rows={step_rows}")
     if not args.calibration and args.save_calibration:
         print(f"Calibration written: {args.save_calibration}")
-    if args.save_endface_calibration:
-        print(f"End-face calibration written: {args.save_endface_calibration}")
     for end in ["head", "tail"]:
         raw_fit = raw_endfaces[end]
         if raw_fit.valid:
@@ -2746,6 +3686,11 @@ def main() -> int:
             )
         else:
             print(f"{end.capitalize()} end-face raw unavailable: {raw_fit.reason}")
+    if args.endface_only:
+        print(
+            "Endpoint labels: head=HOBJ device-row minimum, tail=HOBJ device-row maximum; "
+            "physical R/L is not inferred"
+        )
     return 0
 
 

@@ -400,7 +400,7 @@
   "thresholds": {
     "normal_amplitude_abs_max": 0.25,
     "normal_rmse_max_mm": 0.15,
-    "abnormal_amplitude_min": 0.3,
+    "abnormal_amplitude_min": 0.8,
     "abnormal_amplitude_max": 2.0,
     "abnormal_correlation_min": 0.95,
     "abnormal_fit_rmse_max_mm": 0.08,

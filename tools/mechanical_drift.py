@@ -178,7 +178,7 @@ def build_model(
     thresholds = {
         "normal_amplitude_abs_max": max(0.25, max(normal_amplitudes) + 0.10),
         "normal_rmse_max_mm": max(0.15, max(normal_rmse) * 6.0),
-        "abnormal_amplitude_min": 0.30,
+        "abnormal_amplitude_min": 0.80,
         "abnormal_amplitude_max": 2.00,
         "abnormal_correlation_min": max(0.90, min(0.95, min(abnormal_correlations) - 0.03)),
         "abnormal_fit_rmse_max_mm": max(0.08, max(abnormal_fit_rmse) * 3.0),
@@ -283,6 +283,7 @@ def classify(
         float(thresholds.get("alignment_phase_step_fraction", 0.001)),
     )
     amplitude = metrics["amplitude"]
+    amplitude_epsilon = 1e-6
     if (
         abs(amplitude) <= float(thresholds["normal_amplitude_abs_max"])
         and metrics["normal_rmse_mm"] <= float(thresholds["normal_rmse_max_mm"])
@@ -294,7 +295,9 @@ def classify(
             max(0.0, 1.0 - min(1.0, metrics["normal_rmse_mm"] / float(thresholds["normal_rmse_max_mm"]))),
         )
     elif (
-        float(thresholds["abnormal_amplitude_min"]) <= amplitude <= float(thresholds["abnormal_amplitude_max"])
+        float(thresholds["abnormal_amplitude_min"]) - amplitude_epsilon
+        <= amplitude
+        <= float(thresholds["abnormal_amplitude_max"]) + amplitude_epsilon
         and metrics["correlation"] >= float(thresholds["abnormal_correlation_min"])
         and metrics["fit_rmse_mm"] <= float(thresholds["abnormal_fit_rmse_max_mm"])
         and metrics["camera_amplitude_spread"] <= float(thresholds["camera_amplitude_spread_max"])
@@ -310,9 +313,9 @@ def classify(
     else:
         status = "unmatched_unadjusted"
         failures: list[str] = []
-        if amplitude < float(thresholds["abnormal_amplitude_min"]):
+        if amplitude < float(thresholds["abnormal_amplitude_min"]) - amplitude_epsilon:
             failures.append("drift_amplitude_below_correction_limit")
-        elif amplitude > float(thresholds["abnormal_amplitude_max"]):
+        elif amplitude > float(thresholds["abnormal_amplitude_max"]) + amplitude_epsilon:
             failures.append("drift_amplitude_above_calibrated_limit")
         if metrics["correlation"] < float(thresholds["abnormal_correlation_min"]):
             failures.append("drift_shape_correlation_too_low")

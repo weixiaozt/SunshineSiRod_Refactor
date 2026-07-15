@@ -3,20 +3,14 @@ import math
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
-
 import numpy as np
 
 from tools.measure_square_rod_edges import (
     EndFaceFit,
     HeightSource,
     INVALID_Z,
-    CalibrationCapture,
-    apply_endface_calibration_model,
-    build_endface_calibration_model,
-    build_endface_face_angle_calibration_model,
-    build_balanced_endface_angle_calibration_model,
     calibration_hobjs_from_folder,
+    classify_raw_endface_quality,
     is_turnover_capture,
     oriented_endface_truth,
     oriented_standard_pairs,
@@ -25,11 +19,13 @@ from tools.measure_square_rod_edges import (
     fit_endfaces_from_source,
     load_standard_truth_csv,
     mean_face_endface_angle,
-    apply_endface_face_angle_calibration_model,
+    longitudinal_side_plane_normals,
     read_manual_endface_angle_truth,
     read_manual_endface_truth,
     robust_plane_y_from_xz,
+    same_face_line_pair_difference,
     source_valid_ranges,
+    write_csv,
 )
 
 
@@ -56,6 +52,145 @@ class SyntheticHeightSource(HeightSource):
 
 
 class EndFacePerpendicularityTests(unittest.TestCase):
+    def test_raw_quality_gate_warns_without_changing_or_hiding_values(self) -> None:
+        endfaces = {
+            "head": EndFaceFit("head", True, rmse_mm=0.12),
+            "tail": EndFaceFit("tail", True, rmse_mm=0.18),
+        }
+        passed = classify_raw_endface_quality(
+            endfaces,
+            {"maximum_seam_span_p05_p95_mm": 0.50},
+        )
+        self.assertEqual(passed["status"], "pass")
+        self.assertTrue(passed["accepted"])
+
+        warning = classify_raw_endface_quality(
+            endfaces,
+            {"maximum_seam_span_p05_p95_mm": 0.90},
+        )
+        self.assertEqual(warning["status"], "warning")
+        self.assertTrue(warning["accepted"])
+        self.assertFalse(warning["uses_professional_truth"])
+        self.assertFalse(warning["correction_applied"])
+
+        endfaces["tail"] = EndFaceFit("tail", True, rmse_mm=0.51)
+        rejected = classify_raw_endface_quality(
+            endfaces,
+            {"maximum_seam_span_p05_p95_mm": 0.50},
+        )
+        self.assertEqual(rejected["status"], "rejected")
+        self.assertFalse(rejected["accepted"])
+
+    def test_same_face_camera_seam_is_diagnostic_geometry_not_a_correction(self) -> None:
+        separation, angle = same_face_line_pair_difference(
+            (np.array([0.0, 1.0]), np.array([1.0, 0.0])),
+            (np.array([10.0, 1.2]), np.array([1.0, 0.0])),
+            "A",
+        )
+        self.assertAlmostEqual(separation, 0.2, places=9)
+        self.assertAlmostEqual(angle, 0.0, places=9)
+
+    def test_independent_longitudinal_planes_preserve_directed_opposite_face_angles(self) -> None:
+        rows = []
+        slopes = {"left": 0.001, "right": 0.003, "top": 0.002, "bottom": 0.004}
+        for y in np.linspace(0.0, 1000.0, 9):
+            left = -50.0 + slopes["left"] * y
+            right = 50.0 + slopes["right"] * y
+            top = 100.0 + slopes["top"] * y
+            bottom = -100.0 + slopes["bottom"] * y
+            rows.append({
+                "record": "slice", "valid": True, "y_mm": y,
+                "P1_x": right, "P1_z": top,
+                "P2_x": left, "P2_z": bottom,
+                "P3_x": left, "P3_z": top,
+                "P4_x": right, "P4_z": bottom,
+            })
+        normals = longitudinal_side_plane_normals(rows)
+        section = {
+            "P1": (50.0, 100.0), "P2": (-50.0, -100.0),
+            "P3": (-50.0, 100.0), "P4": (50.0, -100.0),
+        }
+        fit = EndFaceFit(
+            end="head", valid=True, normal_x=0.0, normal_y=1.0, normal_z=0.0
+        )
+        angles = face_to_endface_angles(section, fit, np.array([0.0, 1.0, 0.0]), normals)
+        self.assertGreater(angles["A"], 90.0)
+        self.assertGreater(angles["B"], 90.0)
+        self.assertLess(angles["C"], 90.0)
+        self.assertLess(angles["D"], 90.0)
+        self.assertNotAlmostEqual(angles["A"], 180.0 - angles["C"], places=5)
+        self.assertNotAlmostEqual(angles["B"], 180.0 - angles["D"], places=5)
+
+    def test_camera_y_offsets_are_applied_to_longitudinal_side_planes(self) -> None:
+        rows = []
+        for y in np.linspace(0.0, 100.0, 9):
+            top = 100.0 + 0.01 * y
+            bottom = -100.0 + 0.01 * y
+            rows.append({
+                "record": "slice", "valid": True, "y_mm": y,
+                "P1_x": 50.0, "P1_z": top,
+                "P2_x": -50.0, "P2_z": bottom,
+                "P3_x": -50.0, "P3_z": top,
+                "P4_x": 50.0, "P4_z": bottom,
+            })
+        raw = longitudinal_side_plane_normals(rows)
+        corrected = longitudinal_side_plane_normals(
+            rows,
+            camera_y_offsets_mm={1: 1.0, 2: 0.0, 3: -1.0, 4: 0.0},
+        )
+        self.assertGreater(abs(float(raw["A"][1])), 1e-4)
+        self.assertFalse(np.allclose(raw["A"], corrected["A"]))
+
+    def test_endface_only_csv_exposes_legacy_and_sixteen_local_product_angles(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "endface.csv"
+            row = {
+                "record": "mean",
+                "valid": True,
+                "measurement_valid": True,
+                "A_mm": 210.0,
+                **{
+                    f"{end}_{face}_endface_angle_deg": 90.0
+                    for end in ("head", "tail")
+                    for face in "ABCD"
+                },
+                "head_endface_verticality_deg": 90.0,
+                "tail_endface_verticality_deg": 90.0,
+                **{
+                    f"{end}_{channel}_endface_angle_deg": 90.0
+                    for end in ("head", "tail")
+                    for channel in (
+                        "A_left", "A_right", "B_top", "B_bottom",
+                        "C_top", "C_bottom", "D_left", "D_right",
+                    )
+                },
+                "head_endface_representative_angle_deg": 89.9,
+                "tail_endface_representative_angle_deg": 90.1,
+            }
+            write_csv(str(path), [row], endface_only=True)
+            with path.open("r", encoding="utf-8-sig", newline="") as handle:
+                reader = csv.DictReader(handle)
+                saved = next(reader)
+                fields = reader.fieldnames
+        self.assertNotIn("A_mm", fields)
+        self.assertNotIn("stick_length_mm", fields)
+        self.assertEqual(
+            [field for field in fields if field.endswith("_endface_angle_deg")],
+            [
+                *[f"{end}_{face}_endface_angle_deg" for end in ("head", "tail") for face in "ABCD"],
+                *[
+                    f"{end}_{channel}_endface_angle_deg"
+                    for end in ("head", "tail")
+                    for channel in (
+                        "A_left", "A_right", "B_top", "B_bottom",
+                        "C_top", "C_bottom", "D_left", "D_right",
+                    )
+                ],
+            ],
+        )
+        self.assertEqual(saved["head_endface_verticality_deg"], "90.0")
+        self.assertEqual(saved["head_endface_representative_angle_deg"], "89.9")
+
     def test_discovers_repeat_hobjs_by_parent_bar_folder(self) -> None:
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -102,39 +237,6 @@ class EndFacePerpendicularityTests(unittest.TestCase):
         self.assertEqual(mapped["head"], {"A": 5.0, "B": 8.0, "C": 7.0, "D": 6.0})
         self.assertEqual(mapped["tail"], {"A": 1.0, "B": 4.0, "C": 3.0, "D": 2.0})
 
-    def test_endface_offsets_weight_each_bar_equally(self) -> None:
-        source = SyntheticHeightSource()
-        captures = [
-            CalibrationCapture(source, "BAR_A/one", "BAR_A"),
-            CalibrationCapture(source, "BAR_A/two", "BAR_A"),
-            CalibrationCapture(source, "BAR_A/three", "BAR_A"),
-            CalibrationCapture(source, "BAR_B/one", "BAR_B"),
-            CalibrationCapture(source, "BAR_B/two", "BAR_B"),
-        ]
-        raw_values = {"BAR_A/one": 90.0, "BAR_A/two": 91.0, "BAR_A/three": 92.0, "BAR_B/one": 80.0, "BAR_B/two": 82.0}
-
-        def fake_measure(capture, *_args):
-            value = raw_values[capture.capture_id]
-            return {end: {face: value for face in ["A", "B", "C", "D"]} for end in ["head", "tail"]}
-
-        with tempfile.TemporaryDirectory() as folder:
-            truth_path = Path(folder) / "truth.csv"
-            with truth_path.open("w", newline="", encoding="utf-8-sig") as handle:
-                writer = csv.DictWriter(handle, fieldnames=["record_type", "bar_id", "end", "face", "position", "angle_deg"])
-                writer.writeheader()
-                for bar_id in ["BAR_A", "BAR_B"]:
-                    for end in ["head", "tail"]:
-                        for face in ["A", "B", "C", "D"]:
-                            for position in [1, 2, 3]:
-                                writer.writerow({"record_type": "endface_angle", "bar_id": bar_id, "end": end, "face": face, "position": position, "angle_deg": 90.0})
-                writer.writerow({"record_type": "endface_angle", "bar_id": "BAR_C", "end": "head", "face": "A", "position": 1, "angle_deg": 90.0})
-            with patch("tools.measure_square_rod_edges.measure_endface_angles_for_capture", side_effect=fake_measure):
-                model = build_balanced_endface_angle_calibration_model(captures, {}, str(truth_path), 1.0, 1.0, 1.0)
-        # BAR_A offset = -1, BAR_B offset = +9; equal bar weighting gives +4.
-        self.assertAlmostEqual(model["angle_offsets_deg"]["head"]["A"], 4.0, places=9)
-        self.assertEqual(model["captured_bar_ids"], ["BAR_A", "BAR_B"])
-        self.assertEqual(model["unused_truth_bar_ids"], ["BAR_C"])
-
     def test_reads_cross_section_rows_from_unified_calibration_csv(self) -> None:
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "calibration.csv"
@@ -172,7 +274,7 @@ class EndFacePerpendicularityTests(unittest.TestCase):
         self.assertEqual(record["head_endface_plane_verticality_deg"], 0.125)
         self.assertNotIn("head_endface_verticality_deg", record)
 
-    def test_reads_and_calibrates_24_direct_angles(self) -> None:
+    def test_reads_24_direct_truth_angles_without_building_output_offsets(self) -> None:
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "angles.csv"
             with path.open("w", newline="", encoding="utf-8-sig") as handle:
@@ -184,10 +286,7 @@ class EndFacePerpendicularityTests(unittest.TestCase):
                             writer.writerow({"bar_id": "BAR001", "end": end, "face": face, "position": position, "angle_deg": 89.9 + face_index * 0.02 + delta})
             truth = read_manual_endface_angle_truth(str(path), "BAR001")
         self.assertAlmostEqual(truth["head"]["A"], 89.9, places=9)
-        raw = {end: {face: 90.0 for face in ["A", "B", "C", "D"]} for end in ["head", "tail"]}
-        model = build_endface_face_angle_calibration_model(raw, truth, "BAR001")
-        corrected = apply_endface_face_angle_calibration_model(raw, model)
-        self.assertEqual(corrected, truth)
+        self.assertAlmostEqual(truth["tail"]["D"], 89.96, places=9)
 
     def test_extracts_head_and_tail_planes_from_height_boundaries(self) -> None:
         source = SyntheticHeightSource()
@@ -251,23 +350,6 @@ class EndFacePerpendicularityTests(unittest.TestCase):
         self.assertAlmostEqual(fits["head"].slope_z, 0.002, places=7)
         self.assertAlmostEqual(fits["tail"].slope_x, -0.001, places=7)
         self.assertAlmostEqual(fits["tail"].slope_z, -0.002, places=7)
-
-    def test_slope_offset_calibration_preserves_raw_and_reaches_truth(self) -> None:
-        axis = np.array([0.0, 1.0, 0.0])
-        raw = {
-            "head": EndFaceFit(end="head", valid=True, slope_x=0.004, slope_z=-0.003, verticality_deg=math.degrees(math.atan(0.005))),
-            "tail": EndFaceFit(end="tail", valid=True, slope_x=-0.002, slope_z=0.003, verticality_deg=math.degrees(math.atan(math.hypot(0.002, 0.003)))),
-        }
-        truth = {
-            "head": EndFaceFit(end="head", valid=True, slope_x=0.001, slope_z=0.002, verticality_deg=math.degrees(math.atan(math.hypot(0.001, 0.002)))),
-            "tail": EndFaceFit(end="tail", valid=True, slope_x=-0.001, slope_z=-0.0015, verticality_deg=math.degrees(math.atan(math.hypot(0.001, 0.0015)))),
-        }
-        model = build_endface_calibration_model(raw, truth, axis, "BAR001")
-        corrected = apply_endface_calibration_model(raw["head"], axis, model)
-        self.assertAlmostEqual(corrected.slope_x, truth["head"].slope_x, places=9)
-        self.assertAlmostEqual(corrected.slope_z, truth["head"].slope_z, places=9)
-        self.assertEqual(raw["head"].slope_x, 0.004)
-
 
 if __name__ == "__main__":
     unittest.main()

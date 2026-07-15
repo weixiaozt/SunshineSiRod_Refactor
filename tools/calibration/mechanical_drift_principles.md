@@ -63,9 +63,63 @@ not_applicable_orientation
   当前模型只标定正向；调头数据不应用该漂移模型。
 ```
 
-V3 不再设置 `0.25～0.65` 的无效死区。正常要求幅度绝对值不超过 0.25，并且整棒相对正常参考曲线的 RMSE 不超过 0.15 mm；即使已知漂移投影接近零，明显偏离正常参考的全新模式也必须告警。已知异常模式从幅度 0.30 起连续修正，当前由同棒正常/异常数据验证的幅度上限为 2.00；相关性至少 0.95，拟合 RMSE 不超过 0.08 mm，四相机幅度极差不超过 0.30。超出幅度范围的现场样本必须先取得同棒正常HOBJ或人工真值，禁止只为了出数而放宽。
+V3 的自动修正幅度范围固定为 `0.80～2.00`。正常要求幅度绝对值不超过 0.25，并且整棒相对正常参考曲线的 RMSE 不超过 0.15 mm；即使已知漂移投影接近零，明显偏离正常参考的全新模式也必须告警。幅度处于 `0.25～0.80`、超过2.00或为明显负值时，继续输出raw数据但不自动修正。自动修正还必须同时满足相关性至少0.95、拟合RMSE不超过0.08 mm、四相机幅度极差不超过0.30。超出范围的现场样本必须先取得同棒正常HOBJ或人工真值，禁止只为了出数而放宽。
 
 `unmatched_unadjusted` 只是“继续出数”的安全回退，不等于确认机械正常。页面和 CSV 必须保留告警，禁止将其静默改名为正常，也禁止对它应用异常修正。
+
+### 3.1 跨棒泛化审计（2026-07-14）
+
+旧V3绝对行参考曲线包含标定棒自身的纵向形状指纹。把专业机构新标准棒的20张HOBJ
+直接送入旧CTB模型时，19张有效图全部得到 `unmatched_unadjusted`：幅值约
+`-2.07～-3.20`、相关系数约 `-0.996～-0.998`；反序异常图 `14_16.hobj` 幅值约
+`+2.48`，同样超出允许范围。这说明V3能够安全拒绝跨棒强制修正，但不能作为任意棒材
+通用漂移模型。
+
+另做了不读取规格值/机构真值的“同一物理面双相机拼接”审计。对每个扫描行比较
+`A: obj1/obj3、B: obj1/obj4、C: obj2/obj4、D: obj2/obj3` 两段主面拟合线；鲁棒
+5%～95%拼接变化量结果为：
+
+```text
+CTB正常图：       各面约0.27～0.42 mm
+CTB已知异常图：   各面约1.03～1.30 mm
+专业标准棒样本：  各面约1.00～1.62 mm
+其他现场棒样本：  各面约0.23～0.34 mm
+```
+
+该指标已作为独立机械状态诊断接入测量链路：四面鲁棒5%～95%变化最大值不超过
+`0.60 mm`记为 `relative_geometry_stable`，达到`0.80 mm`记为
+`relative_motion_or_face_nonplanarity_warning`，中间区间记为不确定；双相机主面方向差
+超过`0.50°`的样本先剔除。CSV/Web同时固定记录
+`relative_camera_geometry_correction_applied=false`。该指标能发现相机间相对错位，且
+不会把A/C或B/D拉到规格值；但专业标准棒与已知异常的量级重叠，单凭它仍无法区分
+“相机相对漂移”、真实横截面非平面或旧相机外参误差，所以只允许告警，禁止直接反算补偿。要做跨棒通用自动
+修正，至少还需同一根专业标准棒在已确认正常与已确认异常机械状态下的配对HOBJ，或
+设备固定基准靶/编码器。共同作用于四相机的刚体横移与棒材真实弯曲在HOBJ内本来就
+不可辨识，禁止靠算法猜测。
+
+### 3.2 端面物理标定适用性门禁（v11）
+
+同面双相机诊断仍然不得直接反算漂移补偿，但它可以作为“是否允许使用标定参数”的
+保守安全门。v11生成端面模型时要求所有可用标定HOBJ均为
+`relative_geometry_stable`，并保存四个面的拼接中位数、跨度和夹角包络。当前HOBJ只有
+在独立漂移状态不是`unmatched_unadjusted`、修正后的局部几何为稳定状态且四面均命中
+标定包络时，才应用四相机Y同步参数；否则保留raw并记录：
+
+```text
+endface_calibration_status=state_unmatched_unadjusted
+endface_calibration_applicability_status=camera_state_unmatched_unadjusted
+endface_calibration_correction_applied=false
+```
+
+该门禁不声称能判断原因，只防止把某次不稳定机械状态拟合出的坐标参数强套到其他棒。
+现有专业棒20图的19张可用图最大拼接变化约`1.22～1.74 mm`，已由v11以退出码3拒绝
+出模；旧v10角度留出成绩不能覆盖这一失败。
+
+已知异常`10_08.hobj`的处理顺序已经实图回归：先由独立V3模型以幅值`0.996865`
+完成局部漂移修正，再对修正后的角点做同面状态诊断；最大拼接变化由原始约
+`1.276917 mm`降为`0.439766 mm`并进入`relative_geometry_stable`。CSV同时记录
+`relative_camera_geometry_input_state=after_known_mechanical_drift_correction`和
+`relative_camera_geometry_correction_applied=false`，防止误以为状态诊断本身做了补偿。
 
 ## 4. 数据追溯
 
@@ -81,6 +135,9 @@ drift_fit_rmse_mm、drift_correlation
 drift_sample_station_count、drift_overlap_start_fraction、drift_overlap_end_fraction
 drift_alignment_shift_fraction、drift_warning、drift_reason
 obj1..obj4_drift_x_mm / drift_z_mm / drift_amplitude
+relative_camera_geometry_input_state
+endface_calibration_applicability_status、endface_calibration_correction_applied
+endface_calibration_applicability_reason
 ```
 
 端面也保留 `drift_raw_*` 输入结果；命中异常后，端面边界点先在局部坐标层应用同一漂移曲线，再进入端面拟合和端面标定。
@@ -89,7 +146,7 @@ obj1..obj4_drift_x_mm / drift_z_mm / drift_amplitude
 
 Web 连续测量对每个 HOBJ 独立分类，允许正常、异常、正常交替出现，无需人工切换模式。页面显示漂移状态、共同幅度、置信度、RMSE、模型版本及四台相机平均漂移。
 
-手工补偿支持 A/B/C/D、D1/D2、棒长及八个端面角。手工补偿只影响页面最终值和后续统计，不覆盖切片 CSV、机械漂移模型或相机标定模型。
+历史完整测量页面仍可透明地手工补偿 A/B/C/D、D1/D2 和棒长。端面专用链路禁止八个端面角的手工补偿，也不得把手工值写入端面统计结果；端面只能输出当前 HOBJ 的 raw 结果和低层物理参数修正结果。任何允许的手工补偿都不得覆盖切片 CSV、机械漂移模型或相机标定模型。
 
 ## 6. 重建命令
 
