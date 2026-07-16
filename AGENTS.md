@@ -1,5 +1,209 @@
 # AGENTS.md
 
+## 同事独立全局交付包最终状态（2026-07-16）
+
+本节只约束“帮同事合并打包”的独立离线包，不属于 SunshineSiRod 原生测量链，
+也不得把本节的临时报告公式移植到原生端面算法中。该包只复用本项目 Web 外壳；
+尺寸和端面测量均使用同事交付包代码与标定。
+
+### 唯一应使用的新包
+
+```text
+release\SunshineSiRod_Global_DeliveryGeometry_20260715_EndfaceInteriorAngle_20260716.zip
+SHA256 = 0D815364FBAE9DBC43A224BF5BF301BA9436B1234D38D63823BF11A2B135A26B
+```
+
+母版 `release\SunshineSiRod_Global_DeliveryGeometry_20260715.zip` 只用于构建基线，
+仍含旧端面角定义，不能作为本次新逻辑的现场运行包。不得直接运行或继续维护散落的
+`release\SunshineSiRod_Global_DeliveryGeometry_20260715\` 旧解压目录；该目录曾残留旧的
+`MeasureCoworkerEndface.exe`，会导致头部数值看似正常、尾部数值全部变成新结果的补角。
+
+新 ZIP 必须完整解压到一个全新的空目录，禁止覆盖旧目录。启动前应关闭
+`MeasurementDashboard.exe`、`MeasureCoworkerEndface.exe`、
+`MeasureDeliveryGeometry.exe`，并确认 `127.0.0.1:8766` 未被旧服务占用。
+
+### 算法边界
+
+1. A/B/C/D、对角线、四角数据和棒长继续由母版中的
+   `MeasureDeliveryGeometry\MeasureDeliveryGeometry.exe` 计算；该 EXE、尺寸标定、
+   Web EXE 和 `start_dashboard.bat` 相对母版保持字节不变。
+2. 端面只由 `MeasureCoworkerEndface\MeasureCoworkerEndface.exe` 计算。新包中的端面
+   EXE SHA256 为
+   `C7343F9557E1C5CAAD01BA092E27EE2A8CBF2761AB39A19FB0E1F978C38981C7`。
+3. 端面 raw 定义为端面和对应侧面两个具有材料内部方向的实体半平面在棒材内部形成的
+   量角器夹角，范围 `0°～180°`。可以小于或大于 90°；不使用法向量正负二义性
+   选择答案，不取绝对值，不折叠到 90° 以下。
+4. 头、尾端面的外部方向由当前 HOBJ 拟合出的头到尾材料轴确定。每张 HOBJ 都运行
+   同一套几何逻辑；不得根据路径、父目录、文件名、棒号中的 `diaotou／调头／一反／反向`
+   做头尾交换、B/D 交换或 `180°-raw`。同一 HOBJ 放入普通目录和上述标记目录的
+   8个 raw 实测最大差值必须为 `0.0°`。
+5. `head/tail` 只表示设备空间扫描起止端，不推断现实世界的物理 R/L。
+6. 新端面定义以外的母版行为不变。不要调用 SunshineSiRod 原生 M0/M1/M2 端面算法、
+   原生相机模型、机械漂移模型或历史端面模型。
+
+### 截面、边、角点与四相机固定映射
+
+以下映射来自同事尺寸几何交付代码和当前正式标定，是本独立包 Web、JSON 和 CSV 的
+唯一解释。禁止凭相机英文名、TIFF 文件名前缀或画面左右自行重排。
+
+交付模型的名义截面坐标为：`X` 从左向右，`Z` 从上向下；四个角点和四条边为：
+
+```text
+P3 / AD / (0,0) -------- A -------- P1 / AB / (W,0)
+        |                                  |
+        D                                  B
+        |                                  |
+P2 / CD / (0,H) -------- C -------- P4 / BC / (W,H)
+```
+
+因此：
+
+```text
+A = 上边，P3(AD) 到 P1(AB)，约 210 mm
+B = 右边，P1(AB) 到 P4(BC)，约 105 mm
+C = 下边，P2(CD) 到 P4(BC)，约 210 mm
+D = 左边，P3(AD) 到 P2(CD)，约 105 mm
+```
+
+Web 的“相机1～4/角1～4/obj1～4”是逻辑角点编号，不是 HOBJ 解包后 TIFF 文件名的
+数字前缀。固定映射如下：
+
+| Web逻辑编号 | Web角点 | 相邻面 | 画面位置 | 交付代码相机名 | HOBJ解包TIFF |
+|---|---|---|---|---|---|
+| 1 | P1 / AB | A、B | 右上 | `Right` | `2-Right.tif` |
+| 2 | P2 / CD | C、D | 左下 | `Down` | `4-Down.tif` |
+| 3 | P3 / AD | A、D | 左上 | `Top` | `3-Top.tif` |
+| 4 | P4 / BC | B、C | 右下 | `Left` | `1-Left.tif` |
+
+特别注意：`obj1/相机1` 实际来自 `Right/2-Right.tif`，绝不能映射成
+`1-Left.tif`。这里的 `Top/Right/Down/Left` 是交付代码中的相机名称；Web 的
+1～4是业务角点编号，两套编号必须通过上表转换。
+
+每个实体侧面由相邻两台角点相机共同提供轮廓，代码映射固定为：
+
+```text
+A = Top/right   + Right/left
+B = Right/right + Left/left
+C = Left/right  + Down/left
+D = Down/right  + Top/left
+```
+
+其中 `left/right` 是单台相机局部轮廓的左右分段，不是全局截面左右方向。端面
+`head/tail_A/B/C/D_endface_angle_deg` 中的 A/B/C/D 也严格对应上述四个实体侧面。
+
+### 四个角度、倒角与投影字段
+
+Web 和统计 CSV 的四组 `objN_*` 固定映射为：
+
+| Web字段前缀 | 物理角点 | 角度对应的两个主面 | 交付原始角字段 | 倒角原始字段 |
+|---|---|---|---|---|
+| `obj1_*` | AB / P1 / 右上 | A 与 B | `侧面垂直度1` | `弧长AB` |
+| `obj2_*` | CD / P2 / 左下 | C 与 D | `侧面垂直度3` | `弧长CD` |
+| `obj3_*` | AD / P3 / 左上 | A 与 D | `侧面垂直度4` | `弧长AD` |
+| `obj4_*` | BC / P4 / 右下 | B 与 C | `侧面垂直度2` | `弧长BD`（历史名称，实际是BC） |
+
+字段定义：
+
+```text
+objN_main_face_angle_deg = 对应角点两个相邻实体主面的夹角
+objN_verticality_error_deg = 上述主面夹角的兼容别名，数值相同
+objN_chamfer_mm = 对应倒角两条拟合交点之间的 chord 长度
+objN_projection_x_mm = 当前交付的 projection_1 = chord / sqrt(2)
+objN_projection_y_mm = 当前交付的 projection_2 = chord / sqrt(2)
+```
+
+页面所称“四个倒角角度”实际显示的是四个角点的**相邻主面夹角**，不是倒角斜面
+自身相对某一主面的角度。当前所谓“弧长”也是倒角 chord 直线长度，不是曲线积分弧长；
+`弧长BD` 是历史字段名，物理位置始终是 BC/P4/右下，禁止据名称把它映射到 B-D。
+
+四个主面夹角和倒角 chord/投影按当前 HOBJ 在正式75个标定行中筛出的全部有效截面
+平均；有效范围不足时可以少于75片，例如 `11_50` 实际使用74片。边长和对角线则分别
+先取有效集合的头部5片、尾部5片平均，再将头尾两个结果平均为 Web 最终值：
+
+```text
+A_mm/B_mm/C_mm/D_mm = (对应头5片均值 + 对应尾5片均值) / 2
+diag1_M1_M2_mm = (头diag1 + 尾diag1) / 2
+diag2_M3_M4_mm = (头diag2 + 尾diag2) / 2
+```
+
+两条对角线不是简单角点中心距离，也不是本项目原生的倒角中点距离。本同事交付包使用
+有限倒角区域点云的平行卡尺最大支撑距离，并在名义方向附近 `±5°` 搜索：
+
+```text
+diag1 = AB(P1/右上) 与 CD(P2/左下) 方向的最大支撑距离
+diag2 = AD(P3/左上) 与 BC(P4/右下) 方向的最大支撑距离
+```
+
+棒长 `stick_length_mm` 使用四相机有效行范围长度的平均值；单相机长度为
+`(有效结束行 - 有效起始行) × 0.05 mm`。
+
+### 端面链使用的四相机轴向位置
+
+扫描轴坐标固定为：
+
+```text
+Y_corrected = row × 0.05 mm - camera_y_bias
+```
+
+新 ZIP 当前端面标定的四相机 `camera_y_bias` 为：
+
+```text
+逻辑1 / Right / AB = +0.689062500000 mm
+逻辑2 / Down  / CD = -1.441562500000 mm
+逻辑3 / Top   / AD = +0.829062500000 mm
+逻辑4 / Left  / BC = -0.076562500000 mm
+```
+
+这些偏移同时参与端面角点 Y 和纵向实体侧面拟合；不得只修端点、不修侧面，也不得因为
+偏移正负或相机英文名重新解释 P1～P4、A～D。更换标定 JSON 后必须重新读取实际值，
+禁止继续硬编码上述数值。
+
+### Web 与统计 CSV 的最终输出口径
+
+端面 EXE 向集成 Web 提供8个 raw 内部角；Web 和用户统计 CSV 仍按同事临时报告要求
+只输出下式得到的 reported：
+
+```text
+reported = 90 + 0.5 × (raw - 90)
+```
+
+Web 与 `results\measurements\user_results\measurement_statistics.csv` 只显示/保存
+`head/tail × A/B/C/D` 8个 reported，不增加 raw/reported 双套列，也不输出头尾四面平均值。
+统计 CSV 固定为38列：前4列为 `measured_at、bar_id、capture_id、input_path`，其余为
+Web 页面可见的全部测量值。
+
+若 CSV 中只有尾部与最新程序窗口值对不上，先验证是否误启动旧解压目录。旧端面程序
+产生的尾部 reported 恰好满足：
+
+```text
+old_tail_reported = 180 - new_tail_reported
+```
+
+这不是 ABCD 列顺序错乱，而是旧程序仍在用无限平面法向角，导致尾部整体取了补角。
+2026-07-16 现场排障时，旧运行 EXE SHA256 为
+`99EF7428CEBC45EA84B30DC645A7545E7013B019CA5021AE5DC591D8EE546709`；发现该哈希必须
+立即停服并换用上面的新 ZIP，禁止在 CSV 或 Web 层硬交换字段来掩盖问题。
+
+### 已验证基准
+
+新程序直接测量并按临时报告公式换算后的结果如下（顺序均为 A/B/C/D）：
+
+```text
+11_46 raw head     = 89.976092, 89.863786, 90.024417, 90.135840
+11_46 reported head= 89.988046, 89.931893, 90.012209, 90.067920
+11_46 raw tail     = 89.955751, 90.197579, 90.043731, 89.802727
+11_46 reported tail= 89.977875, 90.098790, 90.021865, 89.901364
+
+11_53 raw head     = 89.960249, 89.846779, 90.037941, 90.153420
+11_53 reported head= 89.980125, 89.923390, 90.018970, 90.076710
+11_53 raw tail     = 89.985237, 90.153206, 90.016572, 89.846543
+11_53 reported tail= 89.992619, 90.076603, 90.008286, 89.923272
+```
+
+端到端验收曾确认：Web API 与 `measurement_statistics.csv` 的8个端面 reported 完全一致，
+CSV为38列且不存在名称含 `raw` 或 `reported` 的额外列。测试产生的临时 CSV/JSON 必须
+清理，不得放入最终 ZIP。
+
 ## 最高铁律：禁止背答案（2026-07-14）
 
 **任何标定、测量和展示链路都不得把最终 A/B/C/D 端面夹角或头尾平均值用独立精准偏移拉向机构真值。** 禁止保存或应用 `head/tail x A/B/C/D` 八通道最终角度补偿，禁止裁剪到规格窗口，禁止用机构真值、文件夹名或标准棒几何指纹给生产HOBJ选择一套“更接近答案”的结果。

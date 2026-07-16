@@ -20,6 +20,14 @@
 *.bmp
 *.raw
 
+# Local source/reference datasets and generated visualizations
+.codex/
+CMM机构HOBJ/
+测试HOBJ/
+tools/calibration/hobj/
+tools/calibration/truth/*.pdf
+tools/calibration/truth/*_数据可视化.md
+
 # Native/runtime binaries
 *.dll
 *.exe
