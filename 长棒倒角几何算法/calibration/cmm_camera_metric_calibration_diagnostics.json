@@ -1,0 +1,749 @@
+{
+  "method": "fixed_per_camera_2d_metric_transform_from_P_T1_T2_geometry",
+  "runtime_model": "D:\\ProjectCode\\SunshineSiRod_Refactor\\长棒倒角几何算法\\models\\chamfer_camera_metric_geometry_210_105.json",
+  "truth_source": "D:\\ProjectCode\\SunshineSiRod_Refactor\\长棒倒角几何算法\\calibration\\cmm_chamfer_truth_reported.json",
+  "selected_truth_candidate": "cb_cd_swapped_pending_confirmation",
+  "cmm_cb_cd_note": "CB/CD角位可能整组写反，等待机构角点编号原图确认",
+  "excluded_captures": [
+    "14_16.hobj"
+  ],
+  "training_captures": [
+    "11_56.hobj",
+    "11_59.hobj",
+    "13_23.hobj",
+    "13_27.hobj",
+    "13_34.hobj",
+    "13_39.hobj",
+    "13_46.hobj",
+    "13_51.hobj",
+    "13_54.hobj",
+    "14_01.hobj",
+    "14_05.hobj",
+    "14_12.hobj",
+    "14_19.hobj"
+  ],
+  "validation_captures": [
+    "13_20.hobj",
+    "13_30.hobj",
+    "13_42.hobj",
+    "13_57.hobj",
+    "14_08.hobj",
+    "14_24.hobj"
+  ],
+  "station_count_per_capture": 120,
+  "projection_face_values_mm": {
+    "AB": {
+      "A": 1.0025,
+      "B": 1.0087
+    },
+    "CB": {
+      "C": 0.8456,
+      "B": 0.8492
+    },
+    "CD": {
+      "C": 0.7787,
+      "D": 0.7829
+    },
+    "AD": {
+      "A": 0.9974,
+      "D": 1.0015
+    }
+  },
+  "matrices": {
+    "Left": [
+      [
+        0.9693549359760417,
+        -0.00501683459129833
+      ],
+      [
+        0.0,
+        0.9690408289830409
+      ]
+    ],
+    "Right": [
+      [
+        0.958095150430887,
+        0.011851165730768609
+      ],
+      [
+        0.0,
+        0.9570138962357867
+      ]
+    ],
+    "Top": [
+      [
+        0.965367481776057,
+        -0.0062411215988555585
+      ],
+      [
+        0.0,
+        0.9647216975075146
+      ]
+    ],
+    "Down": [
+      [
+        0.9551382349077099,
+        0.0057133268045797304
+      ],
+      [
+        0.0,
+        0.9538751144074598
+      ]
+    ]
+  },
+  "raw_validation_normalized_rms": 5.188096392186884,
+  "corrected_training_normalized_rms": 0.586186381701118,
+  "corrected_validation_normalized_rms": 0.5922211716650702,
+  "candidate_rankings": [
+    {
+      "truth_candidate": "cb_cd_swapped_pending_confirmation",
+      "projection_assignment": "AB:A=1.0025,B=1.0087 | CB:C=0.8456,B=0.8492 | CD:C=0.7787,D=0.7829 | AD:A=0.9974,D=1.0015",
+      "validation_normalized_rms": 0.5922211716650702,
+      "validation_normalized_mean_abs": 0.4656989551658177
+    },
+    {
+      "truth_candidate": "cb_cd_swapped_pending_confirmation",
+      "projection_assignment": "AB:A=1.0025,B=1.0087 | CB:C=0.8492,B=0.8456 | CD:C=0.7829,D=0.7787 | AD:A=0.9974,D=1.0015",
+      "validation_normalized_rms": 0.5924011541763674,
+      "validation_normalized_mean_abs": 0.46581194338206516
+    },
+    {
+      "truth_candidate": "cb_cd_swapped_pending_confirmation",
+      "projection_assignment": "AB:A=1.0087,B=1.0025 | CB:C=0.8456,B=0.8492 | CD:C=0.7787,D=0.7829 | AD:A=1.0015,D=0.9974",
+      "validation_normalized_rms": 0.5948426251831277,
+      "validation_normalized_mean_abs": 0.47183834569157695
+    },
+    {
+      "truth_candidate": "cb_cd_swapped_pending_confirmation",
+      "projection_assignment": "AB:A=1.0087,B=1.0025 | CB:C=0.8492,B=0.8456 | CD:C=0.7829,D=0.7787 | AD:A=1.0015,D=0.9974",
+      "validation_normalized_rms": 0.5950218147563152,
+      "validation_normalized_mean_abs": 0.47195133390782446
+    },
+    {
+      "truth_candidate": "cb_cd_swapped_pending_confirmation",
+      "projection_assignment": "AB:A=1.0025,B=1.0087 | CB:C=0.8492,B=0.8456 | CD:C=0.7787,D=0.7829 | AD:A=0.9974,D=1.0015",
+      "validation_normalized_rms": 0.5994503910869599,
+      "validation_normalized_mean_abs": 0.4657479769126687
+    },
+    {
+      "truth_candidate": "cb_cd_swapped_pending_confirmation",
+      "projection_assignment": "AB:A=1.0025,B=1.0087 | CB:C=0.8456,B=0.8492 | CD:C=0.7787,D=0.7829 | AD:A=1.0015,D=0.9974",
+      "validation_normalized_rms": 0.6007917367316602,
+      "validation_normalized_mean_abs": 0.4813129068449908
+    },
+    {
+      "truth_candidate": "cb_cd_swapped_pending_confirmation",
+      "projection_assignment": "AB:A=1.0025,B=1.0087 | CB:C=0.8492,B=0.8456 | CD:C=0.7829,D=0.7787 | AD:A=1.0015,D=0.9974",
+      "validation_normalized_rms": 0.6009691524747243,
+      "validation_normalized_mean_abs": 0.4814258950612382
+    },
+    {
+      "truth_candidate": "cb_cd_swapped_pending_confirmation",
+      "projection_assignment": "AB:A=1.0025,B=1.0087 | CB:C=0.8456,B=0.8492 | CD:C=0.7829,D=0.7787 | AD:A=0.9974,D=1.0015",
+      "validation_normalized_rms": 0.6010804972717162,
+      "validation_normalized_mean_abs": 0.4657613873225331
+    },
+    {
+      "truth_candidate": "cb_cd_swapped_pending_confirmation",
+      "projection_assignment": "AB:A=1.0087,B=1.0025 | CB:C=0.8492,B=0.8456 | CD:C=0.7787,D=0.7829 | AD:A=1.0015,D=0.9974",
+      "validation_normalized_rms": 0.602040367368099,
+      "validation_normalized_mean_abs": 0.471887367438428
+    },
+    {
+      "truth_candidate": "cb_cd_swapped_pending_confirmation",
+      "projection_assignment": "AB:A=1.0087,B=1.0025 | CB:C=0.8456,B=0.8492 | CD:C=0.7829,D=0.7787 | AD:A=1.0015,D=0.9974",
+      "validation_normalized_rms": 0.6036634797358709,
+      "validation_normalized_mean_abs": 0.4719007778482924
+    },
+    {
+      "truth_candidate": "cb_cd_swapped_pending_confirmation",
+      "projection_assignment": "AB:A=1.0025,B=1.0087 | CB:C=0.8492,B=0.8456 | CD:C=0.7787,D=0.7829 | AD:A=1.0015,D=0.9974",
+      "validation_normalized_rms": 0.6079190457051047,
+      "validation_normalized_mean_abs": 0.4813619285918416
+    },
+    {
+      "truth_candidate": "cb_cd_swapped_pending_confirmation",
+      "projection_assignment": "AB:A=1.0025,B=1.0087 | CB:C=0.8456,B=0.8492 | CD:C=0.7829,D=0.7787 | AD:A=1.0015,D=0.9974",
+      "validation_normalized_rms": 0.6095265039004537,
+      "validation_normalized_mean_abs": 0.4813753390017061
+    },
+    {
+      "truth_candidate": "cb_cd_swapped_pending_confirmation",
+      "projection_assignment": "AB:A=1.0087,B=1.0025 | CB:C=0.8456,B=0.8492 | CD:C=0.7787,D=0.7829 | AD:A=0.9974,D=1.0015",
+      "validation_normalized_rms": 0.6128413154337745,
+      "validation_normalized_mean_abs": 0.5089406247663355
+    },
+    {
+      "truth_candidate": "cb_cd_swapped_pending_confirmation",
+      "projection_assignment": "AB:A=1.0087,B=1.0025 | CB:C=0.8492,B=0.8456 | CD:C=0.7829,D=0.7787 | AD:A=0.9974,D=1.0015",
+      "validation_normalized_rms": 0.6130152438591906,
+      "validation_normalized_mean_abs": 0.509053612982583
+    },
+    {
+      "truth_candidate": "cb_cd_swapped_pending_confirmation",
+      "projection_assignment": "AB:A=1.0087,B=1.0025 | CB:C=0.8492,B=0.8456 | CD:C=0.7787,D=0.7829 | AD:A=0.9974,D=1.0015",
+      "validation_normalized_rms": 0.6198300840622047,
+      "validation_normalized_mean_abs": 0.5089896465131866
+    },
+    {
+      "truth_candidate": "cb_cd_swapped_pending_confirmation",
+      "projection_assignment": "AB:A=1.0087,B=1.0025 | CB:C=0.8456,B=0.8492 | CD:C=0.7829,D=0.7787 | AD:A=0.9974,D=1.0015",
+      "validation_normalized_rms": 0.6214067314848338,
+      "validation_normalized_mean_abs": 0.5090030569230509
+    },
+    {
+      "truth_candidate": "as_written",
+      "projection_assignment": "AB:A=1.0025,B=1.0087 | CB:C=0.7787,B=0.7829 | CD:C=0.8456,D=0.8492 | AD:A=0.9974,D=1.0015",
+      "validation_normalized_rms": 4.168879489033666,
+      "validation_normalized_mean_abs": 2.6313107759988945
+    },
+    {
+      "truth_candidate": "as_written",
+      "projection_assignment": "AB:A=1.0025,B=1.0087 | CB:C=0.7829,B=0.7787 | CD:C=0.8492,D=0.8456 | AD:A=0.9974,D=1.0015",
+      "validation_normalized_rms": 4.168929586271803,
+      "validation_normalized_mean_abs": 2.631481686489427
+    },
+    {
+      "truth_candidate": "as_written",
+      "projection_assignment": "AB:A=1.0087,B=1.0025 | CB:C=0.7787,B=0.7829 | CD:C=0.8456,D=0.8492 | AD:A=1.0015,D=0.9974",
+      "validation_normalized_rms": 4.169252694027073,
+      "validation_normalized_mean_abs": 2.637450166524653
+    },
+    {
+      "truth_candidate": "as_written",
+      "projection_assignment": "AB:A=1.0087,B=1.0025 | CB:C=0.7829,B=0.7787 | CD:C=0.8492,D=0.8456 | AD:A=1.0015,D=0.9974",
+      "validation_normalized_rms": 4.169302786780877,
+      "validation_normalized_mean_abs": 2.637621077015186
+    },
+    {
+      "truth_candidate": "as_written",
+      "projection_assignment": "AB:A=1.0025,B=1.0087 | CB:C=0.7829,B=0.7787 | CD:C=0.8456,D=0.8492 | AD:A=0.9974,D=1.0015",
+      "validation_normalized_rms": 4.169929348916271,
+      "validation_normalized_mean_abs": 2.6314028368456697
+    },
+    {
+      "truth_candidate": "as_written",
+      "projection_assignment": "AB:A=1.0025,B=1.0087 | CB:C=0.7787,B=0.7829 | CD:C=0.8456,D=0.8492 | AD:A=1.0015,D=0.9974",
+      "validation_normalized_rms": 4.170105632815828,
+      "validation_normalized_mean_abs": 2.6469247276780674
+    },
+    {
+      "truth_candidate": "as_written",
+      "projection_assignment": "AB:A=1.0025,B=1.0087 | CB:C=0.7787,B=0.7829 | CD:C=0.8492,D=0.8456 | AD:A=0.9974,D=1.0015",
+      "validation_normalized_rms": 4.170155011931039,
+      "validation_normalized_mean_abs": 2.631389079760418
+    },
+    {
+      "truth_candidate": "as_written",
+      "projection_assignment": "AB:A=1.0025,B=1.0087 | CB:C=0.7829,B=0.7787 | CD:C=0.8492,D=0.8456 | AD:A=1.0015,D=0.9974",
+      "validation_normalized_rms": 4.170155715323959,
+      "validation_normalized_mean_abs": 2.6470956381686
+    },
+    {
+      "truth_candidate": "as_written",
+      "projection_assignment": "AB:A=1.0087,B=1.0025 | CB:C=0.7829,B=0.7787 | CD:C=0.8456,D=0.8492 | AD:A=1.0015,D=0.9974",
+      "validation_normalized_rms": 4.170302459956553,
+      "validation_normalized_mean_abs": 2.6375422273714286
+    },
+    {
+      "truth_candidate": "as_written",
+      "projection_assignment": "AB:A=1.0087,B=1.0025 | CB:C=0.7787,B=0.7829 | CD:C=0.8492,D=0.8456 | AD:A=1.0015,D=0.9974",
+      "validation_normalized_rms": 4.170528102782664,
+      "validation_normalized_mean_abs": 2.637528470286177
+    },
+    {
+      "truth_candidate": "as_written",
+      "projection_assignment": "AB:A=1.0025,B=1.0087 | CB:C=0.7829,B=0.7787 | CD:C=0.8456,D=0.8492 | AD:A=1.0015,D=0.9974",
+      "validation_normalized_rms": 4.171155184083897,
+      "validation_normalized_mean_abs": 2.647016788524843
+    },
+    {
+      "truth_candidate": "as_written",
+      "projection_assignment": "AB:A=1.0025,B=1.0087 | CB:C=0.7787,B=0.7829 | CD:C=0.8492,D=0.8456 | AD:A=1.0015,D=0.9974",
+      "validation_normalized_rms": 4.171380780783536,
+      "validation_normalized_mean_abs": 2.647003031439591
+    },
+    {
+      "truth_candidate": "as_written",
+      "projection_assignment": "AB:A=1.0087,B=1.0025 | CB:C=0.7787,B=0.7829 | CD:C=0.8456,D=0.8492 | AD:A=0.9974,D=1.0015",
+      "validation_normalized_rms": 4.171858669204872,
+      "validation_normalized_mean_abs": 2.674552445599412
+    },
+    {
+      "truth_candidate": "as_written",
+      "projection_assignment": "AB:A=1.0087,B=1.0025 | CB:C=0.7829,B=0.7787 | CD:C=0.8492,D=0.8456 | AD:A=0.9974,D=1.0015",
+      "validation_normalized_rms": 4.17190873066833,
+      "validation_normalized_mean_abs": 2.674723356089945
+    },
+    {
+      "truth_candidate": "as_written",
+      "projection_assignment": "AB:A=1.0087,B=1.0025 | CB:C=0.7829,B=0.7787 | CD:C=0.8456,D=0.8492 | AD:A=0.9974,D=1.0015",
+      "validation_normalized_rms": 4.172907779557023,
+      "validation_normalized_mean_abs": 2.6746445064461875
+    },
+    {
+      "truth_candidate": "as_written",
+      "projection_assignment": "AB:A=1.0087,B=1.0025 | CB:C=0.7787,B=0.7829 | CD:C=0.8492,D=0.8456 | AD:A=0.9974,D=1.0015",
+      "validation_normalized_rms": 4.1731332815125635,
+      "validation_normalized_mean_abs": 2.674630749360936
+    }
+  ],
+  "validation_records": [
+    {
+      "capture": "13_20.hobj",
+      "group": "head_to_tail",
+      "camera": "Top",
+      "device_corner": "AD",
+      "physical_corner": "AD",
+      "projection_A_mm": 0.9993502062715809,
+      "projection_A_mm_target": 0.9974,
+      "projection_A_mm_error": 0.0019502062715809343,
+      "projection_D_mm": 1.0033609992628685,
+      "projection_D_mm_target": 1.0015,
+      "projection_D_mm_error": 0.0018609992628684235,
+      "chord_mm": 1.4161658712920069,
+      "chord_mm_target": 1.4135,
+      "chord_mm_error": 0.002665871292006905,
+      "corner_angle_deg": 89.99456137431417,
+      "corner_angle_deg_target": 90.0,
+      "corner_angle_deg_error": -0.005438625685826537
+    },
+    {
+      "capture": "13_20.hobj",
+      "group": "head_to_tail",
+      "camera": "Right",
+      "device_corner": "AB",
+      "physical_corner": "AB",
+      "projection_A_mm": 1.0017692727062986,
+      "projection_A_mm_target": 1.0025,
+      "projection_A_mm_error": -0.0007307272937013831,
+      "projection_B_mm": 1.0079998523596323,
+      "projection_B_mm_target": 1.0087,
+      "projection_B_mm_error": -0.0007001476403676321,
+      "chord_mm": 1.4212032657860452,
+      "chord_mm_target": 1.422,
+      "chord_mm_error": -0.000796734213954764,
+      "corner_angle_deg": 90.00503171405667,
+      "corner_angle_deg_target": 90.005833,
+      "corner_angle_deg_error": -0.0008012859433250696
+    },
+    {
+      "capture": "13_20.hobj",
+      "group": "head_to_tail",
+      "camera": "Left",
+      "device_corner": "CB",
+      "physical_corner": "CB",
+      "projection_C_mm": 0.8385680896761186,
+      "projection_C_mm_target": 0.8456,
+      "projection_C_mm_error": -0.007031910323881396,
+      "projection_B_mm": 0.8425426877193632,
+      "projection_B_mm_target": 0.8492,
+      "projection_B_mm_error": -0.006657312280636707,
+      "chord_mm": 1.1888829070416884,
+      "chord_mm_target": 1.1984,
+      "chord_mm_error": -0.00951709295831149,
+      "corner_angle_deg": 90.00008950996737,
+      "corner_angle_deg_target": 89.996944,
+      "corner_angle_deg_error": 0.0031455099673678433
+    },
+    {
+      "capture": "13_20.hobj",
+      "group": "head_to_tail",
+      "camera": "Down",
+      "device_corner": "CD",
+      "physical_corner": "CD",
+      "projection_C_mm": 0.7866506124427503,
+      "projection_C_mm_target": 0.7787,
+      "projection_C_mm_error": 0.007950612442750304,
+      "projection_D_mm": 0.7907676522773358,
+      "projection_D_mm_target": 0.7829,
+      "projection_D_mm_error": 0.007867652277335768,
+      "chord_mm": 1.1153515565918848,
+      "chord_mm_target": 1.1042,
+      "chord_mm_error": 0.011151556591884715,
+      "corner_angle_deg": 89.99498984729381,
+      "corner_angle_deg_target": 89.997222,
+      "corner_angle_deg_error": -0.00223215270618482
+    },
+    {
+      "capture": "13_30.hobj",
+      "group": "head_to_tail",
+      "camera": "Top",
+      "device_corner": "AD",
+      "physical_corner": "AD",
+      "projection_A_mm": 0.9993444835646264,
+      "projection_A_mm_target": 0.9974,
+      "projection_A_mm_error": 0.001944483564626398,
+      "projection_D_mm": 1.0035832797773983,
+      "projection_D_mm_target": 1.0015,
+      "projection_D_mm_error": 0.002083279777398195,
+      "chord_mm": 1.4162736564525373,
+      "chord_mm_target": 1.4135,
+      "chord_mm_error": 0.002773656452537354,
+      "corner_angle_deg": 89.99472922167246,
+      "corner_angle_deg_target": 90.0,
+      "corner_angle_deg_error": -0.005270778327542303
+    },
+    {
+      "capture": "13_30.hobj",
+      "group": "head_to_tail",
+      "camera": "Right",
+      "device_corner": "AB",
+      "physical_corner": "AB",
+      "projection_A_mm": 1.0017545727691008,
+      "projection_A_mm_target": 1.0025,
+      "projection_A_mm_error": -0.0007454272308990983,
+      "projection_B_mm": 1.0083716298688712,
+      "projection_B_mm_target": 1.0087,
+      "projection_B_mm_error": -0.00032837013112874125,
+      "chord_mm": 1.421426236284101,
+      "chord_mm_target": 1.422,
+      "chord_mm_error": -0.0005737637158989006,
+      "corner_angle_deg": 90.0050949340274,
+      "corner_angle_deg_target": 90.005833,
+      "corner_angle_deg_error": -0.0007380659725981786
+    },
+    {
+      "capture": "13_30.hobj",
+      "group": "head_to_tail",
+      "camera": "Left",
+      "device_corner": "CB",
+      "physical_corner": "CB",
+      "projection_C_mm": 0.8386833155747798,
+      "projection_C_mm_target": 0.8456,
+      "projection_C_mm_error": -0.006916684425220199,
+      "projection_B_mm": 0.8422266939485722,
+      "projection_B_mm_target": 0.8492,
+      "projection_B_mm_error": -0.006973306051427763,
+      "chord_mm": 1.1886253032026535,
+      "chord_mm_target": 1.1984,
+      "chord_mm_error": -0.009774696797346438,
+      "corner_angle_deg": 90.0001416676663,
+      "corner_angle_deg_target": 89.996944,
+      "corner_angle_deg_error": 0.003197667666299253
+    },
+    {
+      "capture": "13_30.hobj",
+      "group": "head_to_tail",
+      "camera": "Down",
+      "device_corner": "CD",
+      "physical_corner": "CD",
+      "projection_C_mm": 0.7867708703315612,
+      "projection_C_mm_target": 0.7787,
+      "projection_C_mm_error": 0.008070870331561286,
+      "projection_D_mm": 0.790434159598476,
+      "projection_D_mm_target": 0.7829,
+      "projection_D_mm_error": 0.00753415959847592,
+      "chord_mm": 1.115209185047975,
+      "chord_mm_target": 1.1042,
+      "chord_mm_error": 0.01100918504797499,
+      "corner_angle_deg": 89.99546592559524,
+      "corner_angle_deg_target": 89.997222,
+      "corner_angle_deg_error": -0.0017560744047528942
+    },
+    {
+      "capture": "13_42.hobj",
+      "group": "head_to_tail",
+      "camera": "Top",
+      "device_corner": "AD",
+      "physical_corner": "AD",
+      "projection_A_mm": 0.9993848272017395,
+      "projection_A_mm_target": 0.9974,
+      "projection_A_mm_error": 0.0019848272017395363,
+      "projection_D_mm": 1.0035710146126167,
+      "projection_D_mm_target": 1.0015,
+      "projection_D_mm_error": 0.0020710146126166062,
+      "chord_mm": 1.416337752346455,
+      "chord_mm_target": 1.4135,
+      "chord_mm_error": 0.0028377523464551135,
+      "corner_angle_deg": 89.99515563589507,
+      "corner_angle_deg_target": 90.0,
+      "corner_angle_deg_error": -0.004844364104926058
+    },
+    {
+      "capture": "13_42.hobj",
+      "group": "head_to_tail",
+      "camera": "Right",
+      "device_corner": "AB",
+      "physical_corner": "AB",
+      "projection_A_mm": 1.001452813148093,
+      "projection_A_mm_target": 1.0025,
+      "projection_A_mm_error": -0.0010471868519068561,
+      "projection_B_mm": 1.0082381629851123,
+      "projection_B_mm_target": 1.0087,
+      "projection_B_mm_error": -0.00046183701488766715,
+      "chord_mm": 1.4211444320062536,
+      "chord_mm_target": 1.422,
+      "chord_mm_error": -0.000855567993746309,
+      "corner_angle_deg": 90.0049485160709,
+      "corner_angle_deg_target": 90.005833,
+      "corner_angle_deg_error": -0.0008844839290986783
+    },
+    {
+      "capture": "13_42.hobj",
+      "group": "head_to_tail",
+      "camera": "Left",
+      "device_corner": "CB",
+      "physical_corner": "CB",
+      "projection_C_mm": 0.8386118840559953,
+      "projection_C_mm_target": 0.8456,
+      "projection_C_mm_error": -0.006988115944004725,
+      "projection_B_mm": 0.8425889554362685,
+      "projection_B_mm_target": 0.8492,
+      "projection_B_mm_error": -0.006611044563731405,
+      "chord_mm": 1.1889208426820108,
+      "chord_mm_target": 1.1984,
+      "chord_mm_error": -0.009479157317989095,
+      "corner_angle_deg": 90.00025407992636,
+      "corner_angle_deg_target": 89.996944,
+      "corner_angle_deg_error": 0.003310079926365006
+    },
+    {
+      "capture": "13_42.hobj",
+      "group": "head_to_tail",
+      "camera": "Down",
+      "device_corner": "CD",
+      "physical_corner": "CD",
+      "projection_C_mm": 0.7866213698328206,
+      "projection_C_mm_target": 0.7787,
+      "projection_C_mm_error": 0.007921369832820657,
+      "projection_D_mm": 0.7905124635202337,
+      "projection_D_mm_target": 0.7829,
+      "projection_D_mm_error": 0.007612463520233703,
+      "chord_mm": 1.1151508109015567,
+      "chord_mm_target": 1.1042,
+      "chord_mm_error": 0.010950810901556585,
+      "corner_angle_deg": 89.99588191548041,
+      "corner_angle_deg_target": 89.997222,
+      "corner_angle_deg_error": -0.001340084519583229
+    },
+    {
+      "capture": "13_57.hobj",
+      "group": "tail_to_head",
+      "camera": "Top",
+      "device_corner": "AD",
+      "physical_corner": "AB",
+      "projection_A_mm": 1.0003381502901023,
+      "projection_A_mm_target": 1.0025,
+      "projection_A_mm_error": -0.002161849709897634,
+      "projection_B_mm": 1.0063868500782691,
+      "projection_B_mm_target": 1.0087,
+      "projection_B_mm_error": -0.002313149921730817,
+      "chord_mm": 1.4190479842879613,
+      "chord_mm_target": 1.422,
+      "chord_mm_error": -0.002952015712038625,
+      "corner_angle_deg": 90.01166024961442,
+      "corner_angle_deg_target": 90.005833,
+      "corner_angle_deg_error": 0.005827249614426933
+    },
+    {
+      "capture": "13_57.hobj",
+      "group": "tail_to_head",
+      "camera": "Right",
+      "device_corner": "AB",
+      "physical_corner": "AD",
+      "projection_A_mm": 0.9980324909826308,
+      "projection_A_mm_target": 0.9974,
+      "projection_A_mm_error": 0.0006324909826308511,
+      "projection_D_mm": 1.0022917589037803,
+      "projection_D_mm_target": 1.0015,
+      "projection_D_mm_error": 0.0007917589037802486,
+      "chord_mm": 1.4145186442962938,
+      "chord_mm_target": 1.4135,
+      "chord_mm_error": 0.0010186442962938358,
+      "corner_angle_deg": 90.00113929439244,
+      "corner_angle_deg_target": 90.0,
+      "corner_angle_deg_error": 0.0011392943924448673
+    },
+    {
+      "capture": "13_57.hobj",
+      "group": "tail_to_head",
+      "camera": "Left",
+      "device_corner": "CB",
+      "physical_corner": "CD",
+      "projection_C_mm": 0.7871312668299866,
+      "projection_C_mm_target": 0.7787,
+      "projection_C_mm_error": 0.008431266829986628,
+      "projection_D_mm": 0.7914467902780022,
+      "projection_D_mm_target": 0.7829,
+      "projection_D_mm_error": 0.008546790278002203,
+      "chord_mm": 1.116170658741855,
+      "chord_mm_target": 1.1042,
+      "chord_mm_error": 0.011970658741854878,
+      "corner_angle_deg": 89.99477361111713,
+      "corner_angle_deg_target": 89.997222,
+      "corner_angle_deg_error": -0.0024483888828683575
+    },
+    {
+      "capture": "13_57.hobj",
+      "group": "tail_to_head",
+      "camera": "Down",
+      "device_corner": "CD",
+      "physical_corner": "CB",
+      "projection_C_mm": 0.8369151482695361,
+      "projection_C_mm_target": 0.8456,
+      "projection_C_mm_error": -0.00868485173046396,
+      "projection_B_mm": 0.8410698409680091,
+      "projection_B_mm_target": 0.8492,
+      "projection_B_mm_error": -0.00813015903199088,
+      "chord_mm": 1.1865059221424434,
+      "chord_mm_target": 1.1984,
+      "chord_mm_error": -0.011894077857556473,
+      "corner_angle_deg": 89.99936562943576,
+      "corner_angle_deg_target": 89.996944,
+      "corner_angle_deg_error": 0.002421629435758632
+    },
+    {
+      "capture": "14_08.hobj",
+      "group": "tail_to_head",
+      "camera": "Top",
+      "device_corner": "AD",
+      "physical_corner": "AB",
+      "projection_A_mm": 1.0002163061391232,
+      "projection_A_mm_target": 1.0025,
+      "projection_A_mm_error": -0.00228369386087679,
+      "projection_B_mm": 1.0063537323706238,
+      "projection_B_mm_target": 1.0087,
+      "projection_B_mm_error": -0.0023462676293761753,
+      "chord_mm": 1.418875829038808,
+      "chord_mm_target": 1.422,
+      "chord_mm_error": -0.0031241709611919966,
+      "corner_angle_deg": 90.01093429292753,
+      "corner_angle_deg_target": 90.005833,
+      "corner_angle_deg_error": 0.005101292927534473
+    },
+    {
+      "capture": "14_08.hobj",
+      "group": "tail_to_head",
+      "camera": "Right",
+      "device_corner": "AB",
+      "physical_corner": "AD",
+      "projection_A_mm": 0.998130736376441,
+      "projection_A_mm_target": 0.9974,
+      "projection_A_mm_error": 0.0007307363764410546,
+      "projection_D_mm": 1.002100806805889,
+      "projection_D_mm_target": 1.0015,
+      "projection_D_mm_error": 0.0006008068058889204,
+      "chord_mm": 1.414466500094128,
+      "chord_mm_target": 1.4135,
+      "chord_mm_error": 0.000966500094128131,
+      "corner_angle_deg": 90.00125125582029,
+      "corner_angle_deg_target": 90.0,
+      "corner_angle_deg_error": 0.0012512558202928403
+    },
+    {
+      "capture": "14_08.hobj",
+      "group": "tail_to_head",
+      "camera": "Left",
+      "device_corner": "CB",
+      "physical_corner": "CD",
+      "projection_C_mm": 0.7871037970674012,
+      "projection_C_mm_target": 0.7787,
+      "projection_C_mm_error": 0.008403797067401242,
+      "projection_D_mm": 0.7913906726822884,
+      "projection_D_mm_target": 0.7829,
+      "projection_D_mm_error": 0.008490672682288314,
+      "chord_mm": 1.116068355246594,
+      "chord_mm_target": 1.1042,
+      "chord_mm_error": 0.011868355246593909,
+      "corner_angle_deg": 89.99460543929312,
+      "corner_angle_deg_target": 89.997222,
+      "corner_angle_deg_error": -0.002616560706869109
+    },
+    {
+      "capture": "14_08.hobj",
+      "group": "tail_to_head",
+      "camera": "Down",
+      "device_corner": "CD",
+      "physical_corner": "CB",
+      "projection_C_mm": 0.8370396994171948,
+      "projection_C_mm_target": 0.8456,
+      "projection_C_mm_error": -0.008560300582805214,
+      "projection_B_mm": 0.8410673970005531,
+      "projection_B_mm_target": 0.8492,
+      "projection_B_mm_error": -0.008132602999446847,
+      "chord_mm": 1.1866057993878847,
+      "chord_mm_target": 1.1984,
+      "chord_mm_error": -0.011794200612115224,
+      "corner_angle_deg": 89.99917160072914,
+      "corner_angle_deg_target": 89.996944,
+      "corner_angle_deg_error": 0.0022276007291424094
+    },
+    {
+      "capture": "14_24.hobj",
+      "group": "tail_to_head",
+      "camera": "Top",
+      "device_corner": "AD",
+      "physical_corner": "AB",
+      "projection_A_mm": 1.000248689199587,
+      "projection_A_mm_target": 1.0025,
+      "projection_A_mm_error": -0.0022513108004129645,
+      "projection_B_mm": 1.0062831782838264,
+      "projection_B_mm_target": 1.0087,
+      "projection_B_mm_error": -0.002416821716173523,
+      "chord_mm": 1.4189274357992119,
+      "chord_mm_target": 1.422,
+      "chord_mm_error": -0.0030725642007880527,
+      "corner_angle_deg": 90.01253347402185,
+      "corner_angle_deg_target": 90.005833,
+      "corner_angle_deg_error": 0.00670047402185503
+    },
+    {
+      "capture": "14_24.hobj",
+      "group": "tail_to_head",
+      "camera": "Right",
+      "device_corner": "AB",
+      "physical_corner": "AD",
+      "projection_A_mm": 0.9983950989139813,
+      "projection_A_mm_target": 0.9974,
+      "projection_A_mm_error": 0.0009950989139813071,
+      "projection_D_mm": 1.0018787920645396,
+      "projection_D_mm_target": 1.0015,
+      "projection_D_mm_error": 0.00037879206453950154,
+      "chord_mm": 1.414487808392549,
+      "chord_mm_target": 1.4135,
+      "chord_mm_error": 0.0009878083925489722,
+      "corner_angle_deg": 90.00142662327676,
+      "corner_angle_deg_target": 90.0,
+      "corner_angle_deg_error": 0.0014266232767568
+    },
+    {
+      "capture": "14_24.hobj",
+      "group": "tail_to_head",
+      "camera": "Left",
+      "device_corner": "CB",
+      "physical_corner": "CD",
+      "projection_C_mm": 0.7872846562580729,
+      "projection_C_mm_target": 0.7787,
+      "projection_C_mm_error": 0.00858465625807292,
+      "projection_D_mm": 0.7914823152029461,
+      "projection_D_mm_target": 0.7829,
+      "projection_D_mm_error": 0.008582315202946056,
+      "chord_mm": 1.1162421592500735,
+      "chord_mm_target": 1.1042,
+      "chord_mm_error": 0.012042159250073459,
+      "corner_angle_deg": 89.99416949680874,
+      "corner_angle_deg_target": 89.997222,
+      "corner_angle_deg_error": -0.0030525031912560507
+    },
+    {
+      "capture": "14_24.hobj",
+      "group": "tail_to_head",
+      "camera": "Down",
+      "device_corner": "CD",
+      "physical_corner": "CB",
+      "projection_C_mm": 0.8372846615950799,
+      "projection_C_mm_target": 0.8456,
+      "projection_C_mm_error": -0.008315338404920158,
+      "projection_B_mm": 0.8412433868363167,
+      "projection_B_mm_target": 0.8492,
+      "projection_B_mm_error": -0.007956613163683235,
+      "chord_mm": 1.186910670552389,
+      "chord_mm_target": 1.1984,
+      "chord_mm_error": -0.01148932944761083,
+      "corner_angle_deg": 89.99851047000011,
+      "corner_angle_deg_target": 89.996944,
+      "corner_angle_deg_error": 0.0015664700001138954
+    }
+  ]
+}

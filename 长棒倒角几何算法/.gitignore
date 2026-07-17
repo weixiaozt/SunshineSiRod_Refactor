@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+results/
+*_result.json
+*_slices.csv

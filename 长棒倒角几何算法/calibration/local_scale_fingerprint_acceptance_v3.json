@@ -1,0 +1,45 @@
+{
+  "algorithm_version": 3,
+  "method": "fixed_per_camera_2d_metric_plus_calibration_domain_clamped_local_ray_scale",
+  "status": "accepted",
+  "runtime_orientation_inference": false,
+  "uses_final_value_offsets": false,
+  "linear_metric_matrices_changed_from_v2": false,
+  "calibration_domain_policy": "P05_P95_delta_clamp_no_extrapolation",
+  "datasets": {
+    "cmm": {
+      "valid_capture_count": 19,
+      "excluded_capture": "14_16.hobj",
+      "full_regression_station_count_per_capture": 850
+    },
+    "same_bar_turnover_validation": {
+      "first": "测试HOBJ/105-4/A23-GTT1_3/10_16.hobj",
+      "turned": "测试HOBJ/105-4/A23-GTT2_3/10_56.hobj",
+      "runtime_mapping_used": false,
+      "calibrator_explicit_pair_mapping_only": true,
+      "full_regression_station_count_per_capture": 850
+    },
+    "excluded_from_all_fitting_and_validation": [
+      "测试HOBJ/105-5"
+    ]
+  },
+  "scores": {
+    "cmm_850_summary_normalized_rms_v2": 0.47778695846895297,
+    "cmm_850_summary_normalized_rms_v3": 0.41044989006055327,
+    "cmm_850_relative_improvement": 0.14092768838928395
+  },
+  "same_bar_turnover_chord_absolute_differences_mm_v3": {
+    "AD_first_vs_AB_turned": 0.000229,
+    "AB_first_vs_AD_turned": 0.000886,
+    "CB_first_vs_CD_turned": 0.005983,
+    "CD_first_vs_CB_turned": 0.004696
+  },
+  "angle_policy": {
+    "new_angle_nonlinearity_released": false,
+    "reason": "Only one large-chamfer same-bar turnover pair is available; angle candidates did not improve every held-out corner."
+  },
+  "evidence_files": [
+    "results/candidate_bounded_local_scale_diagnostics.json",
+    "results/candidate_bounded_local_scale_cmm_850_validation.json"
+  ]
+}

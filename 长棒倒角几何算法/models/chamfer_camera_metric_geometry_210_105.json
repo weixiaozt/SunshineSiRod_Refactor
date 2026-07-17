@@ -1,0 +1,177 @@
+{
+  "version": 3,
+  "model": "long_rod_chamfer_four_camera_fingerprint_metric_correction",
+  "algorithm_name": "长棒倒角几何·四相机指纹度量修正算法",
+  "description": "四相机指纹二维公制度量修正，并在CMM已覆盖域内使用钳制局部尺度曲线；不含16个终值补偿或运行时方向分类。",
+  "hobj_shape": [
+    20000,
+    3200
+  ],
+  "hobj_channels": {
+    "Left": {
+      "byte_offset": 120100,
+      "source_channel": "1-Left",
+      "web_logic_camera": 4,
+      "local_x_scale_mm_per_pixel": 0.015,
+      "profile_value_scale_mm_per_unit": 1.0,
+      "metric_transform_2x2": [
+        [
+          0.9693549359760417,
+          -0.00501683459129833
+        ],
+        [
+          0.0,
+          0.9690408289830409
+        ]
+      ],
+      "metric_radial_distortion_per_mm2": 0.0,
+      "metric_distortion_center_xz_mm": [20.25, 0.0],
+      "metric_local_ray_scale_per_mm2": 0.0288904476077354,
+      "metric_local_ray_reference_mm2": 0.6661081176761773,
+      "metric_local_ray_delta_bounds_mm2": [-0.056711565366064934, 0.06951856095192424]
+    },
+    "Right": {
+      "byte_offset": 256240185,
+      "source_channel": "2-Right",
+      "web_logic_camera": 1,
+      "local_x_scale_mm_per_pixel": 0.015,
+      "profile_value_scale_mm_per_unit": 1.0,
+      "metric_transform_2x2": [
+        [
+          0.958095150430887,
+          0.011851165730768609
+        ],
+        [
+          0.0,
+          0.9570138962357867
+        ]
+      ],
+      "metric_radial_distortion_per_mm2": 0.0,
+      "metric_distortion_center_xz_mm": [20.25, 0.0],
+      "metric_local_ray_scale_per_mm2": 0.05419177987921032,
+      "metric_local_ray_reference_mm2": 1.0059951100349385,
+      "metric_local_ray_delta_bounds_mm2": [-0.05273132755256142, 0.06099852742859017]
+    },
+    "Top": {
+      "byte_offset": 512360270,
+      "source_channel": "3-Top",
+      "web_logic_camera": 3,
+      "local_x_scale_mm_per_pixel": 0.015,
+      "profile_value_scale_mm_per_unit": 1.0,
+      "metric_transform_2x2": [
+        [
+          0.965367481776057,
+          -0.0062411215988555585
+        ],
+        [
+          0.0,
+          0.9647216975075146
+        ]
+      ],
+      "metric_radial_distortion_per_mm2": 0.0,
+      "metric_distortion_center_xz_mm": [20.25, 0.0],
+      "metric_local_ray_scale_per_mm2": -0.035688349018195814,
+      "metric_local_ray_reference_mm2": 1.0052080359657132,
+      "metric_local_ray_delta_bounds_mm2": [-0.05084628306271087, 0.055166217893172345]
+    },
+    "Down": {
+      "byte_offset": 768480355,
+      "source_channel": "4-Down",
+      "web_logic_camera": 2,
+      "local_x_scale_mm_per_pixel": 0.015,
+      "profile_value_scale_mm_per_unit": 1.0,
+      "metric_transform_2x2": [
+        [
+          0.9551382349077099,
+          0.0057133268045797304
+        ],
+        [
+          0.0,
+          0.9538751144074598
+        ]
+      ],
+      "metric_radial_distortion_per_mm2": 0.0,
+      "metric_distortion_center_xz_mm": [20.25, 0.0],
+      "metric_local_ray_scale_per_mm2": 0.09999999999621344,
+      "metric_local_ray_reference_mm2": 0.6582119689125318,
+      "metric_local_ray_delta_bounds_mm2": [-0.04904285743414481, 0.07181693345414694]
+    }
+  },
+  "corners": {
+    "AD": {
+      "physical_corner": "P3/左上",
+      "camera": "Top",
+      "reversed_profile_left_face": "A",
+      "reversed_profile_right_face": "D",
+      "output_face_order": [
+        "A",
+        "D"
+      ]
+    },
+    "AB": {
+      "physical_corner": "P1/右上",
+      "camera": "Right",
+      "reversed_profile_left_face": "B",
+      "reversed_profile_right_face": "A",
+      "output_face_order": [
+        "A",
+        "B"
+      ]
+    },
+    "CB": {
+      "physical_corner": "P4/右下",
+      "camera": "Left",
+      "reversed_profile_left_face": "C",
+      "reversed_profile_right_face": "B",
+      "output_face_order": [
+        "C",
+        "B"
+      ]
+    },
+    "CD": {
+      "physical_corner": "P2/左下",
+      "camera": "Down",
+      "reversed_profile_left_face": "D",
+      "reversed_profile_right_face": "C",
+      "output_face_order": [
+        "C",
+        "D"
+      ]
+    }
+  },
+  "algorithm_parameters": {
+    "default_station_count": 850,
+    "end_margin_rows": 250,
+    "row_half_band": 2,
+    "invalid_profile_threshold": -9999.0,
+    "reversed_crop_start_pixel": 500,
+    "reversed_crop_stop_pixel": 3200,
+    "minimum_profile_value_mm": -45.0,
+    "maximum_profile_value_mm": 45.0,
+    "minimum_profile_points": 1200,
+    "apex_smoothing_points": 21,
+    "apex_search_outer_fraction": 0.03,
+    "main_face_outer_fraction": 0.08,
+    "main_face_inner_fraction": 0.08,
+    "minimum_main_face_points": 80,
+    "chamfer_shoulder_distance_mm": 0.02,
+    "chamfer_shoulder_face_rms_multiplier": 4.0,
+    "minimum_chamfer_points": 15,
+    "maximum_chamfer_points": 180,
+    "maximum_apex_gap_points": 12,
+    "aggregate_trim_fraction": 0.1,
+    "minimum_valid_station_fraction": 0.7
+  },
+  "camera_metric_calibration": {
+    "method": "fixed_per_camera_2d_metric_plus_calibration_domain_clamped_local_ray_scale",
+    "uses_final_value_offsets": false,
+    "runtime_path_classification": false,
+    "selected_truth_candidate": "cb_cd_swapped_pending_confirmation",
+    "cmm_cb_cd_note": "CB/CD角位可能整组写反，等待机构角点编号原图确认",
+    "calibration_domain_clamped": true,
+    "local_scale_uses_final_value_offsets": false,
+    "corrected_validation_normalized_rms": 0.4458206829273571,
+    "cmm_850_summary_normalized_rms": 0.41044989006055327,
+    "diagnostics_file": "cmm_camera_metric_calibration_diagnostics.json"
+  }
+}

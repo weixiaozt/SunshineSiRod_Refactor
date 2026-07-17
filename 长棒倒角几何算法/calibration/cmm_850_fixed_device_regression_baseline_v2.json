@@ -1,0 +1,104 @@
+{
+  "algorithm": {
+    "name": "长棒倒角几何·四相机指纹度量修正算法",
+    "id": "long_rod_chamfer_four_camera_fingerprint_metric_correction",
+    "version": 2
+  },
+  "dataset": {
+    "root": "CMM机构HOBJ",
+    "excluded": [
+      "14_16.hobj"
+    ],
+    "head_to_tail_count": 10,
+    "tail_to_head_count": 9,
+    "station_count": 850,
+    "display_mapping": "fixed_device_corner_no_runtime_remap"
+  },
+  "calibration": {
+    "selected_truth_candidate": "cb_cd_swapped_pending_confirmation",
+    "status": "CMM机构CB/CD角位可能整组写反，等待机构角点编号原图确认"
+  },
+  "tolerance": {
+    "group_mean_absolute_mm": 0.000002,
+    "group_mean_absolute_deg": 0.000002
+  },
+  "expected_fixed_device_group_means": {
+    "count": 19,
+    "head_to_tail": {
+      "raw": {
+        "AD_chord_mm": 1.4670109042247594,
+        "AD_projection_A_mm": 1.0388928462344809,
+        "AD_projection_D_mm": 1.0365522198251589,
+        "AD_corner_angle_deg": 89.95102530511143,
+        "AB_chord_mm": 1.482776821786279,
+        "AB_projection_A_mm": 1.052499597069979,
+        "AB_projection_B_mm": 1.0464787840145315,
+        "AB_corner_angle_deg": 89.88933343259392,
+        "CB_chord_mm": 1.2266207888705518,
+        "CB_projection_C_mm": 0.8677835889006271,
+        "CB_projection_B_mm": 0.8669769454374068,
+        "CB_corner_angle_deg": 89.9862437684527,
+        "CD_chord_mm": 1.167049933083824,
+        "CD_projection_C_mm": 0.8262524960068476,
+        "CD_projection_D_mm": 0.8253164437685315,
+        "CD_corner_angle_deg": 89.92018069738636
+      },
+      "corrected": {
+        "AD_chord_mm": 1.4162728865930412,
+        "AD_projection_A_mm": 0.9993460119734889,
+        "AD_projection_D_mm": 1.0035537613390935,
+        "AD_corner_angle_deg": 89.99453568403113,
+        "AB_chord_mm": 1.4212713839603284,
+        "AB_projection_A_mm": 1.0016636170052038,
+        "AB_projection_B_mm": 1.0082229175510549,
+        "AB_corner_angle_deg": 90.00451535900758,
+        "CB_chord_mm": 1.1889835352657057,
+        "CB_projection_C_mm": 0.8388780450103527,
+        "CB_projection_B_mm": 0.8424517594235965,
+        "CB_corner_angle_deg": 89.9997543942689,
+        "CD_chord_mm": 1.1146942768741743,
+        "CD_projection_C_mm": 0.7863052525233436,
+        "CD_projection_D_mm": 0.7901316197979794,
+        "CD_corner_angle_deg": 89.99537979397878
+      }
+    },
+    "tail_to_head": {
+      "raw": {
+        "AD_chord_mm": 1.4699242817260039,
+        "AD_projection_A_mm": 1.0399712196496882,
+        "AD_projection_D_mm": 1.0394749200591988,
+        "AD_corner_angle_deg": 89.96803269849904,
+        "AB_chord_mm": 1.4760236885376052,
+        "AB_projection_A_mm": 1.049160235995965,
+        "AB_projection_B_mm": 1.0402169163695827,
+        "AB_corner_angle_deg": 89.88572868524072,
+        "CB_chord_mm": 1.1513499436749643,
+        "CB_projection_C_mm": 0.8142277305821286,
+        "CB_projection_B_mm": 0.8143371680911397,
+        "CB_corner_angle_deg": 89.98096114635764,
+        "CD_chord_mm": 1.2426842800202118,
+        "CD_projection_C_mm": 0.8797443911577124,
+        "CD_projection_D_mm": 0.8788220898449653,
+        "CD_corner_angle_deg": 89.92397662629912
+      },
+      "corrected": {
+        "AD_chord_mm": 1.4190934854225579,
+        "AD_projection_A_mm": 1.0003833913042692,
+        "AD_projection_D_mm": 1.0063835322067836,
+        "AD_corner_angle_deg": 90.01150981011942,
+        "AB_chord_mm": 1.414774041839969,
+        "AB_projection_A_mm": 0.9984855655334104,
+        "AB_projection_B_mm": 1.0021899424362872,
+        "AB_corner_angle_deg": 90.0010106436338,
+        "CB_chord_mm": 1.1160256096227963,
+        "CB_projection_C_mm": 0.7871061085226422,
+        "CB_projection_B_mm": 0.7913010557649091,
+        "CB_corner_angle_deg": 89.9944738938094,
+        "CD_chord_mm": 1.1869354672599703,
+        "CD_projection_C_mm": 0.8372109254592203,
+        "CD_projection_D_mm": 0.8413562935873338,
+        "CD_corner_angle_deg": 89.99915038575249
+      }
+    }
+  }
+}

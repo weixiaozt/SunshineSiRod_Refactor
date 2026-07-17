@@ -1,0 +1,15 @@
+{
+  "source": "用户提供的CMM机构标定值",
+  "status": "CB/CD角位可能整组写反，等待机构角点编号原图确认",
+  "report_as_written": {
+    "AB": {"projection_pair_mm": [1.0025, 1.0087], "chord_mm": 1.4220, "corner_angle_deg": 90.005833},
+    "BC": {"projection_pair_mm": [0.7787, 0.7829], "chord_mm": 1.1042, "corner_angle_deg": 89.997222},
+    "CD": {"projection_pair_mm": [0.8492, 0.8456], "chord_mm": 1.1984, "corner_angle_deg": 89.996944},
+    "AD": {"projection_pair_mm": [0.9974, 1.0015], "chord_mm": 1.4135, "corner_angle_deg": 90.000000}
+  },
+  "candidate_mappings": {
+    "as_written": {"AB": "AB", "CB": "BC", "CD": "CD", "AD": "AD"},
+    "cb_cd_swapped_pending_confirmation": {"AB": "AB", "CB": "CD", "CD": "BC", "AD": "AD"}
+  },
+  "note": "交换CB/CD整组标定值后，弦长和投影残差的符号与离散程度显著改善；本文件保留原报告和候选映射，不覆盖原始机构数据。"
+}
