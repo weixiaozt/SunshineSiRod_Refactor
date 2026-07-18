@@ -201,8 +201,11 @@ reported = 90 + 0.5 × (raw - 90)
 
 Web 与 `results\measurements\user_results\measurement_statistics.csv` 只显示/保存
 `head/tail × A/B/C/D` 8个 reported，不增加 raw/reported 双套列，也不输出头尾四面平均值。
-统计 CSV 固定为38列：前4列为 `measured_at、bar_id、capture_id、input_path`，其余为
-Web 页面可见的全部测量值。
+统计 CSV 固定为37列：前4列为 `measured_at、bar_id、capture_id、input_path`；非端面
+测量列使用最早版 Excel 的字段名（包括 `Crystal knitting、Edge_A～Edge_D、
+Diagonal Length_1/2、Arc length_1～4、1～4_Projectio1/2、Side verticality_1/4/2/3、
+Length、DataTime`），端面保留当前 `head/tail_A/B/C/D_endface_angle_deg` 8列。
+不输出 `Face verticality_H/T、A_minus_C_mm、B_minus_D_mm、diagonal_difference_mm`。
 
 若 CSV 中只有尾部与最新程序窗口值对不上，先验证是否误启动旧解压目录。旧端面程序
 产生的尾部 reported 恰好满足：
@@ -233,7 +236,8 @@ old_tail_reported = 180 - new_tail_reported
 ```
 
 端到端验收曾确认：Web API 与 `measurement_statistics.csv` 的8个端面 reported 完全一致，
-CSV为38列且不存在名称含 `raw` 或 `reported` 的额外列。测试产生的临时 CSV/JSON 必须
+该次历史验收时CSV为38列；2026-07-17用户已将正式口径更新为上述37列。新CSV仍不得
+增加名称含 `raw` 或 `reported` 的额外列。测试产生的临时 CSV/JSON 必须
 清理，不得放入最终 ZIP。
 
 ## 最高铁律：禁止背答案（2026-07-14）

@@ -13,12 +13,17 @@ import numpy as np
 from tools.mechanical_drift import build_model, classify, local_shift
 from tools.measure_square_rod_edges import drift_fraction_for_row
 from tools.measurement_dashboard import (
+    DEFAULT_CONFIG,
     FULL_STATISTICS_VALUE_FIELDS,
+    STATISTICS_METADATA_FIELDS,
+    HOBJ_MINIMUM_COMPLETE_BYTES,
     _migrate_endface_summary_to_direct_average,
     append_compensation_change_log,
+    append_measurement_statistics,
     apply_manual_offsets,
     build_measurement_command,
     compensation_log_summary,
+    coworker_reported_endface_summary,
     merge_delivery_abcd_summary,
     prepare_result_directories,
     save_config,
@@ -199,10 +204,99 @@ class MechanicalDriftTests(unittest.TestCase):
         self.assertEqual(merged["stick_length_mm"], "901.000000")
         self.assertEqual(merged["delivery_length_mm"], "901.000000")
 
-    def test_global_statistics_do_not_expose_endface_fields(self) -> None:
-        self.assertFalse(any("endface" in field for field in FULL_STATISTICS_VALUE_FIELDS))
-        self.assertIn("delivery_abcd_method", FULL_STATISTICS_VALUE_FIELDS)
-        self.assertFalse(any(field.startswith("native_") for field in FULL_STATISTICS_VALUE_FIELDS))
+    def test_hybrid_delivery_uses_20260716_final_six_values_only(self) -> None:
+        payload = {
+            "method": "hybrid_delivery_geometry_20260715_auxiliary_20260716_edges_diagonals",
+            "aggregation": "final_A_B_C_D_D1_D2=20260716_whole_bar_10pct_trimmed_mean_fixed_direction",
+            "calibration_path": "legacy-20260715.json",
+            # These are the existing schema-compatible, non-final details.
+            "head_edges_mm": dict(zip("ABCD", (9.0, 19.0, 29.0, 39.0))),
+            "tail_edges_mm": dict(zip("ABCD", (11.0, 21.0, 31.0, 41.0))),
+            "head_diagonals_mm": {"diag1": 239.0, "diag2": 240.0},
+            "tail_diagonals_mm": {"diag1": 241.0, "diag2": 242.0},
+            # Only these six values may become the visible final dimensions.
+            "global_edges_mm": dict(zip("ABCD", (10.1, 20.2, 30.3, 40.4))),
+            "global_diagonals_mm": {"diag1": 240.5, "diag2": 241.6},
+        }
+
+        merged = merge_delivery_abcd_summary({}, payload)
+
+        self.assertEqual(merged["A_mm"], "10.100000")
+        self.assertEqual(merged["D_mm"], "40.400000")
+        self.assertEqual(merged["diag1_M1_M2_mm"], "240.500000")
+        self.assertEqual(merged["diag2_M3_M4_mm"], "241.600000")
+        self.assertEqual(merged["delivery_head_A_mm"], "9.000000")
+        self.assertEqual(merged["delivery_tail_diag2_mm"], "242.000000")
+        self.assertIn("20260716", merged["delivery_abcd_method"])
+
+    def test_continuous_monitor_targets_twenty_second_turnaround_safely(self) -> None:
+        self.assertEqual(DEFAULT_CONFIG["continuous_scan_seconds"], 1)
+        self.assertEqual(DEFAULT_CONFIG["stable_file_seconds"], 2)
+        self.assertEqual(HOBJ_MINIMUM_COMPLETE_BYTES, 1_024_480_355)
+
+    def test_global_statistics_use_approved_37_column_user_schema(self) -> None:
+        expected_endface = [
+            f"{end}_{face}_endface_angle_deg"
+            for end in ("head", "tail")
+            for face in "ABCD"
+        ]
+        self.assertEqual(
+            STATISTICS_METADATA_FIELDS,
+            ["measured_at", "bar_id", "capture_id", "input_path"],
+        )
+        self.assertEqual(len(STATISTICS_METADATA_FIELDS) + len(FULL_STATISTICS_VALUE_FIELDS), 37)
+        self.assertEqual(FULL_STATISTICS_VALUE_FIELDS[-8:], expected_endface)
+        self.assertNotIn("Face verticality_H", FULL_STATISTICS_VALUE_FIELDS)
+        self.assertNotIn("Face verticality_T", FULL_STATISTICS_VALUE_FIELDS)
+        self.assertNotIn("A_minus_C_mm", FULL_STATISTICS_VALUE_FIELDS)
+        self.assertNotIn("B_minus_D_mm", FULL_STATISTICS_VALUE_FIELDS)
+        self.assertNotIn("diagonal_difference_mm", FULL_STATISTICS_VALUE_FIELDS)
+
+    def test_global_statistics_write_legacy_headers_with_current_values(self) -> None:
+        summary = {
+            "A_mm": "210.1",
+            "B_mm": "105.2",
+            "C_mm": "210.3",
+            "D_mm": "105.4",
+            "diag1_M1_M2_mm": "234.1",
+            "diag2_M3_M4_mm": "234.2",
+            "stick_length_mm": "828.5",
+            **{
+                f"obj{obj}_{field}": f"{obj}.{index}"
+                for obj in (1, 2, 3, 4)
+                for index, field in enumerate(
+                    ("main_face_angle_deg", "chamfer_mm", "projection_x_mm", "projection_y_mm"),
+                    1,
+                )
+            },
+            **{
+                f"{end}_{face}_endface_angle_deg": "90.100000"
+                for end in ("head", "tail")
+                for face in "ABCD"
+            },
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            input_path = root / "BAR-7" / "capture-3.hobj"
+            output = append_measurement_statistics(
+                root / "results",
+                input_path,
+                root / "detail.csv",
+                75,
+                summary,
+            )
+            with output.open("r", encoding="utf-8", newline="") as handle:
+                reader = csv.DictReader(handle)
+                row = next(reader)
+                self.assertEqual(reader.fieldnames, [*STATISTICS_METADATA_FIELDS, *FULL_STATISTICS_VALUE_FIELDS])
+            self.assertEqual(len(row), 37)
+            self.assertEqual(row["Crystal knitting"], "BAR-7")
+            self.assertEqual(row["Edge_A"], "210.1")
+            self.assertEqual(row["Diagonal Length_2"], "234.2")
+            self.assertEqual(row["Side verticality_4"], summary["obj3_main_face_angle_deg"])
+            self.assertEqual(row["Length"], "828.5")
+            self.assertEqual(row["DataTime"], row["measured_at"])
+            self.assertEqual(row["head_A_endface_angle_deg"], "90.100000")
 
     def test_result_directories_migrate_user_and_developer_files(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -287,6 +381,37 @@ class MechanicalDriftTests(unittest.TestCase):
                     }
                 }
             )
+
+    def test_coworker_endface_uses_current_y_angles_and_report_formula(self) -> None:
+        metrics = {
+            "被测棒": "BAR-1",
+            "头-端面垂直度-A": 10.0,
+            **{
+                f"头-端面垂直度-当前Y标定-{face}": raw
+                for face, raw in zip("ABCD", (89.8, 90.2, 90.4, 89.6))
+            },
+            **{
+                f"尾-端面垂直度-当前Y标定-{face}": raw
+                for face, raw in zip("ABCD", (90.6, 89.4, 90.8, 89.2))
+            },
+        }
+        result = coworker_reported_endface_summary({"scan_metrics": metrics})
+        self.assertEqual(
+            result,
+            {
+                "head_A_endface_angle_deg": "89.900000",
+                "head_B_endface_angle_deg": "90.100000",
+                "head_C_endface_angle_deg": "90.200000",
+                "head_D_endface_angle_deg": "89.800000",
+                "tail_A_endface_angle_deg": "90.300000",
+                "tail_B_endface_angle_deg": "89.700000",
+                "tail_C_endface_angle_deg": "90.400000",
+                "tail_D_endface_angle_deg": "89.600000",
+            },
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "must contain 8"):
+            coworker_reported_endface_summary({"scan_metrics": {"当前Y标定-A": 90.0}})
 
     def test_raw_audit_command_loads_no_drift_or_endface_model(self) -> None:
         config = {

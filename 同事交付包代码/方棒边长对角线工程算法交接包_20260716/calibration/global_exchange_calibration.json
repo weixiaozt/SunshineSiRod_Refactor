@@ -1,0 +1,81 @@
+{
+  "calibration_name": "CTB三正三反全局相机组间距互换修正",
+  "calibration_specimen": "2606005B22-CTB",
+  "parameter_count": 1,
+  "positive_scans": [
+    "13_08",
+    "13_12",
+    "13_15"
+  ],
+  "reverse_scans": [
+    "13_23",
+    "13_26",
+    "13_29"
+  ],
+  "per_scan_uncorrected_trimmed_means": [
+    {
+      "direction": "positive",
+      "scan": "13_08",
+      "B_mm": 105.11333333333346,
+      "D_mm": 105.1099999999999
+    },
+    {
+      "direction": "positive",
+      "scan": "13_12",
+      "B_mm": 105.11400042011908,
+      "D_mm": 105.1100271939644
+    },
+    {
+      "direction": "positive",
+      "scan": "13_15",
+      "B_mm": 105.11235583823499,
+      "D_mm": 105.11042183560166
+    },
+    {
+      "direction": "reverse",
+      "scan": "13_23",
+      "B_mm": 105.1216842809655,
+      "D_mm": 105.09768557605152
+    },
+    {
+      "direction": "reverse",
+      "scan": "13_26",
+      "B_mm": 105.12086720177244,
+      "D_mm": 105.09804333558381
+    },
+    {
+      "direction": "reverse",
+      "scan": "13_29",
+      "B_mm": 105.12233406384682,
+      "D_mm": 105.09798060099887
+    }
+  ],
+  "orientation_means_mm": {
+    "positive_B": 105.11322986389585,
+    "positive_D": 105.11014967652198,
+    "reverse_B": 105.12162851552826,
+    "reverse_D": 105.09790317087807
+  },
+  "equations": {
+    "x": "positive_B - reverse_D",
+    "y": "positive_D - reverse_B",
+    "k": "(x-y)/2",
+    "common_flip_residual": "(x+y)/2"
+  },
+  "x_mm": 0.015326693017783555,
+  "y_mm": -0.011478839006272779,
+  "k_mm": 0.013402766012028167,
+  "common_flip_residual_mm": 0.0019239270057553881,
+  "corrections_mm": {
+    "A": 0.0,
+    "B": -0.006701383006014083,
+    "C": 0.0,
+    "D": 0.006701383006014083,
+    "D1": -0.006701383006014083,
+    "D2": 0.006701383006014083
+  },
+  "approved_value_status": "production_frozen_2026-07-16",
+  "rebuild_rounding_note": "不同NumPy版本重算可能在1e-12 mm以内有浮点差异；生产运行使用本文件冻结值。",
+  "scope_note": "k只由B/D边长互换约束求得；D1/D2复用同一个k，不新增对角线参数。",
+  "exclusion_note": "除2606005B22-CTB六次扫描外，任何棒子均未进入标定。"
+}

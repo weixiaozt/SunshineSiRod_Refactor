@@ -54,6 +54,8 @@ DEFAULT_CONFIG = {
     "script_path": str(RUNTIME_DIR.parent / "MeasureSquareRod" / "MeasureSquareRod.exe") if FROZEN_APP else str(TOOLS_DIR / "measure_square_rod_edges.py"),
     "delivery_abcd_script_path": str(RUNTIME_DIR.parent / "MeasureDeliveryGeometry" / "MeasureDeliveryGeometry.exe") if FROZEN_APP else str(TOOLS_DIR / "delivery_abcd_measure.py"),
     "delivery_abcd_calibration_path": str(CALIBRATION_DIR / "delivery_geometry" / "current_calibration.json") if FROZEN_APP else str(Path(r"D:\Project\方棒尺寸几何算法交接包_对角线弧长侧边夹角_20260715\方棒尺寸几何算法交接包_对角线弧长侧边夹角_20260715\calibration\current_calibration.json")),
+    "coworker_endface_script_path": str(RUNTIME_DIR.parent / "MeasureCoworkerEndface" / "MeasureCoworkerEndface.exe"),
+    "coworker_endface_calibration_path": str(RUNTIME_DIR.parent / "coworker_endface_delivery" / "calibration" / "current_calibration.json"),
     "calibration_path": str(CALIBRATION_DIR / "models" / "camera_calibration_model_210_105.json"),
     "drift_calibration_path": str(CALIBRATION_DIR / "models" / "mechanical_drift_model_210_105.json"),
     "endface_calibration_path": str(CALIBRATION_DIR / "models" / "endface_calibration_model_210_105.json"),
@@ -64,9 +66,10 @@ DEFAULT_CONFIG = {
     "diagonal_offsets_mm": {"diag1": 0.0, "diag2": 0.0},
     "length_offset_mm": 0.0,
     "continuous_measure_enabled": False,
-    "continuous_scan_seconds": 10,
-    "stable_file_seconds": 30,
+    "continuous_scan_seconds": 1,
+    "stable_file_seconds": 2,
 }
+HOBJ_MINIMUM_COMPLETE_BYTES = 768480355 + 20000 * 3200 * 4
 ENDFACE_MEASUREMENT_MODES = {"release_corrected", "raw_audit"}
 CONFIG_LOCK = threading.Lock()
 STATISTICS_LOCK = threading.Lock()
@@ -112,7 +115,7 @@ def load_config() -> dict[str, Any]:
                     config[key] = value
         except (OSError, json.JSONDecodeError):
             pass
-    for key in ("data_root", "output_dir", "script_path", "delivery_abcd_script_path", "delivery_abcd_calibration_path", "calibration_path", "drift_calibration_path", "endface_calibration_path", "truth_csv_path"):
+    for key in ("data_root", "output_dir", "script_path", "delivery_abcd_script_path", "delivery_abcd_calibration_path", "coworker_endface_script_path", "coworker_endface_calibration_path", "calibration_path", "drift_calibration_path", "endface_calibration_path", "truth_csv_path"):
         config[key] = resolved(str(config.get(key, "")))
     try:
         config["step_mm"] = float(config.get("step_mm", 10.0))
@@ -149,7 +152,7 @@ def load_config() -> dict[str, Any]:
 def save_config(settings: dict[str, Any]) -> dict[str, Any]:
     original_config = load_config()
     config = load_config()
-    for key in ("data_root", "output_dir", "script_path", "delivery_abcd_script_path", "delivery_abcd_calibration_path", "calibration_path", "drift_calibration_path", "endface_calibration_path", "truth_csv_path"):
+    for key in ("data_root", "output_dir", "script_path", "delivery_abcd_script_path", "delivery_abcd_calibration_path", "coworker_endface_script_path", "coworker_endface_calibration_path", "calibration_path", "drift_calibration_path", "endface_calibration_path", "truth_csv_path"):
         value = settings.get(key, config[key])
         if not isinstance(value, str):
             raise ValueError(f"{key} must be a path string")
@@ -503,24 +506,39 @@ def apply_manual_offsets(
     return corrected
 
 
-FULL_STATISTICS_VALUE_FIELDS = [
-    "measurement_valid",
-    "A_mm", "B_mm", "C_mm", "D_mm",
-    "delivery_abcd_method", "delivery_abcd_aggregation",
-    "delivery_geometry_method", "delivery_geometry_aggregation", "delivery_length_mm",
-    *[f"delivery_head_{edge}_mm" for edge in "ABCD"],
-    *[f"delivery_tail_{edge}_mm" for edge in "ABCD"],
-    "diag1_M1_M2_mm", "diag2_M3_M4_mm",
-    "delivery_head_diag1_mm", "delivery_head_diag2_mm",
-    "delivery_tail_diag1_mm", "delivery_tail_diag2_mm",
-    "A_minus_C_mm", "B_minus_D_mm", "diagonal_difference_mm",
-    "stick_length_mm",
-    *[
-        f"obj{obj}_{field}"
-        for obj in (1, 2, 3, 4)
-        for field in ("main_face_angle_deg", "chamfer_mm", "projection_x_mm", "projection_y_mm")
-    ],
-]
+GLOBAL_STATISTICS_FIELD_MAP = {
+    "Crystal knitting": "bar_id",
+    "Edge_A": "A_mm",
+    "Edge_B": "B_mm",
+    "Edge_C": "C_mm",
+    "Edge_D": "D_mm",
+    "Diagonal Length_1": "diag1_M1_M2_mm",
+    "Diagonal Length_2": "diag2_M3_M4_mm",
+    "Arc length_1": "obj1_chamfer_mm",
+    "Arc length_2": "obj2_chamfer_mm",
+    "Arc length_3": "obj3_chamfer_mm",
+    "Arc length_4": "obj4_chamfer_mm",
+    "1_Projectio1": "obj1_projection_x_mm",
+    "1_Projectio2": "obj1_projection_y_mm",
+    "2_Projectio1": "obj2_projection_x_mm",
+    "2_Projectio2": "obj2_projection_y_mm",
+    "3_Projectio1": "obj3_projection_x_mm",
+    "3_Projectio2": "obj3_projection_y_mm",
+    "4_Projectio1": "obj4_projection_x_mm",
+    "4_Projectio2": "obj4_projection_y_mm",
+    "Side verticality_1": "obj1_main_face_angle_deg",
+    "Side verticality_4": "obj3_main_face_angle_deg",
+    "Side verticality_2": "obj4_main_face_angle_deg",
+    "Side verticality_3": "obj2_main_face_angle_deg",
+    "Length": "stick_length_mm",
+    "DataTime": "measured_at",
+    **{
+        f"{end}_{face}_endface_angle_deg": f"{end}_{face}_endface_angle_deg"
+        for end in ("head", "tail")
+        for face in "ABCD"
+    },
+}
+FULL_STATISTICS_VALUE_FIELDS = list(GLOBAL_STATISTICS_FIELD_MAP)
 WIREFRAME_LOCAL_CHANNELS = (
     "A_left", "A_right", "B_top", "B_bottom",
     "C_top", "C_bottom", "D_left", "D_right",
@@ -566,13 +584,20 @@ ENDFACE_STATISTICS_VALUE_FIELDS = [
     "endface_calibration_correction_applied",
 ]
 STATISTICS_VALUE_FIELDS = ENDFACE_STATISTICS_VALUE_FIELDS if END_FACE_ONLY else FULL_STATISTICS_VALUE_FIELDS
-STATISTICS_METADATA_FIELDS = ["measured_at", "bar_id", "capture_id", "input_path", "slice_csv_path"]
-if not END_FACE_ONLY:
-    STATISTICS_METADATA_FIELDS.append("slice_count")
+STATISTICS_METADATA_FIELDS = (
+    ["measured_at", "bar_id", "capture_id", "input_path", "slice_csv_path"]
+    if END_FACE_ONLY
+    else ["measured_at", "bar_id", "capture_id", "input_path"]
+)
 
 
 def dashboard_display_values(summary: dict[str, str]) -> dict[str, str]:
     """Return exactly the measurement values shown on the dashboard."""
+    if not END_FACE_ONLY:
+        return {
+            target: summary.get(source, "")
+            for target, source in GLOBAL_STATISTICS_FIELD_MAP.items()
+        }
     values = {field: summary.get(field, "") for field in STATISTICS_VALUE_FIELDS}
     values["A_minus_C_mm"] = derived_difference(summary, "A_mm", "C_mm")
     values["B_minus_D_mm"] = derived_difference(summary, "B_mm", "D_mm")
@@ -602,15 +627,20 @@ def append_measurement_statistics(
     output = user_results_dir / "measurement_statistics.csv"
     database = developer_details_dir / "measurement_statistics.sqlite"
     fields = [*STATISTICS_METADATA_FIELDS, *STATISTICS_VALUE_FIELDS]
+    measured_at = datetime.now().isoformat(timespec="seconds")
+    bar_id = bar_id_from_input(input_path)
     row = {
-        "measured_at": datetime.now().isoformat(timespec="seconds"),
-        "bar_id": bar_id_from_input(input_path),
+        "measured_at": measured_at,
+        "bar_id": bar_id,
         "capture_id": input_path.name if input_path.is_dir() else input_path.stem,
         "input_path": str(input_path),
         "slice_csv_path": str(slice_csv_path),
         "slice_count": slice_count,
         **dashboard_display_values(displayed),
     }
+    if not END_FACE_ONLY:
+        row["Crystal knitting"] = bar_id
+        row["DataTime"] = measured_at
     with STATISTICS_LOCK:
         _ensure_statistics_database(database, output, fields)
         with closing(sqlite3.connect(database)) as connection:
@@ -633,6 +663,7 @@ def _ensure_statistics_database(database: Path, csv_snapshot: Path, fields: list
             for field in fields:
                 if field not in existing:
                     connection.execute(f'ALTER TABLE measurement_statistics ADD COLUMN "{field}" TEXT')
+            _migrate_global_statistics_columns(connection)
             _migrate_endface_summary_to_direct_average(connection)
             connection.commit()
         return
@@ -650,10 +681,37 @@ def _ensure_statistics_database(database: Path, csv_snapshot: Path, fields: list
                 placeholders = ", ".join("?" for _ in fields)
                 connection.executemany(
                     f"INSERT INTO measurement_statistics ({names}) VALUES ({placeholders})",
-                    [[row.get(field, "") for field in fields] for row in existing_rows],
+                    [
+                        [_existing_statistics_value(row, field) for field in fields]
+                        for row in existing_rows
+                    ],
                 )
+        _migrate_global_statistics_columns(connection)
         _migrate_endface_summary_to_direct_average(connection)
         connection.commit()
+
+
+def _existing_statistics_value(row: dict[str, str], field: str) -> str:
+    value = row.get(field, "")
+    if value not in ("", None) or END_FACE_ONLY:
+        return value
+    source = GLOBAL_STATISTICS_FIELD_MAP.get(field, "")
+    return row.get(source, "") if source else ""
+
+
+def _migrate_global_statistics_columns(connection: sqlite3.Connection) -> None:
+    """Populate the approved 37-column user schema from earlier internal names."""
+    if END_FACE_ONLY:
+        return
+    existing = {row[1] for row in connection.execute("PRAGMA table_info(measurement_statistics)")}
+    for target, source in GLOBAL_STATISTICS_FIELD_MAP.items():
+        if target == source or target not in existing or source not in existing:
+            continue
+        connection.execute(
+            f'UPDATE measurement_statistics SET "{target}" = "{source}" '
+            f'WHERE ("{target}" IS NULL OR "{target}" = \'\') '
+            f'AND "{source}" IS NOT NULL AND "{source}" != \'\''
+        )
 
 
 def _migrate_endface_summary_to_direct_average(connection: sqlite3.Connection) -> None:
@@ -1117,6 +1175,60 @@ def build_delivery_abcd_command(
     return command
 
 
+def build_coworker_endface_command(
+    config: dict[str, Any],
+    input_path: Path,
+    output_dir: Path,
+    bar_id: str,
+    capture_id: str,
+) -> list[str]:
+    script_path = Path(config["coworker_endface_script_path"])
+    command = (
+        [str(script_path)]
+        if script_path.suffix.lower() == ".exe"
+        else [sys.executable, str(script_path)]
+    )
+    command.extend(
+        [
+            str(input_path),
+            "--output", str(output_dir),
+            "--specimen", bar_id,
+            "--scan", capture_id,
+            "--calibration", config["coworker_endface_calibration_path"],
+        ]
+    )
+    return command
+
+
+def coworker_reported_endface_summary(payload: dict[str, Any]) -> dict[str, str]:
+    """Extract the eight current-Y raw angles and apply the frozen report formula."""
+    metrics = payload.get("scan_metrics")
+    if not isinstance(metrics, dict):
+        raise RuntimeError("Coworker end-face output is missing scan_metrics")
+    candidates = [
+        (key, value)
+        for key, value in metrics.items()
+        if "Y" in str(key) and str(key).endswith(tuple(f"-{face}" for face in "ABCD"))
+    ]
+    if len(candidates) != 8:
+        raise RuntimeError(
+            f"Coworker end-face output must contain 8 current-Y A/B/C/D angles; got {len(candidates)}"
+        )
+    result: dict[str, str] = {}
+    for index, (_key, value) in enumerate(candidates):
+        try:
+            raw = float(value)
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError("Coworker end-face output contains a non-numeric angle") from exc
+        if not math.isfinite(raw):
+            raise RuntimeError("Coworker end-face output contains a non-finite angle")
+        end = "head" if index < 4 else "tail"
+        face = "ABCD"[index % 4]
+        reported = 90.0 + 0.5 * (raw - 90.0)
+        result[f"{end}_{face}_endface_angle_deg"] = f"{reported:.6f}"
+    return result
+
+
 def merge_delivery_abcd_summary(
     summary: dict[str, str],
     payload: dict[str, Any],
@@ -1251,7 +1363,12 @@ def run_measurement(config: dict[str, Any], input_path: Path) -> dict[str, Any]:
         if mode == "release_corrected":
             required_paths.extend(["drift_calibration_path", "endface_calibration_path"])
     else:
-        required_paths = ["delivery_abcd_script_path", "delivery_abcd_calibration_path"]
+        required_paths = [
+            "delivery_abcd_script_path",
+            "delivery_abcd_calibration_path",
+            "coworker_endface_script_path",
+            "coworker_endface_calibration_path",
+        ]
     for name in required_paths:
         if not Path(config[name]).is_file():
             raise RuntimeError(f"Configured {name.replace('_', ' ')} was not found")
@@ -1273,6 +1390,8 @@ def run_measurement(config: dict[str, Any], input_path: Path) -> dict[str, Any]:
         subprocess_options["creationflags"] = subprocess.CREATE_NO_WINDOW
     delivery_abcd_payload: dict[str, Any] | None = None
     delivery_abcd_output_path: Path | None = None
+    coworker_endface_payload: dict[str, Any] | None = None
+    coworker_endface_output_dir: Path | None = None
     if END_FACE_ONLY:
         command, mode = build_measurement_command(config, input_path, output_path)
         completed = subprocess.run(command, **subprocess_options)
@@ -1305,6 +1424,27 @@ def run_measurement(config: dict[str, Any], input_path: Path) -> dict[str, Any]:
         except (OSError, json.JSONDecodeError) as exc:
             raise RuntimeError("Cannot read the delivered geometry result JSON") from exc
         raw_summary = merge_delivery_abcd_summary({}, delivery_abcd_payload)
+        coworker_endface_output_dir = developer_details_dir / f"{bar_id}_{capture_id}_{timestamp}_coworker_endface"
+        coworker_command = build_coworker_endface_command(
+            config,
+            input_path,
+            coworker_endface_output_dir,
+            bar_id,
+            capture_id,
+        )
+        coworker_completed = subprocess.run(coworker_command, **subprocess_options)
+        if coworker_completed.returncode != 0:
+            raise RuntimeError(
+                coworker_completed.stderr.strip()
+                or coworker_completed.stdout.strip()
+                or "Coworker end-face measurement failed"
+            )
+        coworker_result_path = coworker_endface_output_dir / "measurement_result.json"
+        try:
+            coworker_endface_payload = json.loads(coworker_result_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise RuntimeError("Cannot read the coworker end-face result JSON") from exc
+        raw_summary.update(coworker_reported_endface_summary(coworker_endface_payload))
         raw_summary["record"] = "mean"
         raw_summary["measurement_valid"] = "True"
         write_delivery_measurement_summary(output_path, raw_summary)
@@ -1345,6 +1485,14 @@ def run_measurement(config: dict[str, Any], input_path: Path) -> dict[str, Any]:
         "tail_diagonals_mm": delivery_abcd_payload.get("tail_diagonals_mm", {}) if delivery_abcd_payload else {},
         "corner_geometry": delivery_abcd_payload.get("corner_geometry", {}) if delivery_abcd_payload else {},
         "delivered_length_mm": delivery_abcd_payload.get("delivered_length_mm", "") if delivery_abcd_payload else "",
+    }
+    result["coworker_endface"] = {
+        "applied": coworker_endface_payload is not None,
+        "result_json_path": str(
+            (coworker_endface_output_dir / "measurement_result.json")
+            if coworker_endface_output_dir else ""
+        ),
+        "report_formula": "reported = 90 + 0.5 * (raw - 90)",
     }
     result["drift"] = {} if not END_FACE_ONLY else {
         key: raw_summary.get(key, "")
@@ -1486,6 +1634,7 @@ class ContinuousMeasurementMonitor(threading.Thread):
     def __init__(self) -> None:
         super().__init__(name="hobj-continuous-monitor", daemon=True)
         self.seen = read_continuous_seen()
+        self.pending_signatures: dict[str, tuple[list[int], float]] = {}
 
     def reload_seen(self) -> None:
         with CONTINUOUS_STATE_LOCK:
@@ -1522,8 +1671,17 @@ class ContinuousMeasurementMonitor(threading.Thread):
                     continue
                 key = str(path.resolve())
                 if self.seen.get(key) == signature:
+                    self.pending_signatures.pop(key, None)
                     continue
-                if time.time() - stat.st_mtime < float(current_config.get("stable_file_seconds", 30)):
+                now = time.monotonic()
+                observed = self.pending_signatures.get(key)
+                if stat.st_size < HOBJ_MINIMUM_COMPLETE_BYTES:
+                    self.pending_signatures[key] = (signature, now)
+                    continue
+                if observed is None or observed[0] != signature:
+                    self.pending_signatures[key] = (signature, now)
+                    continue
+                if now - observed[1] < float(current_config.get("stable_file_seconds", 2)):
                     continue
                 try:
                     result = run_measurement(current_config, path)
@@ -1531,11 +1689,12 @@ class ContinuousMeasurementMonitor(threading.Thread):
                         global LATEST_RESULT
                         LATEST_RESULT = result
                     self.seen[key] = signature
+                    self.pending_signatures.pop(key, None)
                     self.save_seen()
                     print(f"Continuous measurement complete: {path}")
                 except Exception as exc:  # Keep failed or incomplete files eligible for a later retry.
                     print(f"Continuous measurement pending for {path}: {exc}")
-            time.sleep(max(1, int(config.get("continuous_scan_seconds", 10))))
+            time.sleep(max(1, int(config.get("continuous_scan_seconds", 1))))
 
 
 class DashboardHandler(SimpleHTTPRequestHandler):

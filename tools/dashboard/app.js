@@ -486,4 +486,4 @@ $('#languageButton').addEventListener('click', () => { state.language = state.la
 $('#settingsButton').addEventListener('click', () => $('#settingsDialog').showModal());
 $('#settingsForm').addEventListener('submit', async event => { event.preventDefault(); const form = event.currentTarget; const data = Object.fromEntries(new FormData(form)); const button = $('#saveSettingsButton'); button.disabled = true; try { state.config = await api('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)}); $('#settingsDialog').close(); await Promise.all([loadConfig(), loadInputs(), loadCalibration(), loadCompensationLog()]); renderLanguage(); notice(state.language === 'en' ? 'Settings saved.' : '设置已保存。', 'success'); } catch (error) { notice(error.message, 'error'); } finally { button.disabled = false; } });
 initialize();
-setInterval(loadLatestResult, 3000);
+setInterval(loadLatestResult, 1000);

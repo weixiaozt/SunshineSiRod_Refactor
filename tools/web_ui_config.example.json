@@ -22,6 +22,6 @@
   },
   "length_offset_mm": 0.0,
   "continuous_measure_enabled": false,
-  "continuous_scan_seconds": 10,
-  "stable_file_seconds": 30
+  "continuous_scan_seconds": 1,
+  "stable_file_seconds": 2
 }
