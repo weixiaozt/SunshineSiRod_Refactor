@@ -1,0 +1,22 @@
+{
+  "job_status": "completed",
+  "measurement_status": "success",
+  "retry_count": 0,
+  "results": {
+    "edges": {
+      "A": {"value": 210.08232507066225, "status": "available"},
+      "B": {"value": 105.07148370203822, "status": "available"},
+      "C": {"value": 210.05079317426558, "status": "available"},
+      "D": {"value": 105.07916054865794, "status": "available"}
+    },
+    "diagonals": {
+      "diagonal_1": {"value": 233.28707187993018, "status": "available"},
+      "diagonal_2": {"value": 233.24997109945167, "status": "available"}
+    },
+    "rod_length": {
+      "raw": {"value": 476.46990444896625, "status": "available"},
+      "calibrated": {"value": 466.76839857027176, "status": "available"}
+    }
+  },
+  "error": null
+}

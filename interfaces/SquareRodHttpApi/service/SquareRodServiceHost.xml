@@ -1,0 +1,20 @@
+<service>
+  <id>SquareRodAlgorithmService</id>
+  <name>Square Rod Algorithm Service</name>
+  <description>方棒四相机测量算法本机HTTP服务</description>
+
+  <executable>%BASE%\SquareRodAlgorithmService.exe</executable>
+  <arguments>--config "%BASE%\api_config.production.json"</arguments>
+  <workingdirectory>%BASE%</workingdirectory>
+
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+  <hidewindow>true</hidewindow>
+
+  <onfailure action="restart" delay="5 sec"/>
+  <resetfailure>1 hour</resetfailure>
+  <stoptimeout>30 sec</stoptimeout>
+
+  <logpath>%BASE%\service_logs</logpath>
+  <log mode="roll"></log>
+</service>

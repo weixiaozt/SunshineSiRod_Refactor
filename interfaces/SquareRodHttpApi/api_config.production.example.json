@@ -1,0 +1,14 @@
+{
+  "project_root": ".",
+  "baseline_root": "./AlgorithmRuntime/V7",
+  "runtime_root": "D:/SquareRodApiData",
+  "host": "127.0.0.1",
+  "port": 8780,
+  "max_pending_jobs": 1,
+  "automatic_retry_limit": 1,
+  "slow_warning_seconds": 20.0,
+  "worker_hard_timeout_seconds": 60.0,
+  "expected_rows": 20000,
+  "expected_columns": 3200,
+  "require_workspace_sources": false
+}

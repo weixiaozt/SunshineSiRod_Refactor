@@ -1,0 +1,39 @@
+{
+  "job_status": "completed",
+  "measurement_status": "partial_success",
+  "results": {
+    "diagonals": {
+      "diagonal_1": {
+        "value": null,
+        "status": "unavailable",
+        "reason_code": "upstream_endpoint_unavailable",
+        "reason": "依赖的倒角端点不可用：CD"
+      },
+      "diagonal_2": {
+        "value": null,
+        "status": "unavailable",
+        "reason_code": "upstream_endpoint_unavailable",
+        "reason": "依赖的倒角端点不可用：CB"
+      }
+    }
+  },
+  "available_items": [
+    "A_mm",
+    "B_mm",
+    "C_mm",
+    "D_mm",
+    "raw_length_mm",
+    "calibrated_length_mm",
+    "AB_main_face_angle_deg",
+    "CD_main_face_angle_deg",
+    "AD_main_face_angle_deg",
+    "CB_main_face_angle_deg"
+  ],
+  "unavailable_items": [
+    "CD_chord_mm",
+    "CB_chord_mm",
+    "diagonal_1_mm",
+    "diagonal_2_mm"
+  ],
+  "error": null
+}
